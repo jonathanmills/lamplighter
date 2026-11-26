@@ -58,8 +58,8 @@ Slurm (slurmrestd) ────────────────────�
 | API server | **Python 3.12 + FastAPI**, served by Uvicorn/Gunicorn under systemd | Python matches the fork's "modernize toward Python" goal. FastAPI is typed, fast, generates OpenAPI docs, and Rocky 9 ships Python 3.12. |
 | DB access | **SQLAlchemy Core** (no ORM) + `mariadb` or `PyMySQL` driver | Hand-written, reviewable SQL against a schema we don't own. Read-only accounts. |
 | Collector | Python, same package, run by a **systemd timer** | Same codebase and configuration, no extra runtime. |
-| Front end | **TypeScript + React**, built with **Vite** into static files | Large ecosystem for dense data UIs. Node.js is needed **only on the build machine**, never on servers. |
-| UI kit | **Mantine** (or similar), **TanStack Table** for big tables, **Apache ECharts** for charts | Dense tables with virtual scrolling, good dark mode, rich chart types (treemaps for usage, heatmaps for age). |
+| Front end | **TypeScript + React** with React Router, built with **Vite** into static files that the API server serves (one origin, one session cookie) | Large ecosystem for dense data UIs. Node.js runs **only in a build container**: never on developer Macs or servers. |
+| UI kit | **No component library.** Hand-written CSS built on the palette tokens (`webui/frontend/src/styles/tokens.css`). **Apache ECharts** for charts. **TanStack Table** later, when tables need virtual scrolling. | Exact control over the Checkmk-style density, the palette and the layout rules, with fewer dependencies. Fonts are the system stack, with Ubuntu first where it is installed; bundling a web font is a separate licensing decision. |
 | Web server | **nginx**: TLS termination, serves static assets, reverse proxy to the API | Standard, fits SELinux and FIPS-mode setups. |
 | Packaging | **RPM** (`robinhood-webui`), alongside the existing RPMs | Same deployment path as the rest of Robinhood. |
 

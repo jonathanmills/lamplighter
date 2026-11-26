@@ -29,6 +29,11 @@ def me(p: Principal = Depends(current_principal)) -> dict:
     }
 
 
+@router.get("/status")
+def status(request: Request, p: Principal = Depends(require(Perm.DASHBOARD_VIEW))) -> dict:
+    return robinhood_status(request.app.state.engine)
+
+
 @router.get("/usage/summary")
 def usage(request: Request, p: Principal = Depends(require(Perm.USAGE_VIEW_AGGREGATES))) -> dict:
     return usage_summary(request.app.state.engine)

@@ -1,0 +1,16 @@
+// SPDX-License-Identifier: GPL-2.0-or-later
+// Copyright (C) 2026 Jonathan Mills
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+import "./styles/tokens.css";
+import "./styles/app.css";
+
+createRoot(document.getElementById("root")!).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>,
+);

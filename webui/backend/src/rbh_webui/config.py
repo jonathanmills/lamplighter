@@ -30,6 +30,8 @@ class ServerConfig(BaseModel):
     # Lax (not Strict): the OIDC callback is a cross-site top-level
     # navigation from the identity provider, and must carry the cookie.
     cookie_samesite: Literal["lax", "strict"] = "lax"
+    # Directory holding the built front end (index.html, assets/).
+    frontend_dir: str | None = None
 
 
 class OIDCConfig(BaseModel):

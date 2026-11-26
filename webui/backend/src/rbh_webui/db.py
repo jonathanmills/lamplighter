@@ -72,6 +72,9 @@ def usage_summary(engine: Engine, top: int = 10) -> dict:
     with engine.connect() as c:
         totals = c.execute(text(
             "SELECT type, SUM(count) AS n, SUM(size) AS bytes FROM ACCT_STAT GROUP BY type")).all()
+        sizes = c.execute(text(
+            "SELECT SUM(sz0+sz1+sz32), SUM(sz1K+sz32K), SUM(sz1M+sz32M), "
+            "SUM(sz1G+sz32G+sz1T) FROM ACCT_STAT WHERE type = 'file'")).one()
         users = c.execute(text(
             "SELECT uid, SUM(count) AS n, SUM(size) AS bytes FROM ACCT_STAT "
             "GROUP BY uid ORDER BY bytes DESC LIMIT :top"), {"top": top}).all()
@@ -79,4 +82,7 @@ def usage_summary(engine: Engine, top: int = 10) -> dict:
         "by_type": {t: {"entries": int(n or 0), "bytes": int(b or 0)} for t, n, b in totals},
         "top_users": [{"user": _s(u), "entries": int(n or 0), "bytes": int(b or 0)}
                       for u, n, b in users],
+        # File counts by size, from Robinhood's size profile (ACCT_STAT sz* columns).
+        "file_sizes": [{"bucket": b, "files": int(n or 0)} for b, n in
+                       zip(("< 1 KiB", "1 KiB – 1 MiB", "1 MiB – 1 GiB", "≥ 1 GiB"), sizes)],
     }

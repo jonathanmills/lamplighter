@@ -19,7 +19,7 @@ pytestmark = pytest.mark.integration
 def test_oidc_login_maps_ldap_groups_to_roles(client, user, roles):
     r = oidc_login(client, user, "password")
     assert r.url.host == "webui.test" and r.url.path == "/", r.url
-    assert "Signed in as" in r.text
+    assert 'id="root"' in r.text  # the front end's index.html
     me = client.get("/api/v1/me").json()
     assert me["uid"] == user and me["roles"] == roles and me["login_method"] == "oidc"
 
@@ -68,7 +68,7 @@ def test_logout_ends_session_and_goes_to_keycloak(client):
 
 def test_ldap_form_login(client):
     r = post_same_origin(client, "/auth/ldap", data={"username": "dave", "password": "password"})
-    assert "Signed in as" in r.text
+    assert r.url.path == "/" and 'id="root"' in r.text
     assert client.get("/api/v1/me").json()["login_method"] == "ldap"
 
 
@@ -136,3 +136,58 @@ def test_monitoring_rejects_tampered_token():
     tampered = ".".join([head, payload, sig[:-4] + ("AAAA" if not sig.endswith("AAAA") else "BBBB")])
     r = httpx.get(BASE + "/api/v1/monitoring", verify=SSL, headers={"Authorization": f"Bearer {tampered}"})
     assert r.status_code == 401
+
+
+# --- serving the front end ----------------------------------------------
+
+@pytest.mark.parametrize("path", ["/", "/cold", "/admin/access", "/no/such/page"])
+def test_pages_redirect_to_login_when_signed_out(client, path):
+    client.follow_redirects = False
+    r = client.get(path)
+    assert r.status_code == 303 and r.headers["location"] == "/auth/login"
+
+
+@pytest.mark.parametrize("path", ["/", "/cold", "/admin/access", "/no/such/page"])
+def test_every_page_url_serves_the_app_when_signed_in(client, path):
+    oidc_login(client, "carol", "password")
+    r = client.get(path)
+    assert r.status_code == 200 and 'id="root"' in r.text
+    assert r.headers["cache-control"] == "no-store"
+
+
+def test_static_assets_are_served_and_cached(client):
+    js = client.get("/theme-init.js")
+    assert js.status_code == 200 and "data-theme" in js.text
+    oidc_login(client, "alice", "password")
+    index = client.get("/").text
+    import re
+    asset = re.search(r'src="(/assets/[^"]+\.js)"', index).group(1)
+    r = client.get(asset)
+    assert r.status_code == 200 and "immutable" in r.headers["cache-control"]
+
+
+@pytest.mark.parametrize("path", ["/..%2f..%2fetc/passwd", "/assets/..%2f..%2f..%2fetc/passwd",
+                                  "/%2e%2e/%2e%2e/devenv/webui/session.secret"])
+def test_path_traversal_serves_nothing_secret(client, path):
+    oidc_login(client, "dave", "password")
+    r = client.get(path)
+    assert "root:" not in r.text and "dev-session-secret" not in r.text
+
+
+def test_unknown_api_path_is_json_404(client):
+    oidc_login(client, "dave", "password")
+    r = client.get("/api/v1/nope")
+    assert r.status_code == 404 and r.headers["content-type"].startswith("application/json")
+
+
+def test_status_endpoint_for_viewers(client):
+    oidc_login(client, "alice", "password")
+    body = client.get("/api/v1/status").json()
+    assert body["last_scan"]["status"] == "done"
+
+
+def test_usage_has_file_size_buckets(client):
+    oidc_login(client, "alice", "password")
+    sizes = client.get("/api/v1/usage/summary").json()["file_sizes"]
+    assert [b["bucket"] for b in sizes] == ["< 1 KiB", "1 KiB – 1 MiB", "1 MiB – 1 GiB", "≥ 1 GiB"]
+    assert sum(b["files"] for b in sizes) > 20000

@@ -40,6 +40,7 @@ usage: ./devenv.sh COMMAND
   scan      run a full Robinhood scan of the sample tree into MariaDB
   test      run the smoke test (LDAP, Keycloak, MariaDB/Robinhood)
   webui-test [ARGS]  run the web UI back end's pytest suite (unit + integration)
+  shots     render pages in headless Chromium; screenshots go to .shots/
   all       up + build + data + scan + test + webui-test
   sql       open a MariaDB shell on the Robinhood database
   shell     open a shell in the Rocky 9.7 workbench
@@ -54,6 +55,7 @@ cmd=${1:-help}; shift || true
 case $cmd in
     up)
         ./gen-certs.sh
+        mkdir -p ../frontend/dist
         compose up -d --build
         wait_keycloak
         compose ps
@@ -78,6 +80,11 @@ case $cmd in
     webui-test)
         wait_keycloak
         compose exec -T webui pytest -q -p no:cacheprovider tests "$@"
+        ;;
+    shots)
+        docker run --rm --network rbh-dev_default --ipc=host -v "$PWD:/devenv" \
+            mcr.microsoft.com/playwright/python:v1.48.0-noble \
+            sh -c "pip install -q playwright==1.48.0 && python /devenv/tools/screenshot.py"
         ;;
     all)
         "$0" up && "$0" build && "$0" data && "$0" scan && "$0" test && "$0" webui-test

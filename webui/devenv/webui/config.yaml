@@ -7,6 +7,7 @@
 server:
   base_url: https://webui.test:8443
   session_secret_file: /devenv/webui/session.secret
+  frontend_dir: /srv/frontend
 
 oidc:
   enabled: true

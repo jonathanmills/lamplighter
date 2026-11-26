@@ -74,6 +74,8 @@ On macOS, `docker` is Podman (`podman machine start` if it isn't running). Test 
 
 Web UI back end: `webui/backend/` (Python 3.12, FastAPI, package `rbh_webui`). Configuration is `config.py` (YAML; secrets always in separate `*_file`s), LDAP is `ldapdir.py`, ACLs are `acl.py` (permissions, roles, LDAP group DNs), login and sessions are `auth.py` and `sessions.py`, Checkmk bearer-token checks are `machine.py`, and DB reads are `db.py` (cheap reads only: never scan `ENTRIES` on a request). The dev config is `webui/devenv/webui/config.yaml`.
 
+Web UI front end: `webui/frontend/` (React + TypeScript + Vite, ECharts; no component library). Node runs only in the devenv `frontend` container, which rebuilds `dist/` on every save; the back end serves `dist/` (any non-API URL gets `index.html` after a login check). Colors come only from the tokens in `src/styles/tokens.css`; layout follows the rules in `src/styles/app.css`. Pages and their permissions are listed in `src/nav.tsx`. Before adding an npm dependency, check its license (all must be GPLv3-compatible). `webui/devenv/devenv.sh shots` renders pages in headless Chromium (both themes, phone width) to `webui/devenv/.shots/`, and reports console errors and horizontal overflow.
+
 ## Architecture
 
 `src/` is split into static libtool libraries that are linked into every executable in `src/robinhood/` (`robinhood` daemon, `rbh-report`, `rbh-find`, `rbh-du`, `rbh-diff`, `rbh-undelete`, `rbh-rebind`):

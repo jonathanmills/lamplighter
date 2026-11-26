@@ -107,3 +107,8 @@ cscope.*
 webui/devenv/.certs/
 webui/devenv/.docker-config/
 __pycache__/
+
+# web UI front end (generated)
+webui/frontend/dist/
+webui/frontend/node_modules/
+webui/devenv/.shots/

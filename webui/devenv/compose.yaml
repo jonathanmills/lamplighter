@@ -82,8 +82,11 @@ services:
     image: localhost/rbh-dev-webui
     environment:
       RBH_WEBUI_CONFIG: /devenv/webui/config.yaml
+      # File events from a macOS host don't reach the VM: poll instead.
+      WATCHFILES_FORCE_POLLING: "true"
     volumes:
       - ../backend:/app             # source, tests (editable install)
+      - ../frontend/dist:/srv/frontend:ro   # built by the frontend service
       - .:/devenv:ro
       - ./.certs:/certs:ro
     networks:
@@ -97,6 +100,18 @@ services:
       keycloak:
         condition: service_started
 
+  # Front-end builder: rebuilds webui/frontend/dist on every change.
+  # Node runs only here, never on the Mac or on servers.
+  frontend:
+    image: docker.io/library/node:22-alpine
+    working_dir: /app
+    command: ["sh", "/devenv/frontend-watch.sh"]
+    volumes:
+      - ../frontend:/app
+      - .:/devenv:ro
+      - rbh-node-modules:/app/node_modules
+
 volumes:
   rbh-db:
   rbh-build:
+  rbh-node-modules:

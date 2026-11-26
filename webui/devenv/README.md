@@ -8,7 +8,8 @@ A self-contained test environment that runs on a laptop with Podman or Docker. E
 | `keycloak` | Keycloak 26.0.8 with the `rbh` realm. Users are federated read-only from the LDAP server over LDAPS. | `https://keycloak.test:9443` (host: `127.0.0.1:9443`) |
 | `mariadb` | MariaDB 10.5 holding the Robinhood database `robinhood_dev` | `mariadb:3306` (host: `127.0.0.1:13306`) |
 | `workbench` | Rocky Linux 9.7: builds and runs Robinhood (POSIX mode), and runs the tests | `./devenv.sh shell` |
-| `webui` | The web UI back end (FastAPI on Rocky 9.7, Python 3.12). It reloads live when you edit `webui/backend/src`. | `https://webui.test:8443` (host: `127.0.0.1:8443`) |
+| `webui` | The web UI back end (FastAPI on Rocky 9.7, Python 3.12). It reloads live when you edit `webui/backend/src`, and serves the built front end. | `https://webui.test:8443` (host: `127.0.0.1:8443`) |
+| `frontend` | Node 22 build container: rebuilds `webui/frontend/dist` within about 3 seconds of a front-end file changing (refresh the browser to see the change). It polls for changes, because file events from a macOS host never reach containers in the Linux VM; the back end polls for the same reason. | none |
 
 ## Quick start
 
@@ -24,6 +25,7 @@ The first run downloads images and takes a few minutes. Later runs take seconds.
 - `./devenv.sh sql` opens a SQL shell on the Robinhood database.
 - `./devenv.sh test` runs the smoke test (19 checks covering LDAP, Keycloak and Robinhood/MariaDB).
 - `./devenv.sh webui-test` runs the back end's test suite: unit tests, plus integration tests that drive real logins through Keycloak and LDAP. Add pytest options after it, for example `./devenv.sh webui-test -k monitoring`.
+- `./devenv.sh shots` renders pages in headless Chromium (both themes, phone width) to `.shots/`, and reports console errors and layouts wider than the screen.
 - `./devenv.sh down` stops everything but keeps the data. `./devenv.sh reset` wipes everything.
 
 ## Test identities (all passwords are test-only)

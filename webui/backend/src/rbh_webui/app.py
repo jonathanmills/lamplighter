@@ -6,17 +6,18 @@ from __future__ import annotations
 
 import html
 import logging
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.middleware.sessions import SessionMiddleware
 
 from . import __version__
 from .acl import AccessPolicy
 from .api import router as api_router
-from .auth import _page, router as auth_router, setup_oauth
+from .auth import _page, current_principal, router as auth_router, setup_oauth
 from .config import Settings, load_settings, read_secret
 from .db import make_engine
 from .ldapdir import Directory
@@ -86,19 +87,37 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def healthz() -> dict:
         return {"status": "ok", "version": __version__}
 
-    @app.get("/", include_in_schema=False)
-    def home(request: Request):
-        # Placeholder until the front end exists: who am I, and log out.
-        from .auth import current_principal
+    frontend = Path(settings.server.frontend_dir).resolve() if settings.server.frontend_dir else None
+
+    @app.get("/{path:path}", include_in_schema=False)
+    def front_end(request: Request, path: str):
+        """Serve the single-page app: static files, else index.html.
+
+        Every page has its own URL; unknown paths get index.html and the
+        app's router shows the page (or its own "not found" view).
+        """
+        if path.startswith(("api/", "auth/")):
+            raise StarletteHTTPException(404, "Not found.")
+        if frontend and path:
+            candidate = (frontend / path).resolve()
+            # Only files inside the front-end directory, never above it.
+            if candidate.is_file() and candidate.is_relative_to(frontend):
+                cache = ("public, max-age=31536000, immutable" if path.startswith("assets/")
+                         else "no-cache")
+                return FileResponse(candidate, headers={"Cache-Control": cache})
         try:
             p = current_principal(request)
         except StarletteHTTPException as exc:
             if exc.status_code == 401:
                 return RedirectResponse("/auth/login", 303)
             raise
+        if frontend and (frontend / "index.html").is_file():
+            return FileResponse(frontend / "index.html", headers={"Cache-Control": "no-store"})
+        # No front end built yet: a minimal placeholder.
         roles = ", ".join(sorted(p.grants.roles))
         return _page(f"<p>Signed in as <b>{html.escape(p.user.name)}</b> "
                      f"({html.escape(p.user.uid)}), roles: {html.escape(roles)}.</p>"
+                     "<p>The front end has not been built yet.</p>"
                      '<form method="post" action="/auth/logout">'
                      '<button class="btn" type="submit">Sign out</button></form>')
 

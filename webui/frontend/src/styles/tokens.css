@@ -1,0 +1,75 @@
+/* SPDX-License-Identifier: GPL-2.0-or-later
+ * Copyright (C) 2026 Jonathan Mills
+ *
+ * Design tokens, from webui/design/palette-draft.html. Dark (Ubuntu
+ * charcoal + Carolina Blue) is the default; the light theme uses warm
+ * paper grays and never bright white. Contrast ratios were checked.
+ */
+:root,
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  /* surfaces */
+  --bg: #262523;
+  --sidebar: #1F1E1C;
+  --panel: #2F2E2B;
+  --bar: #3C3B37;            /* Ubuntu window bar */
+  --border: #4D4C47;
+  --hover: rgba(223, 219, 210, 0.06);
+  /* text */
+  --text: #DFDBD2;           /* 9.8:1 on panel */
+  --text-2: #AEA79F;         /* Ubuntu warm grey, 5.7:1 */
+  --text-3: #8E8981;         /* placeholders and disabled only */
+  /* accent: Carolina Blue */
+  --accent: #4B9CD3;         /* links 4.5:1 on panel; never text on --bar */
+  --accent-ink: #13294B;     /* text on accent fills */
+  --accent-tint: rgba(75, 156, 211, 0.16);
+  --accent-tint-line: rgba(75, 156, 211, 0.40);
+  --focus: #4B9CD3;
+  --brand: #E95420;          /* Ubuntu orange: shapes only, never text */
+  /* status, reserved; always with an icon or label */
+  --ok: #34C759;
+  --warn: #FF9E1B;
+  --error: #FF5F57;
+  /* charts */
+  --chart-1: #4B9CD3;
+  --ramp-1: #B7D7ED; --ramp-2: #7FB8E1; --ramp-3: #4B9CD3; --ramp-4: #3A82BC;
+  --chart-grid: #3F3E3A;
+  /* aubergine, reserved for the top bar accent, login and code panels */
+  --aubergine: linear-gradient(90deg, #77216F 0%, #5E2750 45%, #2C001E 100%);
+  --code-bg: rgba(48, 10, 36, 0.82);
+  --code-text: #55FF55;      /* VGA bright green: commands and code */
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+  --bg: #E4E1DB;
+  --sidebar: #D6D2CB;
+  --panel: #ECE9E4;          /* the lightest color anywhere */
+  --bar: #D6D2CB;
+  --border: #C4BFB7;
+  --hover: rgba(46, 45, 42, 0.05);
+  --text: #2E2D2A;
+  --text-2: #5E5A54;
+  --text-3: #7A756E;
+  --accent: #2C5080;         /* Bolin Creek: links 6.8:1 */
+  --accent-ink: #ECE9E4;
+  --accent-tint: rgba(75, 156, 211, 0.20);
+  --accent-tint-line: rgba(44, 80, 128, 0.40);
+  --focus: #2F7CB5;
+  --brand: #E95420;
+  --ok: #248A3D;
+  --warn: #8F5400;
+  --error: #C0362C;
+  --chart-1: #2F7CB5;        /* Carolina Deep */
+  --ramp-1: #5FA7D8; --ramp-2: #2F7CB5; --ramp-3: #2C5080; --ramp-4: #13294B;
+  --chart-grid: #D3CFC8;
+}
+
+:root {
+  --font: Ubuntu, "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: "Ubuntu Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --gutter: 16px;
+  --radius: 8px;
+  --sidebar-w: 232px;
+  --topbar-h: 52px;
+}
