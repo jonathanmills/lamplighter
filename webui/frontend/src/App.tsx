@@ -7,6 +7,8 @@ import { NAV, navByPath, type NavItem } from "./nav";
 import { setTheme, useTheme } from "./theme";
 import Overview from "./pages/Overview";
 import ColdData from "./pages/ColdData";
+import Users from "./pages/Users";
+import UserDetail from "./pages/UserDetail";
 import { ComingSoon, Forbidden, NotFound } from "./pages/States";
 
 const MeContext = createContext<Me | null>(null);
@@ -71,6 +73,7 @@ function Shell() {
             {NAV.map((n) => (
               <Route key={n.path} path={n.path} element={<Page item={n} />} />
             ))}
+            <Route path="/usage/user/:uid" element={can(me, "usage.view_aggregates") ? <UserDetail /> : <Forbidden perm="usage.view_aggregates" />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
@@ -85,16 +88,20 @@ function Page({ item }: { item: NavItem }) {
   if (!can(me, item.perm)) return <Forbidden perm={item.perm} />;
   if (item.path === "/") return <Overview />;
   if (item.path === "/cold") return <ColdData />;
+  if (item.path === "/usage") return <Users />;
   return <ComingSoon item={item} />;
 }
 
 function TopBar() {
   const { pathname } = useLocation();
   const item = navByPath(pathname);
+  const userPage = pathname.match(/^\/usage\/user\/([^/]+)$/);
   return (
     <header className="topbar">
       <div className="crumbs" aria-label="Breadcrumb">
-        {item ? <><span>{item.group}</span><span className="sep">›</span><b>{item.title}</b></> : <b>Not found</b>}
+        {userPage ? <><span>Monitor</span><span className="sep">›</span><NavLink to="/usage">Users & groups</NavLink>
+                      <span className="sep">›</span><b>{decodeURIComponent(userPage[1])}</b></>
+          : item ? <><span>{item.group}</span><span className="sep">›</span><b>{item.title}</b></> : <b>Not found</b>}
       </div>
       <div className="topbar-right"><UserMenu /></div>
     </header>

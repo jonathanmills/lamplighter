@@ -86,3 +86,52 @@ def usage_summary(engine: Engine, top: int = 10) -> dict:
         "file_sizes": [{"bucket": b, "files": int(n or 0)} for b, n in
                        zip(("< 1 KiB", "1 KiB – 1 MiB", "1 MiB – 1 GiB", "≥ 1 GiB"), sizes)],
     }
+
+
+# --- per-owner and per-group usage (ACCT_STAT: cheap) --------------------
+
+_SMALL = "sz0 + sz1 + sz32 + sz1K"        # files under 32 KiB
+_OWNER_COLS = (
+    "SUM(CASE WHEN type = 'file' THEN count ELSE 0 END) AS files, "
+    "SUM(CASE WHEN type = 'dir' THEN count ELSE 0 END) AS dirs, "
+    "SUM(count) AS entries, COALESCE(SUM(size), 0) AS bytes, "
+    f"SUM(CASE WHEN type = 'file' THEN {_SMALL} ELSE 0 END) AS small_files"
+)
+
+
+def _owner_rows(rows) -> list[dict]:
+    return [{"key": _s(k), "files": int(f or 0), "dirs": int(d or 0), "entries": int(e or 0),
+             "bytes": int(b or 0), "small_files": int(sm or 0)} for k, f, d, e, b, sm in rows]
+
+
+def usage_by(engine: Engine, key: str) -> list[dict]:
+    """Totals per user ("uid") or per group ("gid")."""
+    col = {"uid": "uid", "gid": "gid"}[key]
+    extra = ", COUNT(DISTINCT uid) AS users" if col == "gid" else ""
+    with engine.connect() as c:
+        rows = c.execute(text(f"SELECT {col}, {_OWNER_COLS}{extra} FROM ACCT_STAT GROUP BY {col}")).all()
+    out = _owner_rows([r[:6] for r in rows])
+    if col == "gid":
+        for o, r in zip(out, rows):
+            o["users"] = int(r[6])
+    return out
+
+
+def user_usage(engine: Engine, uid: str) -> dict | None:
+    with engine.connect() as c:
+        tot = c.execute(text(f"SELECT {_OWNER_COLS} FROM ACCT_STAT WHERE uid = :u"), {"u": uid}).one()
+        if not tot[2]:
+            return None
+        sizes = c.execute(text(
+            "SELECT SUM(sz0+sz1+sz32), SUM(sz1K+sz32K), SUM(sz1M+sz32M), SUM(sz1G+sz32G+sz1T) "
+            "FROM ACCT_STAT WHERE uid = :u AND type = 'file'"), {"u": uid}).one()
+        groups = c.execute(text(
+            "SELECT gid, SUM(count), COALESCE(SUM(size), 0) FROM ACCT_STAT WHERE uid = :u "
+            "GROUP BY gid ORDER BY 3 DESC"), {"u": uid}).all()
+    f, d, e, b, sm = (int(x or 0) for x in tot)
+    return {
+        "files": f, "dirs": d, "entries": e, "bytes": b, "small_files": sm,
+        "file_sizes": [{"bucket": k, "files": int(n or 0)} for k, n in
+                       zip(("< 1 KiB", "1 KiB – 1 MiB", "1 MiB – 1 GiB", "≥ 1 GiB"), sizes)],
+        "groups": [{"group": _s(g), "entries": int(n or 0), "bytes": int(by or 0)} for g, n, by in groups],
+    }

@@ -40,6 +40,24 @@ export interface ColdOwner {
 export interface ColdOwners { run_id: number; as_of: number; min_band: number; owners: ColdOwner[] }
 export type ColdAge = "90d" | "1y" | "3y";
 
+export interface OwnerUsage {
+  files: number; dirs: number; entries: number; bytes: number; small_files: number;
+  change_bytes: number | null;
+}
+export interface UserRow extends OwnerUsage { user: string; name: string | null; mail: string | null }
+export interface GroupRow extends OwnerUsage { group: string; description: string | null; members: number | null; users: number }
+export interface UsersList { scope: "all" | "self"; snapshot_as_of: number | null; filesystem_bytes: number; users: UserRow[] }
+export interface GroupsList { snapshot_as_of: number | null; filesystem_bytes: number; groups: GroupRow[] }
+export interface UserDetail {
+  user: string; name: string | null; mail: string | null; uid_number: number | null;
+  files: number; dirs: number; entries: number; bytes: number; small_files: number;
+  filesystem_bytes: number;
+  file_sizes: { bucket: string; files: number }[];
+  groups: { group: string; entries: number; bytes: number }[];
+  history: { at: number; bytes: number; entries: number }[];
+  age: { as_of: number; bands: AgeBand[] } | null;
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -63,6 +81,9 @@ export const api = {
   status: () => get<Status>("/status"),
   usage: () => get<UsageSummary>("/usage/summary"),
   age: (basis: "access" | "modify" = "access") => get<AgeBands>(`/usage/age?basis=${basis}`),
+  users: () => get<UsersList>("/usage/users"),
+  groups: () => get<GroupsList>("/usage/groups"),
+  user: (uid: string) => get<UserDetail>(`/usage/users/${encodeURIComponent(uid)}`),
   coldOwners: (olderThan: ColdAge) => get<ColdOwners>(`/cold/owners?older_than=${olderThan}`),
   coldCsvUrl: (olderThan: ColdAge) => `/api/v1/cold/owners.csv?older_than=${olderThan}`,
 };

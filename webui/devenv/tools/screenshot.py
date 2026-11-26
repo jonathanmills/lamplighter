@@ -24,6 +24,13 @@ SHOTS = [
     ("carol", "/cold", "dark", 1440, "cold-dark"),
     ("carol", "/cold?older_than=3y", "light", 1440, "cold-light-3y"),
     ("carol", "/cold", "dark", 400, "cold-phone"),
+    ("carol", "/usage", "dark", 1440, "users-dark"),
+    ("carol", "/usage?view=groups", "light", 1440, "groups-light"),
+    ("carol", "/usage/user/bob", "dark", 1440, "user-bob-dark"),
+    ("carol", "/usage/user/frank", "light", 1440, "user-frank-light"),
+    ("alice", "/usage", "dark", 1440, "users-alice-self"),
+    ("alice", "/usage/user/frank", "dark", 1440, "users-alice-forbidden"),
+    ("carol", "/usage", "dark", 400, "users-phone"),
     ("alice", "/", "dark", 1440, "alice-viewer"),
     ("alice", "/admin/access", "dark", 1440, "alice-forbidden"),
 ]
@@ -33,13 +40,19 @@ def main() -> int:
     OUT.mkdir(exist_ok=True)
     errors: list[str] = []
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        # --disable-gpu: avoids an intermittent startup stall of headless
+        # Chromium inside containers (no GPU there anyway).
+        browser = p.chromium.launch(args=["--disable-gpu"], timeout=30000)
         for user, path, theme, width, name in SHOTS:
             ctx = browser.new_context(viewport={"width": width, "height": 900},
                                       ignore_https_errors=True, device_scale_factor=2)
             page = ctx.new_page()
             page.set_default_timeout(20000)  # fail fast instead of hanging
-            page.on("console", lambda m, n=name: m.type == "error" and errors.append(f"{n}: {m.text}"))
+            def on_console(m, n=name):
+                # "*-forbidden" shots exist to show a refused page: their 403 is expected.
+                if m.type == "error" and not (n.endswith("-forbidden") and "status of 403" in m.text):
+                    errors.append(f"{n}: {m.text}")
+            page.on("console", on_console)
             page.on("pageerror", lambda e, n=name: errors.append(f"{n}: {e}"))
             page.goto(BASE + "/auth/login")
             page.fill("#username", user)

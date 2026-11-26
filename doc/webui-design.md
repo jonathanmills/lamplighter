@@ -190,8 +190,11 @@ Modelled on the appearance of the Checkmk Pro GUI:
 - **Robinhood status**: changelog backlog (`CL_LastRead` versus `CL_LastCleared`, age of the oldest pending record), last full scan, recent policy runs, and when the collector last ran.
 - Top users and groups by volume and file count (`ACCT_STAT`).
 
-### 5.2 Users and groups
-- Sortable, filterable table from `ACCT_STAT` with size profiles. Drill into a user: usage history, age histogram, top directories, cold bytes.
+### 5.2 Users and groups (built)
+- Users and Groups tabs: sortable, searchable dense tables from `ACCT_STAT`, with names, e-mail and group descriptions from LDAP (one cached, paged bulk search each), the share of small files (under 32 KiB), and the change since the last collector snapshot.
+- A per-user page at `/usage/user/<uid>`: totals, data by last access, files by size, volume over time (snapshots, then the live figure) and the groups the data is charged to.
+- Scope: without `usage.view_all_users`, a person sees only their own row and page. The API enforces this.
+- Top directories per user arrive with the per-directory rollups (section 6.3).
 
 ### 5.3 Cold-data explorer (data managers)
 - Age-bucket heatmap: **bytes by last_access or last_mod age** (for example <30d, 30–90d, 90d–1y, 1–3y, >3y) × owner, group or project.
@@ -296,7 +299,7 @@ web_gui/          # legacy PHP GUI, removed once the new UI covers its features
 | Phase | Delivers |
 |---|---|
 | 0. Skeleton | Repo layout, FastAPI app, OIDC login against a local Keycloak container (a test realm with the `rbh-webui` and `rbh-checkmk` clients), an OpenLDAP test container (RFC 2307bis), LDAP directory lookups and the ACL model, nginx config, read-only DB user, dev environment (Linux container with MariaDB and a sample Robinhood DB). |
-| 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. *Done: Overview, collector v1, and a first Cold data page (owners with the most cold data, LDAP contact details, audited CSV export). Still open: Users/Groups page, scale test.* |
+| 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. *Done: Overview, collector v1, a first Cold data page (owners with the most cold data, LDAP contact details, audited CSV export), and Users & groups (sortable tables with LDAP names, small-file share and change since the last snapshot, plus a per-user page with age, sizes, history and groups; viewers see only themselves). Still open: the scale test.* |
 | 2. Checkmk | Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
 | 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. |
 | 4. Triage | Jobstats collector, Slurm integration, triage dashboard. Rate metrics also feed Checkmk. |

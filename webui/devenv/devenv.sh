@@ -88,9 +88,15 @@ case $cmd in
         compose exec -T webui pytest -q -p no:cacheprovider tests "$@"
         ;;
     shots)
-        docker run --rm --network rbh-dev_default --ipc=host -v "$PWD:/devenv" \
-            mcr.microsoft.com/playwright/python:v1.48.0-noble \
-            sh -c "pip install -q playwright==1.48.0 && python /devenv/tools/screenshot.py"
+        # Hard time limit and one retry: headless Chromium can stall at start-up.
+        for attempt in 1 2; do
+            if docker run --rm --network rbh-dev_default --ipc=host -v "$PWD:/devenv" \
+                   mcr.microsoft.com/playwright/python:v1.48.0-noble \
+                   sh -c "pip install -q playwright==1.48.0 && timeout 240 python /devenv/tools/screenshot.py"; then
+                break
+            fi
+            [[ $attempt == 1 ]] && echo "shots: attempt 1 failed or timed out; retrying" >&2
+        done
         ;;
     all)
         "$0" up && "$0" build && "$0" data && "$0" scan && "$0" collect && "$0" test && "$0" webui-test

@@ -106,3 +106,39 @@ def cold_owners(engine: Engine, min_band: int, limit: int = 25) -> dict | None:
     return {"run_id": latest[0], "as_of": latest[1], "min_band": min_band,
             "owners": [{"user": u, "cold_bytes": int(cb), "cold_files": int(cf),
                         "total_bytes": int(tb), "oldest_band": int(ob)} for u, cb, cf, tb, ob in rows]}
+
+
+def snapshot_bytes(engine: Engine, key: str) -> tuple[int | None, dict[str, int]]:
+    """Bytes per uid or gid in the newest successful run's ACCT_STAT copy."""
+    col = {"uid": "uid", "gid": "gid"}[key]
+    with engine.connect() as c:
+        latest = _latest_ok(c)
+        if latest is None:
+            return None, {}
+        rows = c.execute(text(f"SELECT {col}, SUM(bytes) FROM acct_history WHERE run_id = :r "
+                              f"GROUP BY {col}"), {"r": latest[0]}).all()
+    return latest[1], {k: int(b) for k, b in rows}
+
+
+def user_history(engine: Engine, uid: str) -> list[dict]:
+    """Bytes and entries per successful run, oldest first."""
+    with engine.connect() as c:
+        rows = c.execute(text(
+            "SELECT UNIX_TIMESTAMP(r.finished_at), SUM(h.bytes), SUM(h.entries) "
+            "FROM collector_runs r JOIN acct_history h ON h.run_id = r.id "
+            "WHERE r.status = 'ok' AND h.uid = :u GROUP BY r.id ORDER BY r.id"), {"u": uid}).all()
+    return [{"at": int(t), "bytes": int(b), "entries": int(e)} for t, b, e in rows]
+
+
+def user_age_bands(engine: Engine, uid: str) -> dict | None:
+    from .collector import AGE_BANDS
+    with engine.connect() as c:
+        latest = _latest_ok(c)
+        if latest is None:
+            return None
+        rows = dict((int(b), (int(f), int(by))) for b, f, by in c.execute(text(
+            "SELECT access_band, SUM(files), SUM(bytes) FROM age_hist "
+            "WHERE run_id = :r AND uid = :u GROUP BY access_band"), {"r": latest[0], "u": uid}))
+    return {"as_of": latest[1], "bands": [
+        {"band": n, "label": label, "files": rows.get(n, (0, 0))[0], "bytes": rows.get(n, (0, 0))[1]}
+        for n, label, _ in AGE_BANDS]}

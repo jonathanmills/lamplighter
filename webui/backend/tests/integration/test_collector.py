@@ -133,3 +133,11 @@ def test_csv_export_needs_cold_export_and_is_audited(client, run_id):
     client.cookies.clear()
     oidc_login(client, "alice", "password")          # viewer: may not
     assert client.get("/api/v1/cold/owners.csv").status_code == 403
+
+
+def test_lock_is_released_after_a_run(settings):
+    """Regression: GET_LOCK lives on a pooled connection, so a run must
+    release it explicitly or a later run (another pool) is locked out."""
+    first = run_once(settings, make_engine(settings.database), make_engine(settings.store))
+    second = run_once(settings, make_engine(settings.database), make_engine(settings.store))
+    assert second > first

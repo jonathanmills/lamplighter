@@ -87,45 +87,53 @@ def run_once(settings: Settings, source: Engine | None = None, store: Engine | N
     migrate(store)
 
     with store.connect() as lock_conn:
-        # One collector at a time (the lock is released when this connection closes).
+        # One collector at a time. GET_LOCK belongs to this connection, and a
+        # pooled connection stays open after use, so release it explicitly.
         if not lock_conn.execute(text("SELECT GET_LOCK('rbh_webui_collector', 0)")).scalar():
             raise RuntimeError("another collector run is in progress")
-
-        with store.begin() as c:
-            run_id = c.execute(text("INSERT INTO collector_runs (started_at, status) "
-                                    "VALUES (NOW(3), 'running')")).lastrowid
-        t0 = time.monotonic()
         try:
-            now = int(time.time())
-            with source.connect() as src:
-                hist = _age_histogram(src, now, settings.collector.max_scan_seconds)
-                acct = _acct_snapshot(src)
-            files = sum(r["files"] for r in hist)
-            with store.begin() as c:
-                if hist:
-                    c.execute(text(
-                        "INSERT INTO age_hist (run_id, uid, gid, access_band, modify_band, files, bytes) "
-                        f"VALUES ({run_id}, :uid, :gid, :ab, :mb, :files, :bytes)"), hist)
-                if acct:
-                    c.execute(text(
-                        "INSERT INTO acct_history (run_id, uid, gid, type, entries, bytes, blocks) "
-                        f"VALUES ({run_id}, :uid, :gid, :type, :n, :b, :bl)"), acct)
-                c.execute(text("UPDATE collector_runs SET status = 'ok', finished_at = NOW(3), "
-                               "entries = :n WHERE id = :id"), {"n": files, "id": run_id})
-            log.info("run %d ok: %d files in %d age rows, %d acct rows, %.1fs",
-                     run_id, files, len(hist), len(acct), time.monotonic() - t0)
-        except Exception as exc:
-            with store.begin() as c:
-                c.execute(text("UPDATE collector_runs SET status = 'failed', finished_at = NOW(3), "
-                               "error = :e WHERE id = :id"), {"e": f"{type(exc).__name__}: {exc}"[:4000], "id": run_id})
-            raise
+            return _run_locked(settings, source, store)
+        finally:
+            lock_conn.execute(text("SELECT RELEASE_LOCK('rbh_webui_collector')"))
 
-        # Retention: keep the newest keep_runs runs (rows go with them: ON DELETE CASCADE).
+
+def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
+    """The body of one run, while holding the collector lock."""
+    with store.begin() as c:
+        run_id = c.execute(text("INSERT INTO collector_runs (started_at, status) "
+                                "VALUES (NOW(3), 'running')")).lastrowid
+    t0 = time.monotonic()
+    try:
+        now = int(time.time())
+        with source.connect() as src:
+            hist = _age_histogram(src, now, settings.collector.max_scan_seconds)
+            acct = _acct_snapshot(src)
+        files = sum(r["files"] for r in hist)
         with store.begin() as c:
-            c.execute(text(
-                "DELETE FROM collector_runs WHERE id < (SELECT MIN(id) FROM "
-                "(SELECT id FROM collector_runs ORDER BY id DESC LIMIT :k) AS keep)"),
-                {"k": settings.collector.keep_runs})
+            if hist:
+                c.execute(text(
+                    "INSERT INTO age_hist (run_id, uid, gid, access_band, modify_band, files, bytes) "
+                    f"VALUES ({run_id}, :uid, :gid, :ab, :mb, :files, :bytes)"), hist)
+            if acct:
+                c.execute(text(
+                    "INSERT INTO acct_history (run_id, uid, gid, type, entries, bytes, blocks) "
+                    f"VALUES ({run_id}, :uid, :gid, :type, :n, :b, :bl)"), acct)
+            c.execute(text("UPDATE collector_runs SET status = 'ok', finished_at = NOW(3), "
+                           "entries = :n WHERE id = :id"), {"n": files, "id": run_id})
+        log.info("run %d ok: %d files in %d age rows, %d acct rows, %.1fs",
+                 run_id, files, len(hist), len(acct), time.monotonic() - t0)
+    except Exception as exc:
+        with store.begin() as c:
+            c.execute(text("UPDATE collector_runs SET status = 'failed', finished_at = NOW(3), "
+                           "error = :e WHERE id = :id"), {"e": f"{type(exc).__name__}: {exc}"[:4000], "id": run_id})
+        raise
+
+    # Retention: keep the newest keep_runs runs (rows go with them: ON DELETE CASCADE).
+    with store.begin() as c:
+        c.execute(text(
+            "DELETE FROM collector_runs WHERE id < (SELECT MIN(id) FROM "
+            "(SELECT id FROM collector_runs ORDER BY id DESC LIMIT :k) AS keep)"),
+            {"k": settings.collector.keep_runs})
     return run_id
 
 

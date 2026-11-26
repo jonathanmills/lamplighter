@@ -26,7 +26,7 @@ interface Props {
 }
 
 /** Round tick step in binary units, so labels read 2 TiB, 4 TiB... not 1.8, 3.6. */
-function binaryTicks(max: number, splits: number): { interval: number; max: number } | undefined {
+export function binaryTicks(max: number, splits: number): { interval: number; max: number } | undefined {
   if (!(max > 0)) return undefined;
   const unit = 1024 ** Math.floor(Math.log(max) / Math.log(1024));
   const steps = [1, 2, 2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500];

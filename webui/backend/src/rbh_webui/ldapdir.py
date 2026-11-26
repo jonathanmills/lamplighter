@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 import ldap
 import ldap.dn
 import ldap.filter
+from ldap.controls import SimplePagedResultsControl
 
 from .config import DirectoryType, LDAPConfig, read_secret
 
@@ -70,11 +71,28 @@ def _all(entry: dict, attr: str) -> list[str]:
     return []
 
 
+@dataclass(frozen=True)
+class Person:
+    uid: str
+    name: str
+    mail: str | None
+    uid_number: int | None
+
+
+@dataclass(frozen=True)
+class UnixGroup:
+    cn: str
+    description: str | None
+    gid_number: int | None
+    members: int
+
+
 class Directory:
     def __init__(self, cfg: LDAPConfig):
         self.cfg = cfg
         self._cache: dict[str, tuple[float, DirUser]] = {}
         self._lock = threading.Lock()
+        self._bulk: dict[str, tuple[float, dict]] = {}
 
     # --- connections -------------------------------------------------
 
@@ -205,6 +223,77 @@ class Directory:
             raise DirectoryError(f"bind as {username!r} failed: {exc}") from exc
         finally:
             conn.unbind_s()
+
+    # --- bulk listings (one paged search each, cached) ----------------
+
+    @staticmethod
+    def _paged(conn, base: str, scope: int, flt: str, attrs: list[str], page: int = 500):
+        """Yield (dn, entry) over all pages, so large directories never hit
+        the server's size limit."""
+        ctrl = SimplePagedResultsControl(True, size=page, cookie=b"")
+        while True:
+            msgid = conn.search_ext(base, scope, flt, attrs, serverctrls=[ctrl])
+            _, data, _, ctrls = conn.result3(msgid)
+            for dn, entry in data:
+                if dn:
+                    yield dn, entry
+            cookie = next((c.cookie for c in ctrls
+                           if c.controlType == SimplePagedResultsControl.controlType), b"")
+            if not cookie:
+                return
+            ctrl.cookie = cookie
+
+    def _cached_bulk(self, key: str, build) -> dict:
+        now = time.monotonic()
+        with self._lock:
+            hit = self._bulk.get(key)
+        if hit and hit[0] > now:
+            return hit[1]
+        conn = self._service_conn()
+        try:
+            data = build(conn)
+        except ldap.LDAPError as exc:
+            raise DirectoryError(f"listing {key} failed: {exc}") from exc
+        finally:
+            conn.unbind_s()
+        with self._lock:
+            self._bulk[key] = (now + self.cfg.cache_ttl_seconds, data)
+        return data
+
+    def all_people(self) -> dict[str, Person]:
+        """Every person in the users subtree, by login name."""
+        u = self.cfg.users
+
+        def build(conn) -> dict[str, Person]:
+            flt = u.filter.replace("{username}", "*")
+            out: dict[str, Person] = {}
+            for _, e in self._paged(conn, u.base_dn, _SCOPES[u.scope], flt,
+                                    [u.login_attr, u.name_attr, u.mail_attr, u.uidnumber_attr]):
+                uid = _first(e, u.login_attr)
+                if uid:
+                    num = _first(e, u.uidnumber_attr)
+                    out[uid] = Person(uid=uid, name=_first(e, u.name_attr) or uid,
+                                      mail=_first(e, u.mail_attr),
+                                      uid_number=int(num) if num and num.isdigit() else None)
+            return out
+        return self._cached_bulk("people", build)
+
+    def all_unix_groups(self) -> dict[str, UnixGroup]:
+        """Groups that carry a gidNumber (Unix groups), by name."""
+        g = self.cfg.groups
+
+        def build(conn) -> dict[str, UnixGroup]:
+            out: dict[str, UnixGroup] = {}
+            for _, e in self._paged(conn, g.base_dn, _SCOPES[g.scope], f"(&{g.filter}(gidNumber=*))",
+                                    ["cn", "description", "gidNumber", "member", "memberUid"]):
+                cn = _first(e, "cn")
+                if cn:
+                    num = _first(e, "gidNumber")
+                    out[cn] = UnixGroup(cn=cn, description=_first(e, "description"),
+                                        gid_number=int(num) if num and num.isdigit() else None,
+                                        members=len(_all(e, "member")) or len(_all(e, "memberUid")))
+            return out
+        return self._cached_bulk("unix_groups", build)
 
     def test_connection(self, sample_user: str | None = None) -> dict:
         """Diagnostics for the admin "test connection" page."""
