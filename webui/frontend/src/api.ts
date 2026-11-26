@@ -76,6 +76,14 @@ export interface DirLookup {
 }
 export interface DirMapping { group: string; roles: string[]; via: string; exists: boolean; members: number }
 
+export interface AuditItem { id: number; at: number; event: string; outcome: string; user: string | null; client: string | null; details: Record<string, unknown> }
+export interface AuditPage { events: string[]; more: boolean; items: AuditItem[] }
+export interface AccessInfo {
+  permissions: { name: string; text: string }[];
+  roles: { name: string; permissions: string[] }[];
+  groups: { group: string; roles: string[]; via: string; members: string[] | null }[];
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -106,6 +114,8 @@ export const api = {
   dirTest: () => get<DirTest>("/admin/directory/test", { method: "POST" }),
   dirLookup: (user: string) => get<DirLookup>(`/admin/directory/lookup?user=${encodeURIComponent(user)}`),
   dirMappings: () => get<{ mappings: DirMapping[] }>("/admin/directory/mappings"),
+  audit: (q: Record<string, string>) => get<AuditPage>("/admin/audit?" + new URLSearchParams(q).toString()),
+  access: () => get<AccessInfo>("/admin/access"),
   coldOwners: (olderThan: ColdAge) => get<ColdOwners>(`/cold/owners?older_than=${olderThan}`),
   coldCsvUrl: (olderThan: ColdAge) => `/api/v1/cold/owners.csv?older_than=${olderThan}`,
 };

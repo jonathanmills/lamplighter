@@ -128,8 +128,11 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
                            "error = :e WHERE id = :id"), {"e": f"{type(exc).__name__}: {exc}"[:4000], "id": run_id})
         raise
 
-    # Retention: keep the newest keep_runs runs (rows go with them: ON DELETE CASCADE).
+    # Retention: keep the newest keep_runs runs (rows go with them: ON DELETE CASCADE),
+    # and drop database copies of audit events past their retention.
     with store.begin() as c:
+        c.execute(text("DELETE FROM audit_log WHERE ts < UTC_TIMESTAMP() - INTERVAL :d DAY"),
+                  {"d": settings.collector.audit_retention_days})
         c.execute(text(
             "DELETE FROM collector_runs WHERE id < (SELECT MIN(id) FROM "
             "(SELECT id FROM collector_runs ORDER BY id DESC LIMIT :k) AS keep)"),

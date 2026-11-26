@@ -33,6 +33,9 @@ SHOTS = [
     ("carol", "/usage", "dark", 400, "users-phone"),
     ("dave", "/admin/directory", "dark", 1440, "directory-dark"),
     ("dave", "/admin/directory", "light", 1440, "directory-light"),
+    ("dave", "/admin/access", "dark", 1440, "access-dark"),
+    ("dave", "/admin/audit", "dark", 1440, "audit-dark"),
+    ("dave", "/admin/audit?outcome=denied", "light", 1440, "audit-light-denied"),
     ("alice", "/", "dark", 1440, "alice-viewer"),
     ("alice", "/admin/access", "dark", 1440, "alice-forbidden"),
 ]

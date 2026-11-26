@@ -35,13 +35,11 @@ export const NAV: NavItem[] = [
     icon: I("M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"),
     phase: "Phase 3", blurb: "Walk the directory tree with sizes, file counts and ages per subtree." },
   { path: "/admin/access", title: "Access control", group: "Administration", perm: "admin.acl",
-    icon: I("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"),
-    phase: "Phase 2", blurb: "Roles and the LDAP groups that grant them." },
+    icon: I("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z") },
   { path: "/admin/directory", title: "Directory", group: "Administration", perm: "admin.ldap",
     icon: I("M4 4h16v16H4zM4 9h16M9 4v16") },
   { path: "/admin/audit", title: "Audit log", group: "Administration", perm: "admin.audit.view",
-    icon: I("M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"),
-    phase: "Phase 2", blurb: "Who signed in, searched and exported, and when." },
+    icon: I("M9 11l3 3L22 4M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11") },
 ];
 
 export const navByPath = (path: string) => NAV.find((n) => n.path === path);

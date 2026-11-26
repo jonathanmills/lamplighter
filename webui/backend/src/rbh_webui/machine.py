@@ -72,10 +72,12 @@ def monitoring_client(request: Request) -> MachineClient:
     try:
         client = verifier.verify(token)
     except jwt.PyJWTError as exc:
-        audit("monitoring", outcome="denied", reason=f"invalid token: {exc}")
+        audit("monitoring", outcome="denied", client=request.client.host if request.client else None,
+              reason=f"invalid token: {exc}")
         raise HTTPException(401, "Invalid token.",
                             headers={"WWW-Authenticate": 'Bearer error="invalid_token"'})
     if verifier.mon.required_role not in client.roles:
-        audit("monitoring", outcome="denied", reason="missing role", client_id=client.client_id)
+        audit("monitoring", outcome="denied", client=request.client.host if request.client else None,
+              reason="missing role", client_id=client.client_id)
         raise HTTPException(403, f"Token lacks the {verifier.mon.required_role!r} role.")
     return client

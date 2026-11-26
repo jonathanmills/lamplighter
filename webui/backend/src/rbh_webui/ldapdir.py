@@ -295,6 +295,40 @@ class Directory:
             return out
         return self._cached_bulk("unix_groups", build)
 
+    def group_members(self, group_dns: list[str]) -> dict[str, list[str] | None]:
+        """Login names of each group's members (None if the group is missing).
+
+        Member DNs are turned into login names through the people listing,
+        falling back to the DN's first value (uid=alice -> alice).
+        """
+        people = {norm_dn(p_dn): uid for uid, p_dn in self._people_dns().items()}
+        out: dict[str, list[str] | None] = {}
+        conn = self._service_conn()
+        try:
+            for dn in group_dns:
+                try:
+                    res = conn.search_s(dn, ldap.SCOPE_BASE, "(objectClass=*)", ["member", "memberUid"])
+                except ldap.NO_SUCH_OBJECT:
+                    out[norm_dn(dn)] = None
+                    continue
+                entry = res[0][1] if res else {}
+                uids = _all(entry, "memberUid")
+                for m in _all(entry, "member"):
+                    uids.append(people.get(norm_dn(m)) or ldap.dn.str2dn(m)[0][0][1])
+                out[norm_dn(dn)] = sorted(set(uids))
+        finally:
+            conn.unbind_s()
+        return out
+
+    def _people_dns(self) -> dict[str, str]:
+        u = self.cfg.users
+
+        def build(conn) -> dict[str, str]:
+            flt = u.filter.replace("{username}", "*")
+            return {uid: dn for dn, e in self._paged(conn, u.base_dn, _SCOPES[u.scope], flt, [u.login_attr])
+                    if (uid := _first(e, u.login_attr))}
+        return self._cached_bulk("people_dns", build)
+
     def test_connection(self, sample_user: str | None = None) -> dict:
         """Diagnostics for the admin "test connection" page."""
         result: dict = {"servers": self.cfg.servers, "bind_dn": self.cfg.bind_dn}

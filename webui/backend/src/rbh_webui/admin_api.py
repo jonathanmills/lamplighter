@@ -55,7 +55,7 @@ def config(request: Request, p: Principal = Depends(admin)) -> dict:
 async def test(request: Request, p: Principal = Depends(admin)) -> dict:
     results = await run_in_threadpool(test_servers, request.app.state.directory)
     ok = all(r["ok"] for r in results)
-    audit("admin.directory.test", user=p.user.uid, outcome="ok" if ok else "failed")
+    audit("admin.directory.test", user=p.user.uid, client=request.client.host if request.client else None, outcome="ok" if ok else "failed")
     return {"ok": ok, "servers": results}
 
 
@@ -68,7 +68,7 @@ def lookup(request: Request, user: str = Query(..., min_length=1, max_length=256
         u = directory.find_user(user, refresh=True)
     except DirectoryError as exc:
         raise HTTPException(503, f"The directory is unavailable: {exc}")
-    audit("admin.directory.lookup", user=p.user.uid, looked_up=user, found=u is not None)
+    audit("admin.directory.lookup", user=p.user.uid, client=request.client.host if request.client else None, looked_up=user, found=u is not None)
     if u is None:
         raise HTTPException(404, f"No entry matches {user!r} with the configured user filter.")
     grants = policy.grants_for(u.groups)
@@ -96,3 +96,81 @@ def mappings(request: Request, p: Principal = Depends(admin)) -> dict:
     for r in rows:
         r.update(status.get(norm_dn(r["group"]), {"exists": False, "members": 0}))
     return {"mappings": rows}
+
+
+# --- audit log (admin.audit.view) -------------------------------------------
+
+audit_router = APIRouter(prefix="/api/v1/admin/audit")
+
+
+@audit_router.get("")
+def audit_events(request: Request, user: str | None = None, event: str | None = None,
+                 outcome: str | None = None, since_hours: int = Query(24 * 7, ge=1, le=24 * 400),
+                 before_id: int | None = None, limit: int = Query(200, ge=1, le=1000),
+                 p: Principal = Depends(require(Perm.ADMIN_AUDIT_VIEW))) -> dict:
+    """Newest first; page with before_id (the last id of the previous page)."""
+    import json as _json
+    from datetime import datetime, timedelta, timezone
+    from sqlalchemy import text
+    where = ["ts >= :since"]
+    params: dict = {"since": datetime.now(timezone.utc).replace(tzinfo=None) - timedelta(hours=since_hours),
+                    "n": limit + 1}
+    for col, val in (("user", user), ("event", event), ("outcome", outcome)):
+        if val:
+            where.append(f"{col} = :{col}")
+            params[col] = val
+    if before_id:
+        where.append("id < :before")
+        params["before"] = before_id
+    with request.app.state.store_engine.connect() as c:
+        rows = c.execute(text(f"SELECT id, ts, event, outcome, user, client, details FROM audit_log "
+                              f"WHERE {' AND '.join(where)} ORDER BY id DESC LIMIT :n"), params).all()
+        events = [e for (e,) in c.execute(text("SELECT DISTINCT event FROM audit_log ORDER BY event"))]
+    more = len(rows) > limit
+    rows = rows[:limit]
+    return {
+        "events": events, "more": more,
+        "items": [{"id": r[0], "at": r[1].replace(tzinfo=timezone.utc).timestamp(), "event": r[2],
+                   "outcome": r[3], "user": r[4], "client": r[5],
+                   "details": _json.loads(r[6]) if r[6] else {}} for r in rows],
+    }
+
+
+# --- access control (admin.acl), read-only ----------------------------------
+
+access_router = APIRouter(prefix="/api/v1/admin/access")
+
+PERM_TEXT = {
+    "dashboard.view": "See the overview dashboard",
+    "usage.view_aggregates": "See group usage and their own usage",
+    "usage.view_all_users": "See every user's usage",
+    "paths.view_own": "Browse their own files",
+    "paths.view_all": "Browse everyone's files",
+    "cold.view": "See cold data and the owners to contact",
+    "cold.export": "Export cold-data owner lists (CSV)",
+    "triage.view": "See slowdown triage (jobs, I/O)",
+    "collector.status.view": "See collector runs",
+    "admin.ldap": "Directory settings, connection test, user lookup",
+    "admin.acl": "See roles, permissions and who holds them",
+    "admin.audit.view": "Read the audit log",
+}
+
+
+@access_router.get("")
+def access(request: Request, p: Principal = Depends(require(Perm.ADMIN_ACL))) -> dict:
+    policy = request.app.state.policy
+    s = request.app.state.settings
+    directory = request.app.state.directory
+    groups = ([(g, ["admin"], "bootstrap admin group") for g in s.access.bootstrap_admin_groups]
+              + [(m.group, sorted(m.roles), "role mapping") for m in s.access.role_mappings])
+    try:
+        members = directory.group_members([g for g, _, _ in groups])
+    except DirectoryError as exc:
+        raise HTTPException(503, f"The directory is unavailable: {exc}")
+    return {
+        "permissions": [{"name": perm.value, "text": PERM_TEXT.get(perm.value, perm.value)} for perm in Perm],
+        "roles": [{"name": r, "permissions": sorted(x.value for x in perms)}
+                  for r, perms in sorted(policy.roles.items(), key=lambda kv: -len(kv[1]))],
+        "groups": [{"group": g, "roles": roles, "via": via,
+                    "members": members.get(norm_dn(g))} for g, roles, via in groups],
+    }

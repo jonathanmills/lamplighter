@@ -232,7 +232,7 @@ def current_principal(request: Request) -> Principal:
 def require(perm: Perm):
     def dep(request: Request, p: Principal = Depends(current_principal)) -> Principal:
         if not p.grants.allows(perm):
-            audit("denied", user=p.user.uid, permission=perm.value, path=request.url.path)
+            audit("denied", user=p.user.uid, outcome="denied", client=request.client.host if request.client else None, permission=perm.value, path=request.url.path)
             raise HTTPException(403, f"Missing permission: {perm.value}")
         return p
     return dep

@@ -134,6 +134,9 @@ class CollectorConfig(BaseModel):
     keep_runs: int = 90                # older runs (and their rows) are deleted
     # Abort the scan if it runs longer than this (MariaDB max_statement_time).
     max_scan_seconds: int = 6 * 3600
+    # Audit events older than this are deleted from the database copy
+    # (journald keeps its own retention).
+    audit_retention_days: int = 400
 
 
 class MonitoringConfig(BaseModel):

@@ -16,15 +16,17 @@ from starlette.middleware.sessions import SessionMiddleware
 
 from . import __version__
 from .acl import AccessPolicy
+from .audit import attach_store
 from .api import router as api_router
 from .usage_api import router as usage_router
-from .admin_api import router as admin_router
+from .admin_api import access_router, audit_router, router as admin_router
 from .auth import _page, current_principal, router as auth_router, setup_oauth
 from .config import Settings, load_settings, read_secret
 from .db import make_engine
 from .ldapdir import Directory
 from .machine import TokenVerifier
 from .sessions import SessionStore
+from .store import migrate
 
 UNSAFE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
 
@@ -50,7 +52,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.sessions = SessionStore(settings.server.session_ttl_seconds)
     app.state.oauth = setup_oauth(settings)
     app.state.engine = make_engine(settings.database)          # Robinhood (read only)
-    app.state.store_engine = make_engine(settings.store)       # rbh_webui (collector output)
+    app.state.store_engine = make_engine(settings.store)       # rbh_webui (collector output, audit)
+    migrate(app.state.store_engine)
+    attach_store(app.state.store_engine)
     app.state.token_verifier = (TokenVerifier(settings.oidc, settings.monitoring)
                                 if settings.oidc and settings.monitoring and settings.monitoring.enabled
                                 else None)
@@ -87,6 +91,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(api_router)
     app.include_router(usage_router)
     app.include_router(admin_router)
+    app.include_router(audit_router)
+    app.include_router(access_router)
 
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict:

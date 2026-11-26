@@ -73,7 +73,7 @@ def cold(request: Request, older_than: Literal["90d", "1y", "3y"] = "1y",
             u = None
         o["name"] = u.name if u else None
         o["mail"] = u.mail if u else None
-    audit("cold.owners", user=p.user.uid, older_than=older_than, count=len(body["owners"]))
+    audit("cold.owners", user=p.user.uid, client=request.client.host if request.client else None, older_than=older_than, count=len(body["owners"]))
     return body
 
 
@@ -92,7 +92,7 @@ def cold_csv(request: Request, older_than: Literal["90d", "1y", "3y"] = "1y",
     for o in body["owners"]:
         w.writerow([o["user"], o["name"] or "", o["mail"] or "", o["cold_bytes"],
                     o["cold_files"], o["total_bytes"]])
-    audit("cold.export", user=p.user.uid, older_than=older_than, rows=len(body["owners"]))
+    audit("cold.export", user=p.user.uid, client=request.client.host if request.client else None, older_than=older_than, rows=len(body["owners"]))
     return Response(buf.getvalue(), media_type="text/csv; charset=utf-8", headers={
         "Content-Disposition": f'attachment; filename="cold-owners-{older_than}.csv"'})
 
@@ -122,5 +122,6 @@ def monitoring(request: Request, client: MachineClient = Depends(monitoring_clie
         }
     except SQLAlchemyError as exc:
         body["collector"] = {"error": type(exc).__name__}
-    audit("monitoring", client_id=client.client_id)
+    # Successful polls are not audited: Checkmk polls every minute and would
+    # bury the events that matter. Refused requests are audited in machine.py.
     return body
