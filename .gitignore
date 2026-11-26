@@ -102,3 +102,8 @@ cscope.*
 /src/include/db_schema.h
 /scripts/make_mans.sh
 /web_gui/gui_v3/config_local.php
+
+# web UI dev environment (generated)
+webui/devenv/.certs/
+webui/devenv/.docker-config/
+__pycache__/

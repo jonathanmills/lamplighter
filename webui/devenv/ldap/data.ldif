@@ -1,0 +1,189 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+#
+# Test directory (RFC 2307bis layout): users are inetOrgPerson +
+# posixAccount and get memberOf from the overlay; groups are
+# groupOfNames (+ posixGroup for Unix project groups).
+#
+# All passwords are TEST-ONLY values for this throwaway directory.
+# User password for every person: "password".
+#
+# This file is also the single source of truth for the test data
+# generator (testdata/accounts.py and testdata/generate.py), so keep
+# one attribute per line and no LDIF line folding.
+
+dn: dc=rbh,dc=test
+objectClass: dcObject
+objectClass: organization
+dc: rbh
+o: Robinhood Dev
+
+dn: ou=people,dc=rbh,dc=test
+objectClass: organizationalUnit
+ou: people
+
+dn: ou=groups,dc=rbh,dc=test
+objectClass: organizationalUnit
+ou: groups
+
+dn: ou=services,dc=rbh,dc=test
+objectClass: organizationalUnit
+ou: services
+
+# --- service accounts (bind DNs for the web UI and Keycloak) ---
+
+dn: cn=rbh-webui,ou=services,dc=rbh,dc=test
+objectClass: applicationProcess
+objectClass: simpleSecurityObject
+cn: rbh-webui
+userPassword: webui-bind-secret
+
+dn: cn=rbh-keycloak,ou=services,dc=rbh,dc=test
+objectClass: applicationProcess
+objectClass: simpleSecurityObject
+cn: rbh-keycloak
+userPassword: keycloak-bind-secret
+
+# --- people ---
+
+dn: uid=alice,ou=people,dc=rbh,dc=test
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: alice
+cn: Alice Astro
+givenName: Alice
+sn: Astro
+mail: alice@rbh.test
+uidNumber: 20001
+gidNumber: 30001
+homeDirectory: /home/alice
+loginShell: /bin/bash
+userPassword: password
+
+dn: uid=bob,ou=people,dc=rbh,dc=test
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: bob
+cn: Bob Builder
+givenName: Bob
+sn: Builder
+mail: bob@rbh.test
+uidNumber: 20002
+gidNumber: 30001
+homeDirectory: /home/bob
+loginShell: /bin/bash
+userPassword: password
+
+dn: uid=carol,ou=people,dc=rbh,dc=test
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: carol
+cn: Carol Curator
+givenName: Carol
+sn: Curator
+mail: carol@rbh.test
+uidNumber: 20003
+gidNumber: 30004
+homeDirectory: /home/carol
+loginShell: /bin/bash
+userPassword: password
+
+dn: uid=dave,ou=people,dc=rbh,dc=test
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: dave
+cn: Dave Admin
+givenName: Dave
+sn: Admin
+mail: dave@rbh.test
+uidNumber: 20004
+gidNumber: 30004
+homeDirectory: /home/dave
+loginShell: /bin/bash
+userPassword: password
+
+dn: uid=erin,ou=people,dc=rbh,dc=test
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: erin
+cn: Erin Climate
+givenName: Erin
+sn: Climate
+mail: erin@rbh.test
+uidNumber: 20005
+gidNumber: 30002
+homeDirectory: /home/erin
+loginShell: /bin/bash
+userPassword: password
+
+dn: uid=frank,ou=people,dc=rbh,dc=test
+objectClass: inetOrgPerson
+objectClass: posixAccount
+uid: frank
+cn: Frank Genome
+givenName: Frank
+sn: Genome
+mail: frank@rbh.test
+uidNumber: 20006
+gidNumber: 30003
+homeDirectory: /home/frank
+loginShell: /bin/bash
+userPassword: password
+
+# --- Unix project groups (groupOfNames + posixGroup) ---
+
+dn: cn=proj-astro,ou=groups,dc=rbh,dc=test
+objectClass: groupOfNames
+objectClass: posixGroup
+cn: proj-astro
+gidNumber: 30001
+description: Astrophysics project
+member: uid=alice,ou=people,dc=rbh,dc=test
+member: uid=bob,ou=people,dc=rbh,dc=test
+
+dn: cn=proj-climate,ou=groups,dc=rbh,dc=test
+objectClass: groupOfNames
+objectClass: posixGroup
+cn: proj-climate
+gidNumber: 30002
+description: Climate modelling project
+member: uid=erin,ou=people,dc=rbh,dc=test
+member: uid=bob,ou=people,dc=rbh,dc=test
+
+dn: cn=proj-genomics,ou=groups,dc=rbh,dc=test
+objectClass: groupOfNames
+objectClass: posixGroup
+cn: proj-genomics
+gidNumber: 30003
+description: Genomics project
+member: uid=frank,ou=people,dc=rbh,dc=test
+
+dn: cn=hpc-staff,ou=groups,dc=rbh,dc=test
+objectClass: groupOfNames
+objectClass: posixGroup
+cn: hpc-staff
+gidNumber: 30004
+description: HPC operations staff
+member: uid=carol,ou=people,dc=rbh,dc=test
+member: uid=dave,ou=people,dc=rbh,dc=test
+
+# --- web UI role groups (groupOfNames only; mapped to ACL roles) ---
+
+dn: cn=rbh-admins,ou=groups,dc=rbh,dc=test
+objectClass: groupOfNames
+cn: rbh-admins
+description: Robinhood web UI administrators
+member: uid=dave,ou=people,dc=rbh,dc=test
+
+dn: cn=rbh-data-managers,ou=groups,dc=rbh,dc=test
+objectClass: groupOfNames
+cn: rbh-data-managers
+description: Data managers (cold-data explorer, exports)
+member: uid=carol,ou=people,dc=rbh,dc=test
+
+dn: cn=rbh-viewers,ou=groups,dc=rbh,dc=test
+objectClass: groupOfNames
+cn: rbh-viewers
+description: Read-only dashboard access
+member: uid=alice,ou=people,dc=rbh,dc=test
+member: uid=erin,ou=people,dc=rbh,dc=test

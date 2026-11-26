@@ -52,6 +52,20 @@ Other top-level targets: `make cppcheck`, `make lcov`, `make check-valgrind` (un
   `PURPOSE` selects the test profile: `TMP_FS_MGR` (default), `LUSTRE_HSM`, `BACKUP`, `SHOOK`. Tests are registered at the bottom of `2-run-tests.sh` as `run_test <id> <function> <cfg> ... "<title>"`, and their configs live in `tests/test_suite/cfg/`.
 - `web_gui/tests/nonreg.bash` covers the PHP web GUI (`scripts/pre-commit` runs it when `web_gui/` changes).
 
+## Web UI development environment
+
+`webui/devenv/` is a Podman/Docker Compose environment (see its README). It runs Rocky 9.7, MariaDB 10.5, OpenLDAP (RFC 2307bis, TLS only) and Keycloak 26 (realm federated from the LDAP server), all with certificates from a throwaway test CA. It works on macOS, so use it to build and run Robinhood, and to test anything involving LDAP, Keycloak or the database:
+
+```sh
+webui/devenv/devenv.sh all     # from scratch: certs, start, build, sample data, scan, smoke test
+webui/devenv/devenv.sh build   # rebuild Robinhood (incremental)
+webui/devenv/devenv.sh scan    # rescan the sample tree into MariaDB
+webui/devenv/devenv.sh test    # smoke test; must stay green
+webui/devenv/devenv.sh shell   # shell in the Rocky 9.7 workbench (repo mounted read-only at /src)
+```
+
+On macOS, `docker` is Podman (`podman machine start` if it isn't running). Test identities come from `webui/devenv/ldap/data.ldif`. Never point the dev environment at real LDAP or Keycloak servers.
+
 ## Architecture
 
 `src/` is split into static libtool libraries that are linked into every executable in `src/robinhood/` (`robinhood` daemon, `rbh-report`, `rbh-find`, `rbh-du`, `rbh-diff`, `rbh-undelete`, `rbh-rebind`):

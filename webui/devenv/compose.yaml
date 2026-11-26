@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+#
+# Robinhood web UI development environment. Use ./devenv.sh rather
+# than calling compose directly. All passwords here are TEST-ONLY.
+
+name: rbh-dev
+
+services:
+  ldap:
+    build: ./ldap
+    image: localhost/rbh-dev-ldap
+    volumes:
+      - ./.certs:/certs:ro
+    networks:
+      default:
+        aliases: [ldap.test]
+    ports:
+      - "127.0.0.1:6636:636"
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:26.0.8
+    command:
+      - start-dev
+      - --import-realm
+      - --http-enabled=false
+      - --https-port=9443
+      - --https-certificate-file=/certs/keycloak.test.pem
+      - --https-certificate-key-file=/certs/keycloak.test.key
+      - --hostname=https://keycloak.test:9443
+      - --truststore-paths=/certs/ca.pem
+      - --health-enabled=true
+    environment:
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+    volumes:
+      - ./.certs:/certs:ro
+      - ./keycloak/realm-rbh.json:/opt/keycloak/data/import/realm-rbh.json:ro
+    networks:
+      default:
+        aliases: [keycloak.test]
+    ports:
+      - "127.0.0.1:9443:9443"
+    depends_on: [ldap]
+
+  mariadb:
+    image: docker.io/library/mariadb:10.5
+    command: ["--innodb-buffer-pool-size=512M"]
+    environment:
+      MARIADB_ROOT_PASSWORD: devroot
+      MARIADB_DATABASE: robinhood_dev
+      MARIADB_USER: robinhood
+      MARIADB_PASSWORD: robinhood
+    volumes:
+      - rbh-db:/var/lib/mysql
+    ports:
+      - "127.0.0.1:13306:3306"
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      retries: 30
+
+  # Rocky Linux 9.7 workbench: builds and runs Robinhood, runs tests.
+  workbench:
+    build: ./robinhood
+    image: localhost/rbh-dev-robinhood
+    hostname: workbench
+    volumes:
+      - ../..:/src:ro             # the repository (read-only)
+      - .:/devenv:ro              # this directory
+      - ./.certs:/certs:ro
+      - rbh-build:/build          # out-of-tree copy + build of Robinhood
+    tmpfs:
+      - /data:size=4g,mode=0755   # scanned filesystem (sparse test files)
+    depends_on:
+      mariadb:
+        condition: service_healthy
+
+volumes:
+  rbh-db:
+  rbh-build:

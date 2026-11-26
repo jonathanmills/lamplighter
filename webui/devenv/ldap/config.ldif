@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+#
+# cn=config for the dev OpenLDAP server, loaded with slapadd -n0.
+# - TLS on ldaps:// (636) and StartTLS on ldap:// (389), using the test CA.
+# - The data database refuses operations without a secure transport
+#   (ssf=71), so plain-text LDAP fails just as it should in production.
+# - memberOf overlay (RFC 2307bis style: users carry memberOf) + refint.
+dn: cn=config
+objectClass: olcGlobal
+cn: config
+olcPidFile: /run/slapd/slapd.pid
+olcArgsFile: /run/slapd/slapd.args
+olcTLSCACertificateFile: /certs/ca.pem
+olcTLSCertificateFile: /certs/ldap.test.pem
+olcTLSCertificateKeyFile: /certs/ldap.test.key
+olcTLSProtocolMin: 3.3
+olcLogLevel: stats
+
+dn: cn=module{0},cn=config
+objectClass: olcModuleList
+cn: module{0}
+olcModulePath: /usr/lib/ldap
+olcModuleLoad: back_mdb
+olcModuleLoad: memberof
+olcModuleLoad: refint
+
+dn: cn=schema,cn=config
+objectClass: olcSchemaConfig
+cn: schema
+
+include: file:///etc/ldap/schema/core.ldif
+include: file:///etc/ldap/schema/cosine.ldif
+include: file:///etc/ldap/schema/inetorgperson.ldif
+include: file:///opt/ldap/rfc2307bis.ldif
+
+dn: olcDatabase={-1}frontend,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcFrontendConfig
+olcDatabase: {-1}frontend
+olcAccess: {0}to * by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth manage by * break
+olcAccess: {1}to dn.exact="" by * read
+olcAccess: {2}to dn.base="cn=Subschema" by * read
+
+dn: olcDatabase={0}config,cn=config
+objectClass: olcDatabaseConfig
+olcDatabase: {0}config
+olcAccess: {0}to * by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth manage by * none
+
+dn: olcDatabase={1}mdb,cn=config
+objectClass: olcDatabaseConfig
+objectClass: olcMdbConfig
+olcDatabase: {1}mdb
+olcDbDirectory: /var/lib/ldap
+olcSuffix: dc=rbh,dc=test
+olcRootDN: cn=admin,dc=rbh,dc=test
+olcSecurity: ssf=71
+olcDbIndex: objectClass eq
+olcDbIndex: uid eq
+olcDbIndex: cn eq
+olcDbIndex: member eq
+olcDbIndex: memberOf eq
+olcAccess: {0}to attrs=userPassword by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth manage by self write by anonymous auth by * none
+olcAccess: {1}to * by dn.exact=gidNumber=0+uidNumber=0,cn=peercred,cn=external,cn=auth manage by users read by * none
+
+dn: olcOverlay={0}memberof,olcDatabase={1}mdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcMemberOf
+olcOverlay: {0}memberof
+olcMemberOfDangling: ignore
+olcMemberOfRefInt: TRUE
+olcMemberOfGroupOC: groupOfNames
+olcMemberOfMemberAD: member
+olcMemberOfMemberOfAD: memberOf
+
+dn: olcOverlay={1}refint,olcDatabase={1}mdb,cn=config
+objectClass: olcOverlayConfig
+objectClass: olcRefintConfig
+olcOverlay: {1}refint
+olcRefintAttribute: memberof
+olcRefintAttribute: member
