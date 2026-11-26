@@ -1,0 +1,410 @@
+<!-- SPDX-License-Identifier: GPL-2.0-or-later -->
+<!-- Copyright (C) 2026 Jonathan Mills -->
+<title>Robinhood Palette Draft</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Ubuntu:wght@400;500;700&family=Ubuntu+Mono:wght@400;700&display=swap">
+<style>
+/* Layout: one column. Spectrum, Carolina Blue's jobs with chart samples, accents, then both themes side by side. Dark-first page; the light theme never uses bright white. */
+:root {
+  --bg: #262523;        /* Ubuntu charcoal */
+  --surface: #2F2E2B;
+  --raised: #3C3B37;    /* Ubuntu window bar */
+  --line: #4D4C47;
+  --fg: #DFDBD2;
+  --muted: #AEA79F;     /* Ubuntu warm grey */
+  --accent: #4B9CD3;    /* Carolina Blue */
+  --font-display: "Ubuntu", "Segoe UI", system-ui, sans-serif;
+  --font-body: "Ubuntu", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "Ubuntu Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  color-scheme: dark;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) {
+    --bg: #E4E1DB; --surface: #ECE9E4; --raised: #D6D2CB; --line: #C4BFB7;
+    --fg: #2E2D2A; --muted: #5E5A54; --accent: #2C5080; color-scheme: light;
+  }
+}
+:root[data-theme="light"] {
+  --bg: #E4E1DB; --surface: #ECE9E4; --raised: #D6D2CB; --line: #C4BFB7;
+  --fg: #2E2D2A; --muted: #5E5A54; --accent: #2C5080; color-scheme: light;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 32px 64px;
+}
+main { max-width: 1120px; margin: 0 auto; display: grid; gap: 44px; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+h1 { font-size: 2rem; font-weight: 500; letter-spacing: -0.01em; }
+h2 { font-size: 1.25rem; font-weight: 500; }
+h3 { font-size: 0.95rem; font-weight: 500; }
+p { margin: 0; max-width: 68ch; }
+ul { margin: 0; padding-left: 1.2em; display: grid; gap: 4px; max-width: 72ch; }
+.lede { color: var(--muted); }
+.eyebrow { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); font-weight: 500; }
+header, section { display: grid; gap: 12px; }
+code, .mono { font-family: var(--font-mono); }
+
+.changes { display: flex; flex-wrap: wrap; gap: 8px; }
+.changes span { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; font-size: 0.8rem; color: var(--muted); }
+
+.strip { display: flex; height: 72px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line); }
+.strip span { flex: 1; min-width: 0; }
+.strip-ends { display: flex; justify-content: space-between; color: var(--muted); font-size: 0.8rem; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 20px; color: var(--muted); font-size: 0.8rem; }
+.legend b { color: var(--fg); font-weight: 500; }
+
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; display: grid; grid-template-rows: auto 1fr; }
+.chip { height: 76px; display: flex; align-items: flex-end; justify-content: space-between; padding: 8px 10px; font-family: var(--font-mono); font-size: 0.95rem; }
+.tag { font-family: var(--font-body); font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; }
+.meta { padding: 10px 12px 12px; display: grid; gap: 4px; align-content: start; }
+.name { font-weight: 500; }
+.hex { font-family: var(--font-mono); color: var(--muted); }
+.src { font-size: 0.75rem; color: var(--muted); }
+.ratios { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; font-size: 0.72rem; font-variant-numeric: tabular-nums; }
+.pill { border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; white-space: nowrap; }
+.pill.ok { border-color: #28C840; }
+.pill.ui { border-color: #FEBC2E; }
+.pill.no { border-color: #FF5F57; }
+.note { font-size: 0.75rem; color: var(--muted); font-style: italic; }
+.group-title { font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin-top: 8px; }
+
+.jobs { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.job { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.job p { font-size: 0.88rem; color: var(--muted); }
+
+/* Theme samples: literal colors on purpose, each panel shows one theme. */
+.themes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px; }
+.ui { border-radius: 12px; overflow: hidden; display: grid; font-size: 0.85rem; min-width: 0; }
+.ui-bar { padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.ui-body { padding: 14px; display: grid; gap: 8px; }
+.ui-row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 10px; border-radius: 6px; align-items: center; }
+.ui a { text-decoration: none; }
+.ui-dark { background: #262523; color: #DFDBD2; border: 1px solid #4D4C47; }
+.ui-dark .ui-bar { background: #3C3B37; }
+.ui-dark .ui-row { background: #2F2E2B; }
+.ui-dark .ui-row.sel { background: rgba(75, 156, 211, 0.16); box-shadow: inset 3px 0 0 #4B9CD3; }
+.ui-dark a { color: #4B9CD3; }
+.ui-dark .dim { color: #AEA79F; }
+.ui-dark .btn { background: #4B9CD3; color: #13294B; }
+.ui-dark .btn-amber { color: #FF9E1B; border-color: #FF9E1B; }
+.ui-dark .info { background: rgba(75, 156, 211, 0.12); border: 1px solid rgba(75, 156, 211, 0.35); }
+.ui-light { background: #E4E1DB; color: #2E2D2A; border: 1px solid #C4BFB7; }
+.ui-light .ui-bar { background: #D6D2CB; }
+.ui-light .ui-row { background: #ECE9E4; }
+.ui-light .ui-row.sel { background: rgba(75, 156, 211, 0.20); box-shadow: inset 3px 0 0 #2F7CB5; }
+.ui-light a { color: #2C5080; }
+.ui-light .dim { color: #5E5A54; }
+.ui-light .btn { background: #2C5080; color: #ECE9E4; }
+.ui-light .btn-amber { color: #8F5400; border-color: #B86E00; }
+.ui-light .info { background: rgba(75, 156, 211, 0.16); border: 1px solid rgba(44, 80, 128, 0.35); }
+.info { border-radius: 6px; padding: 8px 10px; }
+.btn, .btn-amber { border-radius: 6px; padding: 5px 11px; font: 500 0.82rem var(--font-body); }
+.btn { border: 0; }
+.btn-amber { background: transparent; border: 1px solid; }
+.badge-check { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; background: #34C759; color: #fff; font-size: 12px; font-weight: 700; vertical-align: -3px; }
+.star { color: #FFCC00; text-shadow: 0 0 1px #F5A623; }
+.ui-light .star { color: #E0A800; }
+
+.terminal { border-radius: 12px; overflow: hidden; border: 1px solid #4D4C47;
+  background: linear-gradient(135deg, #77216F 0%, #5E2750 35%, #2C001E 100%); min-width: 0; }
+.term-bar { background: #3C3B37; display: flex; align-items: center; gap: 8px; padding: 9px 12px; }
+.dot { width: 12px; height: 12px; border-radius: 50%; }
+.term-title { color: #DFDBD2; font-size: 0.8rem; margin-left: 8px; }
+.term-body { background: rgba(48, 10, 36, 0.82); padding: 14px 16px 18px; font-family: var(--font-mono); font-size: 0.95rem; color: #DFDBD2; line-height: 1.5; overflow-x: auto; white-space: nowrap; }
+.term-body .cmd { color: #55FF55; }
+.term-body .prompt { color: #4B9CD3; }
+.term-body .warn { color: #FF9E1B; }
+
+/* Charts */
+.chart { display: grid; gap: 6px; }
+.chart svg { width: 100%; height: auto; display: block; overflow: visible; }
+.chart text { font-family: var(--font-body); font-size: 11px; }
+.ax { fill: var(--muted); }
+.lab { fill: var(--fg); }
+.grid-line { stroke: var(--line); stroke-width: 1; }
+.bar { cursor: default; }
+.bar:hover { opacity: 0.85; }
+.key { display: flex; flex-wrap: wrap; gap: 6px 12px; font-size: 0.75rem; color: var(--muted); }
+.key i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.tip { position: fixed; pointer-events: none; background: var(--raised); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; font-size: 0.78rem; z-index: 5; }
+
+footer { color: var(--muted); font-size: 0.8rem; display: grid; gap: 6px; }
+@media (prefers-reduced-motion: no-preference) { .card { transition: transform .15s ease; } .card:hover { transform: translateY(-2px); } }
+</style>
+
+<main>
+  <header>
+    <div class="eyebrow">Robinhood web UI · palette, draft 2</div>
+    <h1>Ubuntu charcoal, Carolina Blue, and no bright white</h1>
+    <p class="lede">All the colors, sorted from darkest to lightest by how bright they look to the eye. The rare accents are listed separately. Every pairing below has been checked against WCAG contrast, and the chart ramps went through the colorblind-safety validator.</p>
+    <div class="changes" aria-label="Changes since draft 1">
+      <span>Ubuntu warm charcoal replaces the blue-tinted grays</span>
+      <span>VGA bright green for commands</span>
+      <span>Purple only on terminal and code panels, the login screen and the top bar</span>
+      <span>Carolina Blue has defined jobs</span>
+      <span>Light theme with no bright white</span>
+    </div>
+  </header>
+
+  <section aria-labelledby="spectrum">
+    <h2 id="spectrum">The spectrum, darkest to lightest</h2>
+    <div class="legend" aria-label="How to read the contrast pills">
+      <span><b>≥ 4.5</b> body text (WCAG AA)</span>
+      <span><b>≥ 3.0</b> large text, icons, chart marks, borders</span>
+      <span><b>&lt; 3.0</b> backgrounds or decoration only</span>
+      <span>Pills compare each color with the dark panel <code>#2F2E2B</code> and the light surface <code>#ECE9E4</code>.</span>
+    </div>
+    <div class="strip" id="strip" role="img" aria-label="All base colors in one strip, ordered by luminance"></div>
+    <div class="strip-ends"><span>darkest</span><span>lightest</span></div>
+    <div class="grid" id="base"></div>
+  </section>
+
+  <section aria-labelledby="carolina">
+    <h2 id="carolina">Where Carolina Blue goes</h2>
+    <p class="lede">Carolina Blue is the interface's main accent and its main data color. It is never used for large flat areas. When it fills a background, it's a soft tint.</p>
+    <div class="jobs">
+      <div class="job">
+        <h3>Charts: one series</h3>
+        <p>Bars and histograms with one series use Carolina Blue on dark backgrounds (passes, 4.5:1 against the panel) and Carolina Deep in the light theme, where Carolina Blue itself is too pale (2.5:1).</p>
+        <div class="chart" id="chartTop"></div>
+      </div>
+      <div class="job">
+        <h3>Charts: ordered buckets (data age)</h3>
+        <p>Age bands keep a natural order, so they take a single-hue blue ramp rather than mixed colors: pale for new data, deep for cold data. The ramp passes the ordinal checks in both themes.</p>
+        <div class="chart" id="chartAge"></div>
+      </div>
+      <div class="job">
+        <h3>Soft backgrounds</h3>
+        <p>A 12–20% tint of Carolina Blue marks selected rows, hover states and information notes. The tint is see-through, so it lies on charcoal or paper without becoming a bright block.</p>
+        <div class="ui ui-dark" style="border-radius:8px">
+          <div class="ui-body">
+            <div class="ui-row sel"><span>Selected: proj-genomics</span><span class="dim">5.7 TB</span></div>
+            <div class="info">Collector last ran 2 h ago. Policy counts are up to that time.</div>
+          </div>
+        </div>
+      </div>
+      <div class="job">
+        <h3>Interaction</h3>
+        <p>Links, the keyboard focus ring, primary buttons (Navy text on Carolina Blue, 4.8:1), progress bars, and the active tab underline. It is never used as text on the window bar (3.7:1); bar text stays in the primary text color.</p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+          <button class="btn" type="button" style="background:#4B9CD3;color:#13294B">Export list</button>
+          <a href="#carolina" style="color:var(--accent)">View owners</a>
+          <span style="flex:1;min-width:120px;height:6px;border-radius:3px;background:var(--line);position:relative;overflow:hidden"><span style="position:absolute;inset:0 38% 0 0;background:#4B9CD3;border-radius:3px"></span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section aria-labelledby="accents">
+    <h2 id="accents">Accents (kept separate, used sparingly)</h2>
+    <p class="lede">These colors never cover large areas. Each one has a single job.</p>
+    <div id="accentGroups"></div>
+  </section>
+
+  <section aria-labelledby="themes">
+    <h2 id="themes">Both themes, side by side</h2>
+    <div class="themes">
+      <div class="ui ui-dark" aria-label="Dark theme sample">
+        <div class="ui-bar"><span>Cold data · proj-genomics</span><button class="btn" type="button">Export list</button></div>
+        <div class="ui-body">
+          <div class="ui-row sel"><span><span class="star" aria-label="pinned">★</span> <a href="#themes">sequencing-2021</a></span><span class="dim">5.7 TB · 4.6 yrs</span></div>
+          <div class="ui-row"><span><a href="#themes">cmip-runs</a></span><span class="dim">9.4 TB · 7 mo</span></div>
+          <div class="ui-row"><span><span class="badge-check" aria-hidden="true">✓</span> Scan completed</span><span class="dim">24,513 entries</span></div>
+          <div class="ui-row"><span class="dim">Owner: frank@rbh.test</span><button class="btn-amber" type="button">Notify owner</button></div>
+        </div>
+      </div>
+      <div class="ui ui-light" aria-label="Light theme sample">
+        <div class="ui-bar"><span>Cold data · proj-genomics</span><button class="btn" type="button">Export list</button></div>
+        <div class="ui-body">
+          <div class="ui-row sel"><span><span class="star" aria-label="pinned">★</span> <a href="#themes">sequencing-2021</a></span><span class="dim">5.7 TB · 4.6 yrs</span></div>
+          <div class="ui-row"><span><a href="#themes">cmip-runs</a></span><span class="dim">9.4 TB · 7 mo</span></div>
+          <div class="ui-row"><span><span class="badge-check" aria-hidden="true">✓</span> Scan completed</span><span class="dim">24,513 entries</span></div>
+          <div class="ui-row"><span class="dim">Owner: frank@rbh.test</span><button class="btn-amber" type="button">Notify owner</button></div>
+        </div>
+      </div>
+      <div class="terminal" aria-label="Terminal and code panel sample">
+        <div class="term-bar">
+          <span class="dot" style="background:#FF5F57"></span>
+          <span class="dot" style="background:#FEBC2E"></span>
+          <span class="dot" style="background:#28C840"></span>
+          <span class="term-title">robinhood@workbench: ~</span>
+        </div>
+        <div class="term-body">
+          <div><span class="prompt">$</span> <span class="cmd">rbh-find /data/projects -user frank -atime +730</span></div>
+          <div>/data/projects/proj-genomics/frank/sequencing-2021</div>
+          <div><span class="prompt">$</span> <span class="cmd">rbh-report --top-users</span></div>
+          <div><span class="warn">warning:</span> 6,120 entries older than 2 years</div>
+        </div>
+      </div>
+    </div>
+    <p class="lede">The lightest color in the light theme is the surface <code>#ECE9E4</code>, a warm paper gray. There is no pure white anywhere: the light theme is meant to be calm, not glaring.</p>
+  </section>
+
+  <footer>
+    <span>UNC values are from identity.unc.edu/brand/color. The Ubuntu charcoal, warm grey, aubergine and orange values, and the macOS and emoji colors, are from memory; I'll check them against official sources before they go into code. Carolina Deep and Sky are new in-between steps of the Carolina Blue family, added so the chart ramps pass the checks. Chart figures are sample data from the dev environment.</span>
+  </footer>
+</main>
+<div class="tip" id="tip" hidden></div>
+
+<script>
+const DARK = "#2F2E2B", LIGHT = "#ECE9E4";
+const base = [
+  ["Deep charcoal", "#1F1E1C", "Ubuntu-style charcoal", "Sidebar, deepest wells", "dark"],
+  ["Charcoal", "#262523", "Ubuntu-style charcoal", "Dark app background", "dark"],
+  ["Panel", "#2F2E2B", "Ubuntu-style charcoal", "Panels, table rows, charts", "dark"],
+  ["Window bar", "#3C3B37", "Ubuntu title bar charcoal", "Title and header bars", "dark"],
+  ["Border", "#4D4C47", "Ubuntu-style charcoal", "Borders, grid lines", "dark"],
+  ["Muted", "#8E8981", "Warm gray", "Placeholders, disabled", "dark"],
+  ["Warm Grey", "#AEA79F", "Ubuntu brand", "Secondary text", "dark"],
+  ["Linen", "#DFDBD2", "Ubuntu panel text", "Primary text", "dark"],
+  ["Ink", "#2E2D2A", "Warm charcoal", "Primary text", "light"],
+  ["Stone", "#5E5A54", "Warm gray", "Secondary text", "light"],
+  ["Light border", "#C4BFB7", "Warm gray", "Borders, grid lines", "light"],
+  ["Light bar", "#D6D2CB", "Warm gray", "Title and header bars", "light"],
+  ["Paper", "#E4E1DB", "Warm gray", "Light app background", "light"],
+  ["Paper surface", "#ECE9E4", "Warm gray", "Panels (the lightest color used)", "light"],
+  ["Navy", "#13294B", "UNC primary", "Text on Carolina buttons", "both"],
+  ["Bolin Creek", "#2C5080", "UNC secondary", "Links and primary button", "light"],
+  ["Carolina Deep", "#2F7CB5", "New Carolina step", "Chart bars", "light"],
+  ["Carolina Blue", "#4B9CD3", "UNC primary", "Accent: links, focus, chart bars", "dark"],
+  ["Sky", "#7FB8E1", "New Carolina step", "Chart ramp step", "dark"],
+  ["Fordham Fountain", "#B7D7ED", "UNC secondary", "Chart ramp, newest data", "dark"],
+  ["Dark Aubergine", "#2C001E", "Ubuntu brand", "Gradient base", "both"],
+  ["Terminal Aubergine", "#300A24", "Ubuntu terminal", "Translucent terminal and code panels", "both"],
+  ["Mid Aubergine", "#5E2750", "Ubuntu brand", "Gradient middle", "both"],
+  ["Light Aubergine", "#77216F", "Ubuntu brand", "Gradient highlight", "both"],
+  ["Mountain Dusk", "#4E3C98", "UNC supporting", "Tags, chart series", "both"],
+  ["Beautyberry", "#9F237E", "UNC supporting", "Chart series", "both"],
+  ["Aster", "#B3B1DD", "UNC supporting", "Soft purple tags", "dark", "UNC lists HEX #B1B8DD but RGB 179/177/221, which is #B3B1DD. Shown here from the RGB."],
+];
+const accents = [
+  ["Warm accents", [
+    ["Ubuntu Orange", "#E95420", "Ubuntu brand", "Highlights and shapes only, not text (3.7:1)", "both"],
+    ["Tulip Poplar (amber)", "#FF9E1B", "UNC supporting", "Warnings, needs attention (dark theme)", "dark"],
+    ["Amber ink", "#8F5400", "Darker amber", "Warning text in the light theme", "light"],
+  ]],
+  ["Window controls (macOS traffic lights)", [
+    ["Close red", "#FF5F57", "macOS", "Destructive actions, errors", "both"],
+    ["Minimize yellow", "#FEBC2E", "macOS", "Caution", "both"],
+    ["Zoom green", "#28C840", "macOS", "Positive state", "both"],
+  ]],
+  ["Code and commands", [
+    ["VGA bright green", "#55FF55", "Classic ANSI bright green", "CLI commands, code (13.2:1 on terminal aubergine)", "dark"],
+  ]],
+  ["Rare reserved accents", [
+    ["Check green ✅", "#34C759", "Apple emoji/system green", "Completed or confirmed (white check on a green badge)", "both"],
+    ["Star gold ⭐", "#FFCC00", "Apple emoji", "Pinned or favorite (fades to #F5A623)", "both"],
+  ]],
+];
+
+function lum(hex) {
+  const c = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16) / 255)
+    .map(v => v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4));
+  return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+}
+function ratio(a, b) {
+  const [x, y] = [lum(a), lum(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+function pill(label, r) {
+  const cls = r >= 4.5 ? "ok" : r >= 3 ? "ui" : "no";
+  return `<span class="pill ${cls}" title="contrast ${r.toFixed(2)}:1">${label} ${r.toFixed(1)}</span>`;
+}
+const themeTag = { dark: "dark theme", light: "light theme", both: "both themes" };
+function card([name, hex, src, role, theme, note]) {
+  const textOn = lum(hex) > 0.18 ? "#13294B" : "#DFDBD2";
+  return `<article class="card">
+    <div class="chip" style="background:${hex};color:${textOn}"><span>Aa</span><span class="tag">${themeTag[theme]}</span></div>
+    <div class="meta">
+      <span class="name">${name}</span>
+      <span class="hex">${hex}</span>
+      <span class="src">${src} · ${role}</span>
+      <div class="ratios">${pill("dark panel", ratio(hex, DARK))}${pill("light surface", ratio(hex, LIGHT))}</div>
+      ${note ? `<span class="note">${note}</span>` : ""}
+    </div>
+  </article>`;
+}
+
+const sorted = [...base].sort((a, b) => lum(a[1]) - lum(b[1]));
+document.getElementById("strip").innerHTML =
+  sorted.map(c => `<span style="background:${c[1]}" title="${c[0]} ${c[1]}"></span>`).join("");
+document.getElementById("base").innerHTML = sorted.map(card).join("");
+document.getElementById("accentGroups").innerHTML = accents.map(([title, items]) =>
+  `<div class="group-title">${title}</div><div class="grid">${items.map(card).join("")}</div>`).join("");
+
+/* --- charts (sample data from the dev environment) --- */
+const isLight = () => {
+  const t = document.documentElement.getAttribute("data-theme");
+  return t ? t === "light" : matchMedia("(prefers-color-scheme: light)").matches;
+};
+const tip = document.getElementById("tip");
+function showTip(e, text) { tip.textContent = text; tip.hidden = false; tip.style.left = (e.clientX + 12) + "px"; tip.style.top = (e.clientY - 28) + "px"; }
+function hideTip() { tip.hidden = true; }
+
+function barPath(x, y, w, h, r) { // 4px rounded data end at the top, square at the baseline
+  r = Math.min(r, w / 2, h);
+  return `M${x},${y + h}V${y + r}Q${x},${y} ${x + r},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h}Z`;
+}
+function hbarPath(x, y, w, h, r) { // rounded data end on the right
+  r = Math.min(r, h / 2, w);
+  return `M${x},${y}H${x + w - r}Q${x + w},${y} ${x + w},${y + r}V${y + h - r}Q${x + w},${y + h} ${x + w - r},${y + h}H${x}Z`;
+}
+
+function drawTop() {
+  const data = [["erin", 9.43], ["frank", 5.67], ["alice", 0.36], ["bob", 0.21], ["dave", 0.18], ["carol", 0.10]];
+  const color = isLight() ? "#2F7CB5" : "#4B9CD3";
+  const W = 320, rowH = 22, gap = 6, left = 44, right = 46, top = 4;
+  const H = top + data.length * (rowH + gap);
+  const max = 10, sx = v => (v / max) * (W - left - right);
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bytes by owner, terabytes. erin 9.43, frank 5.67, alice 0.36, bob 0.21, dave 0.18, carol 0.10">`;
+  data.forEach(([u, v], i) => {
+    const y = top + i * (rowH + gap);
+    s += `<text class="ax" x="${left - 8}" y="${y + rowH / 2 + 4}" text-anchor="end">${u}</text>`;
+    s += `<path class="bar" d="${hbarPath(left, y, Math.max(2, sx(v)), rowH, 4)}" fill="${color}" data-tip="${u}: ${v.toFixed(2)} TB"></path>`;
+    s += `<text class="lab" x="${left + Math.max(2, sx(v)) + 6}" y="${y + rowH / 2 + 4}">${v.toFixed(2)} TB</text>`;
+  });
+  s += `</svg>`;
+  document.getElementById("chartTop").innerHTML = `<div class="key">Volume by owner (TB, sample data)</div>` + s;
+}
+
+function drawAge() {
+  const bands = ["< 30 d", "30–365 d", "1–3 y", "> 3 y"];
+  const tb = [0.40, 9.55, 2.43, 3.50];
+  const ramp = isLight() ? ["#5FA7D8", "#2F7CB5", "#2C5080", "#13294B"] : ["#B7D7ED", "#7FB8E1", "#4B9CD3", "#3A82BC"];
+  const W = 320, H = 170, left = 34, bottom = 22, top = 16, right = 6;
+  const max = 10, sy = v => (v / max) * (H - top - bottom);
+  const bw = (W - left - right) / bands.length;
+  let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Bytes by last-access age, terabytes. under 30 days 0.40, 30 to 365 days 9.55, 1 to 3 years 2.43, over 3 years 3.50">`;
+  [0, 5, 10].forEach(t => {
+    const y = H - bottom - sy(t);
+    s += `<line class="grid-line" x1="${left}" x2="${W - right}" y1="${y}" y2="${y}"></line>`;
+    s += `<text class="ax" x="${left - 6}" y="${y + 4}" text-anchor="end">${t}</text>`;
+  });
+  bands.forEach((b, i) => {
+    const h = Math.max(2, sy(tb[i])), x = left + i * bw + 1, w = bw - 2, y = H - bottom - h;
+    s += `<path class="bar" d="${barPath(x, y, w, h, 4)}" fill="${ramp[i]}" data-tip="${b}: ${tb[i].toFixed(2)} TB"></path>`;
+    s += `<text class="lab" x="${x + w / 2}" y="${y - 5}" text-anchor="middle">${tb[i].toFixed(1)}</text>`;
+    s += `<text class="ax" x="${x + w / 2}" y="${H - 6}" text-anchor="middle">${b}</text>`;
+  });
+  s += `</svg>`;
+  document.getElementById("chartAge").innerHTML =
+    `<div class="key">TB by time since last access (sample data). Paler means newer, deeper means colder.</div>` + s;
+}
+
+function drawCharts() { drawTop(); drawAge(); }
+drawCharts();
+matchMedia("(prefers-color-scheme: light)").addEventListener("change", drawCharts);
+new MutationObserver(drawCharts).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+document.addEventListener("mousemove", e => {
+  const t = e.target.closest && e.target.closest("[data-tip]");
+  t ? showTip(e, t.dataset.tip) : hideTip();
+});
+</script>
