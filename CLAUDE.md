@@ -12,11 +12,13 @@ This fork keeps the Robinhood v3 engine and its MariaDB backend, and modernizes 
 
 - **Leave the C engine alone.** The scanner, changelog reader, pipeline, policy engine and modules in `src/` are trusted as they are. Make changes outside `src/` where possible. If a C change seems unavoidable, raise it before making it.
 - **Replace the PHP web GUI** (`web_gui/gui_v3`: PHP + Bootstrap 3/jQuery/DataTables). It must not use PHP in any form, because PHP must not need to be installed on the servers. The new GUI reads the existing v3 MariaDB schema directly (the old GUI does the same) instead of requiring engine changes.
-  - **UX:** a modern, information-dense ops-console style with drill-down, modelled on the Checkmk Pro interface.
-  - **Auth:** secure multi-user federation via OpenID Connect from the start, with roles in mind (for example HPC admins and data managers).
+  - **UX:** modern and information-dense with drill-down, modelled on the *visual appearance* of the Checkmk Pro GUI. Only the look is borrowed: no Checkmk/Nagios monitoring concepts such as OK/WARN/CRIT states or service checks.
+  - **Auth and ACLs (core goal):** multi-user from the start. Login is OpenID Connect against **Keycloak** (preferred) or an optional direct LDAP bind. User identity and groups always come from **LDAP**, with TLS required, configurable base DNs and filters, and RFC 2307 or RFC 2307bis support. ACLs map permissions to roles to LDAP groups, and are enforced in the API. Checkmk authenticates to the API with a Keycloak client-credentials token. See `doc/webui-design.md` section 4.
+  - **No copied Checkmk code:** Checkmk's LDAP connector is proprietary (Pro edition). Use it as a functional reference only.
 - **Operational views** the GUI should provide:
   - **Slowdown triage:** what data is hot (recent access or modification) by user, group and directory, correlated with Slurm jobs. Robinhood only sees metadata, and Lustre updates atime lazily and leaves ATIME changelog records off by default. Real per-job I/O should come from Lustre jobstats (`jobid_var=SLURM_JOB_ID`) shown alongside Robinhood data.
   - **Cold data for data managers:** the oldest, largest and least-used files and directories, with their owners to contact, as candidates to purge or move to cold storage (for example AWS Glacier).
+- **Checkmk Pro is the only alerting tool.** Robinhood and the web UI never alert or notify: no alert mail, no syslog alerts, no alert states in the UI. They expose read-only metrics (Robinhood status, usage, per-policy/fileclass match counts) through a monitoring endpoint that **Checkmk polls**: a special agent on the Checkmk server, in an MKP targeting Checkmk Pro 2.5, with nothing installed on the Robinhood host. The Checkmk plugin holds all thresholds. Robinhood alert policies are used only as classifiers. See `doc/webui-design.md` section 7.
 - **Modernize outdated tooling**, preferring Python to Perl. `scripts/type_gen.pl` generates `db_schema.h` at build time, so any port must produce identical output. `scripts/checkpatch.pl` is the Linux kernel's style checker; replacing it with `clang-format` is preferable to rewriting it.
 
 ## Build
@@ -70,6 +72,13 @@ Policies themselves are mostly declared in config: `doc/templates/includes/*.inc
 Other top-level dirs: `scripts/` (`rbh-config` DB/changelog setup helper, systemd units, code-style scripts), `web_gui/` (PHP GUI), `man/`, `doc/`.
 
 ## Conventions
+
+- **Licensing:**
+  - New code under `webui/` is **GPL-2.0-or-later**: each file carries `SPDX-License-Identifier: GPL-2.0-or-later`, and the license text is in `webui/LICENSE`.
+  - Changes to Robinhood's own files stay **CeCILL-C**.
+  - Dependencies must be GPLv3-compatible (MIT/BSD/Apache-2.0/PSF/MPL-2.0/LGPL/GPL): check before adding one.
+  - Never copy code from proprietary sources.
+  - See `doc/webui-design.md` section 10.
 
 - C style: 4-space indent, no tabs, 80 columns, kernel-like brace style. `scripts/indent.sh <file>` runs GNU indent plus `checkpatch.pl` with the project's ignore list.
 - Commit messages follow `.commit-template`: `<module>: short description`, then a blank line and a detailed explanation (for example `listmgr: ...`, `tests: ...`, `rbh_daemon: ...`).
