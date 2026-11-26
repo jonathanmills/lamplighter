@@ -11,6 +11,10 @@
   /* surfaces */
   --bg: #262523;
   --sidebar: #1F1E1C;
+  --sidebar-text: #AEA79F;
+  --sidebar-label: #AEA79F;
+  --sidebar-hover: rgba(223, 219, 210, 0.06);
+  --sidebar-active: rgba(75, 156, 211, 0.16);
   --panel: #2F2E2B;
   --bar: #3C3B37;            /* Ubuntu window bar */
   --border: #4D4C47;
@@ -43,7 +47,12 @@
 :root[data-theme="light"] {
   color-scheme: light;
   --bg: #E4E1DB;
-  --sidebar: #D6D2CB;
+  /* translucent aubergine over the paper, deeper at the top (Ubuntu terminal) */
+  --sidebar: linear-gradient(180deg, rgba(119, 33, 111, 0.18) 0%, rgba(94, 39, 80, 0.12) 100%), #E4E1DB;
+  --sidebar-text: #4E4A45;   /* 5.0:1 on the darkest point of the wash */
+  --sidebar-label: #4A3A46;  /* plum-tinted, 6.0:1 */
+  --sidebar-hover: rgba(94, 39, 80, 0.08);
+  --sidebar-active: rgba(94, 39, 80, 0.14);
   --panel: #ECE9E4;          /* the lightest color anywhere */
   --bar: #D6D2CB;
   --border: #C4BFB7;
