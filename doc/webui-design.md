@@ -174,6 +174,17 @@ Modelled on the appearance of the Checkmk Pro GUI:
 - A consistent page header with breadcrumbs, a page-level action menu, and quick filters.
 - A global search box for jumping to a user, group, project or path.
 
+### 5.0.1 Page structure and layout rules
+- **No HTML frames, ever.** No `<frame>`, `<frameset>` or `<iframe>`. (The original Robinhood GUI used a frameset, and `gui_v3` imitates one with an independently scrolling sidebar.)
+- **Whole pages.** Every view is a complete page with its own URL: back and forward work, views can be bookmarked and shared, and a reload returns to the same place.
+- **One scroll per page.** The sidebar and header may be sticky but are never separate scrolling regions. Only wide tables and code blocks scroll inside their own containers.
+- **Publishing-industry panel layout:**
+  - Panels sit on a column grid with one gutter size used everywhere, and edges align to shared grid lines.
+  - Content sizes panels: there are no fixed-height boxes. Panels in a row equalize height so their bottom edges align.
+  - **Never trap whitespace.** No empty pockets inside or between panels. A lone panel at the end of a row spans the row, and the grid packs panels to close gaps.
+  - Whitespace is active: it lives in margins and between groups, where it separates sections.
+  - At narrow widths, panels reflow and stack in reading order rather than shrinking into slivers.
+
 ### 5.1 Overview (landing page)
 - Filesystem capacity and inode usage, plus growth trend (from snapshots).
 - **Robinhood status**: changelog backlog (`CL_LastRead` versus `CL_LastCleared`, age of the oldest pending record), last full scan, recent policy runs, and when the collector last ran.

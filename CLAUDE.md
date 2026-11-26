@@ -14,6 +14,11 @@ This fork keeps the Robinhood v3 engine and its MariaDB backend, and modernizes 
 - **Replace the PHP web GUI** (`web_gui/gui_v3`: PHP + Bootstrap 3/jQuery/DataTables). It must not use PHP in any form, because PHP must not need to be installed on the servers. The new GUI reads the existing v3 MariaDB schema directly (the old GUI does the same) instead of requiring engine changes.
   - **UX:** modern and information-dense with drill-down, modelled on the *visual appearance* of the Checkmk Pro GUI. Only the look is borrowed: no Checkmk/Nagios monitoring concepts such as OK/WARN/CRIT states or service checks.
   - **Auth and ACLs (core goal):** multi-user from the start. Login is OpenID Connect against **Keycloak** (preferred) or an optional direct LDAP bind. User identity and groups always come from **LDAP**, with TLS required, configurable base DNs and filters, and RFC 2307 or RFC 2307bis support. ACLs map permissions to roles to LDAP groups, and are enforced in the API. Checkmk authenticates to the API with a Keycloak client-credentials token. See `doc/webui-design.md` section 4.
+  - **Layout:**
+    - Never use HTML frames (`<frame>`, `<frameset>`, `<iframe>`). Every view is a whole page with its own URL, and there is one scroll per page.
+    - Panels go on a column grid with one gutter and content-sized heights, and never trap whitespace.
+    - See `doc/webui-design.md` §5.0.1.
+  - **Colors:** see `webui/design/palette-draft.html`. The UI is dark-first (Ubuntu charcoal plus Carolina Blue); the light theme has no bright white backgrounds.
   - **No copied Checkmk code:** Checkmk's LDAP connector is proprietary (Pro edition). Use it as a functional reference only.
 - **Operational views** the GUI should provide:
   - **Slowdown triage:** what data is hot (recent access or modification) by user, group and directory, correlated with Slurm jobs. Robinhood only sees metadata, and Lustre updates atime lazily and leaves ATIME changelog records off by default. Real per-job I/O should come from Lustre jobstats (`jobid_var=SLURM_JOB_ID`) shown alongside Robinhood data.
