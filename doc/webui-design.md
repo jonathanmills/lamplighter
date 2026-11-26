@@ -106,7 +106,12 @@ Feature parity with Checkmk's LDAP connection settings is the target.
 - **Users:** user base DN, scope (`sub` or `one`), user filter (for example `(&(objectClass=posixAccount)(uid={username}))`), and attribute mapping for the login ID (`uid`), display name (`cn`), e-mail (`mail`) and the Unix `uidNumber`/`gidNumber`. The Unix IDs link a person to their files in Robinhood.
 - **Groups:** group base DN, scope, group filter (for example `(objectClass=groupOfNames)`), and the membership source, which is either the user's `memberOf` attribute or a search for groups whose `member` contains the user's DN. Nested groups are optional.
 - **Paged searches** for large directories, and a **cache** of user and group lookups with a short configurable lifetime (for example 5 minutes), refreshed at login.
-- An admin **"test connection" page** shows the bind result, a sample user lookup and that user's resolved groups, as Checkmk's does.
+- An admin **Directory page** (`/admin/directory`, permission `admin.ldap`; built) shows:
+  - the effective LDAP settings, with defaults resolved and secrets never shown;
+  - a step-by-step **connection test** per server (TLS, certificate subject, issuer and expiry, service bind, user and group searches), with plain-language errors;
+  - a **user lookup** that shows the DN, attributes, every group, and which mapping produced each role;
+  - a check that every configured role group exists, with its member count.
+  Every test and lookup is audited.
 - Library: `python-ldap`, whose permissive license avoids the GPLv2 compatibility questions raised by `ldap3` (LGPLv3); see section 10.
 
 Example (site-specific values are placeholders):
@@ -300,7 +305,7 @@ web_gui/          # legacy PHP GUI, removed once the new UI covers its features
 |---|---|
 | 0. Skeleton | Repo layout, FastAPI app, OIDC login against a local Keycloak container (a test realm with the `rbh-webui` and `rbh-checkmk` clients), an OpenLDAP test container (RFC 2307bis), LDAP directory lookups and the ACL model, nginx config, read-only DB user, dev environment (Linux container with MariaDB and a sample Robinhood DB). |
 | 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. *Done: Overview, collector v1, a first Cold data page (owners with the most cold data, LDAP contact details, audited CSV export), and Users & groups (sortable tables with LDAP names, small-file share and change since the last snapshot, plus a per-user page with age, sizes, history and groups; viewers see only themselves). Still open: the scale test.* |
-| 2. Checkmk | Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
+| 2. Checkmk | *Directory admin page done.* Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
 | 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. |
 | 4. Triage | Jobstats collector, Slurm integration, triage dashboard. Rate metrics also feed Checkmk. |
 | 5. Retire PHP | Feature parity check against `gui_v3`, remove `web_gui/` from the build and RPM, RPM packaging for the new UI. |

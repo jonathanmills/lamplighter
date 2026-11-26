@@ -9,6 +9,7 @@ import Overview from "./pages/Overview";
 import ColdData from "./pages/ColdData";
 import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
+import Directory from "./pages/Directory";
 import { ComingSoon, Forbidden, NotFound } from "./pages/States";
 
 const MeContext = createContext<Me | null>(null);
@@ -89,6 +90,7 @@ function Page({ item }: { item: NavItem }) {
   if (item.path === "/") return <Overview />;
   if (item.path === "/cold") return <ColdData />;
   if (item.path === "/usage") return <Users />;
+  if (item.path === "/admin/directory") return <Directory />;
   return <ComingSoon item={item} />;
 }
 

@@ -18,6 +18,7 @@ from . import __version__
 from .acl import AccessPolicy
 from .api import router as api_router
 from .usage_api import router as usage_router
+from .admin_api import router as admin_router
 from .auth import _page, current_principal, router as auth_router, setup_oauth
 from .config import Settings, load_settings, read_secret
 from .db import make_engine
@@ -85,6 +86,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(auth_router)
     app.include_router(api_router)
     app.include_router(usage_router)
+    app.include_router(admin_router)
 
     @app.get("/healthz", include_in_schema=False)
     def healthz() -> dict:

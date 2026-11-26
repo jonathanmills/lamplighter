@@ -206,3 +206,24 @@ code, .code { font-family: var(--mono); }
 @media (max-width: 560px) { .page-head > .toolbar, .page-head > .actions { flex-wrap: wrap; } }
 .segmented { flex: none; }
 .toolbar > .search { flex: 1 1 200px; }
+
+/* definition lists for settings: two columns of label/value pairs */
+/* balanced columns: rows flow and split evenly, so neither column ends in a hole */
+.dl-grid { column-count: 2; column-gap: 32px; margin: 0; }
+/* a section (heading + its rows) never splits across columns */
+.dl-section { break-inside: avoid; padding-bottom: 14px; }
+.dl-row { break-inside: avoid; }
+@media (max-width: 900px) { .dl-grid { column-count: 1; } }
+.dl-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; padding: 6px 0;
+  border-bottom: 1px solid var(--chart-grid); align-items: baseline; }
+.dl-row dt { color: var(--text-2); font-size: 13px; }
+.dl-row dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-2); padding: 14px 0 2px; }
+.dl-section > .section-label { padding-top: 0; }
+/* status badges: always icon + label, never color alone */
+.status { display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: nowrap; }
+.status .badge-dot { width: 16px; height: 16px; }
+.status.ok .badge-dot { background: var(--ok); }
+.status.bad .badge-dot { background: var(--error); }
+.chips { display: inline-flex; gap: 6px; flex-wrap: wrap; }
+.form-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }

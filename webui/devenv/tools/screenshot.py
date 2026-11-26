@@ -31,6 +31,8 @@ SHOTS = [
     ("alice", "/usage", "dark", 1440, "users-alice-self"),
     ("alice", "/usage/user/frank", "dark", 1440, "users-alice-forbidden"),
     ("carol", "/usage", "dark", 400, "users-phone"),
+    ("dave", "/admin/directory", "dark", 1440, "directory-dark"),
+    ("dave", "/admin/directory", "light", 1440, "directory-light"),
     ("alice", "/", "dark", 1440, "alice-viewer"),
     ("alice", "/admin/access", "dark", 1440, "alice-forbidden"),
 ]
@@ -62,6 +64,13 @@ def main() -> int:
             page.evaluate(f"localStorage.setItem('rbh-theme', '{theme}')")
             page.goto(BASE + path)
             page.wait_for_selector(".content")
+            if path == "/admin/directory":
+                page.click("text=Run test")
+                page.wait_for_selector("text=Run again")
+                page.fill("#lookup-user", "carol")
+                page.click("button:has-text('Look up')")
+                page.wait_for_selector("text=Can sign in")
+            page.evaluate("window.scrollTo(0, 0)")  # full-page capture from the top
             page.wait_for_timeout(1200)  # let charts finish drawing
             page.screenshot(path=str(OUT / f"{name}.png"), full_page=True)
             # Layout check: the page body must never scroll sideways.

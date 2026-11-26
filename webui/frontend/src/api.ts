@@ -58,12 +58,30 @@ export interface UserDetail {
   age: { as_of: number; bands: AgeBand[] } | null;
 }
 
+export interface DirConfig {
+  ldap: {
+    servers: string[]; starttls: boolean; ca_file: string | null; allow_insecure: boolean;
+    bind_dn: string; bind_password_file: string; directory_type: string;
+    timeout_seconds: number; cache_ttl_seconds: number;
+    users: Record<string, string>; groups: { base_dn: string; scope: string; filter: string; membership: string; nested: boolean };
+  };
+  login: { oidc: { issuer: string; client_id: string; username_claim: string } | null; ldap_bind: boolean; session_hours: number };
+}
+export interface DirStep { step: string; ok: boolean; ms: number; detail: string }
+export interface DirTest { ok: boolean; servers: { server: string; ok: boolean; steps: DirStep[] }[] }
+export interface DirLookup {
+  uid: string; dn: string; name: string; mail: string | null; uid_number: number | null; gid_number: number | null;
+  groups: { group: string; roles: string[]; via: string | null }[];
+  roles: string[]; permissions: string[]; can_sign_in: boolean;
+}
+export interface DirMapping { group: string; roles: string[]; via: string; exists: boolean; members: number }
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
 
-async function get<T>(path: string): Promise<T> {
-  const r = await fetch("/api/v1" + path, { credentials: "same-origin", headers: { Accept: "application/json" } });
+async function get<T>(path: string, init?: RequestInit): Promise<T> {
+  const r = await fetch("/api/v1" + path, { credentials: "same-origin", headers: { Accept: "application/json" }, ...init });
   if (r.status === 401) {
     window.location.assign("/auth/login");
     throw new ApiError(401, "Not signed in.");
@@ -84,6 +102,10 @@ export const api = {
   users: () => get<UsersList>("/usage/users"),
   groups: () => get<GroupsList>("/usage/groups"),
   user: (uid: string) => get<UserDetail>(`/usage/users/${encodeURIComponent(uid)}`),
+  dirConfig: () => get<DirConfig>("/admin/directory/config"),
+  dirTest: () => get<DirTest>("/admin/directory/test", { method: "POST" }),
+  dirLookup: (user: string) => get<DirLookup>(`/admin/directory/lookup?user=${encodeURIComponent(user)}`),
+  dirMappings: () => get<{ mappings: DirMapping[] }>("/admin/directory/mappings"),
   coldOwners: (olderThan: ColdAge) => get<ColdOwners>(`/cold/owners?older_than=${olderThan}`),
   coldCsvUrl: (olderThan: ColdAge) => `/api/v1/cold/owners.csv?older_than=${olderThan}`,
 };

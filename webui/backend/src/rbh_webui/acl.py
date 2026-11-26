@@ -79,3 +79,17 @@ class AccessPolicy:
         for r in roles:
             perms |= self.roles[r]
         return Grants(roles=frozenset(roles), permissions=frozenset(perms))
+
+
+    def explain(self, group_dns: tuple[str, ...] | list[str]) -> list[dict]:
+        """Which of these groups grant which roles, and why (for the admin page)."""
+        out = []
+        for g in sorted({norm_dn(x) for x in group_dns}):
+            roles = sorted(self.mapping.get(g, set()))
+            if g in self.bootstrap:
+                out.append({"group": g, "roles": sorted(set(roles) | {"admin"}), "via": "bootstrap admin group"})
+            elif roles:
+                out.append({"group": g, "roles": roles, "via": "role mapping"})
+            else:
+                out.append({"group": g, "roles": [], "via": None})
+        return out
