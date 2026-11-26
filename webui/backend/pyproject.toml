@@ -1,0 +1,41 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rbh-webui"
+version = "0.1.0.dev0"
+description = "Web UI and monitoring API for the Robinhood Policy Engine"
+license = "GPL-2.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+# Every dependency must be GPLv3-compatible (doc/webui-design.md, section 10).
+dependencies = [
+    "fastapi>=0.115",             # MIT
+    "uvicorn>=0.30",              # BSD-3-Clause
+    "authlib>=1.3",               # BSD-3-Clause (OIDC client)
+    "httpx>=0.27",                # BSD-3-Clause (used by Authlib)
+    "itsdangerous>=2.2",          # BSD-3-Clause (signed session cookie)
+    "python-ldap>=3.4",           # python-ldap license (PSF-style)
+    "pyjwt[crypto]>=2.8",         # MIT; cryptography is Apache-2.0/BSD
+    "sqlalchemy>=2.0",            # MIT
+    "pymysql>=1.1",               # MIT
+    "pyyaml>=6.0",                # MIT
+    "python-multipart>=0.0.9",    # Apache-2.0 (form login)
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8",                  # MIT
+    "watchfiles>=0.22",           # MIT (uvicorn --reload)
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = ["integration: needs the webui/devenv services (LDAP, Keycloak, MariaDB)"]

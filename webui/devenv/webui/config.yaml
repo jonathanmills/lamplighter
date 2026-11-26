@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+#
+# Web UI configuration for the dev environment. Secrets live in the
+# *.secret files next to this one (TEST-ONLY values).
+
+server:
+  base_url: https://webui.test:8443
+  session_secret_file: /devenv/webui/session.secret
+
+oidc:
+  enabled: true
+  issuer: https://keycloak.test:9443/realms/rbh
+  client_id: rbh-webui
+  client_secret_file: /devenv/webui/oidc-client.secret
+  ca_file: /certs/ca.pem
+
+ldap:
+  servers: [ldaps://ldap.test:636]
+  ca_file: /certs/ca.pem
+  bind_dn: cn=rbh-webui,ou=services,dc=rbh,dc=test
+  bind_password_file: /devenv/webui/ldap-bind.secret
+  directory_type: rfc2307bis
+  users:
+    base_dn: ou=people,dc=rbh,dc=test
+    scope: one
+  groups:
+    base_dn: ou=groups,dc=rbh,dc=test
+    membership: memberof
+
+login:
+  ldap_bind_enabled: true
+
+access:
+  bootstrap_admin_groups:
+    - cn=rbh-admins,ou=groups,dc=rbh,dc=test
+  role_mappings:
+    - group: cn=rbh-data-managers,ou=groups,dc=rbh,dc=test
+      roles: [data-manager]
+    - group: cn=rbh-viewers,ou=groups,dc=rbh,dc=test
+      roles: [viewer]
+
+database:
+  host: mariadb
+  name: robinhood_dev
+  user: robinhood
+  password_file: /devenv/webui/db.secret
+
+monitoring:
+  enabled: true
+  audience: rbh-webui
+  required_role: monitoring

@@ -80,7 +80,7 @@ Three concerns are kept separate:
 ### 4.1 Authentication
 
 **OIDC (Keycloak).** This is the preferred method: the UI never sees user passwords, and users get single sign-on and multi-factor authentication through Keycloak.
-- Authorization Code flow with PKCE, implemented **in the back end** (a "backend-for-frontend"). Tokens never reach the browser. The browser holds only an `HttpOnly; Secure; SameSite=Strict` session cookie. Library: Authlib.
+- Authorization Code flow with PKCE, implemented **in the back end** (a "backend-for-frontend"). Tokens never reach the browser. The browser holds only an `HttpOnly; Secure; SameSite=Lax` session cookie containing a random session id. `Lax` rather than `Strict` is required, because the return from Keycloak is a cross-site navigation that must carry the cookie. Cross-site writes are refused by an Origin check. Library: Authlib.
 - `rbh-webui` is a **confidential** Keycloak client with standard flow and PKCE (S256) enabled, and redirect URIs restricted to the UI's hostname. The endpoints come from the realm's `.well-known/openid-configuration` discovery document.
 - The logged-in user is mapped to the LDAP directory through a configured claim, `preferred_username` by default, matched against the LDAP `uid`. No roles are needed in Keycloak.
 - **Logout** uses RP-initiated logout (Keycloak's `end_session_endpoint`). Back-channel logout should also be enabled, so ending a session in Keycloak ends the UI session.

@@ -43,6 +43,7 @@ issue() {
 
 issue ldap.test     "DNS:ldap.test,DNS:localhost,IP:127.0.0.1"
 issue keycloak.test "DNS:keycloak.test,DNS:localhost,IP:127.0.0.1"
+issue webui.test    "DNS:webui.test,DNS:localhost,IP:127.0.0.1"
 
 # Containers run services as non-root users: keys must be readable.
 # These are test-only keys for a throwaway CA.

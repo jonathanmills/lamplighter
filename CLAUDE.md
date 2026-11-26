@@ -62,14 +62,17 @@ Other top-level targets: `make cppcheck`, `make lcov`, `make check-valgrind` (un
 `webui/devenv/` is a Podman/Docker Compose environment (see its README). It runs Rocky 9.7, MariaDB 10.5, OpenLDAP (RFC 2307bis, TLS only) and Keycloak 26 (realm federated from the LDAP server), all with certificates from a throwaway test CA. It works on macOS, so use it to build and run Robinhood, and to test anything involving LDAP, Keycloak or the database:
 
 ```sh
-webui/devenv/devenv.sh all     # from scratch: certs, start, build, sample data, scan, smoke test
+webui/devenv/devenv.sh all     # from scratch: certs, start, build, sample data, scan, all tests
 webui/devenv/devenv.sh build   # rebuild Robinhood (incremental)
 webui/devenv/devenv.sh scan    # rescan the sample tree into MariaDB
 webui/devenv/devenv.sh test    # smoke test; must stay green
+webui/devenv/devenv.sh webui-test [-k EXPR]  # back-end pytest suite (unit + live LDAP/Keycloak/DB); must stay green
 webui/devenv/devenv.sh shell   # shell in the Rocky 9.7 workbench (repo mounted read-only at /src)
 ```
 
 On macOS, `docker` is Podman (`podman machine start` if it isn't running). Test identities come from `webui/devenv/ldap/data.ldif`. Never point the dev environment at real LDAP or Keycloak servers.
+
+Web UI back end: `webui/backend/` (Python 3.12, FastAPI, package `rbh_webui`). Configuration is `config.py` (YAML; secrets always in separate `*_file`s), LDAP is `ldapdir.py`, ACLs are `acl.py` (permissions, roles, LDAP group DNs), login and sessions are `auth.py` and `sessions.py`, Checkmk bearer-token checks are `machine.py`, and DB reads are `db.py` (cheap reads only: never scan `ENTRIES` on a request). The dev config is `webui/devenv/webui/config.yaml`.
 
 ## Architecture
 

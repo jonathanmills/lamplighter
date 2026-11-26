@@ -39,7 +39,8 @@ usage: ./devenv.sh COMMAND
   data      (re)generate the sample file tree   [--scale N]
   scan      run a full Robinhood scan of the sample tree into MariaDB
   test      run the smoke test (LDAP, Keycloak, MariaDB/Robinhood)
-  all       up + build + data + scan + test
+  webui-test [ARGS]  run the web UI back end's pytest suite (unit + integration)
+  all       up + build + data + scan + test + webui-test
   sql       open a MariaDB shell on the Robinhood database
   shell     open a shell in the Rocky 9.7 workbench
   logs [S]  follow service logs
@@ -74,8 +75,12 @@ case $cmd in
         wait_keycloak
         wb bash /devenv/smoke-test.sh
         ;;
+    webui-test)
+        wait_keycloak
+        compose exec -T webui pytest -q -p no:cacheprovider tests "$@"
+        ;;
     all)
-        "$0" up && "$0" build && "$0" data && "$0" scan && "$0" test
+        "$0" up && "$0" build && "$0" data && "$0" scan && "$0" test && "$0" webui-test
         ;;
     sql)
         compose exec workbench mysql -h mariadb -u robinhood -probinhood robinhood_dev
