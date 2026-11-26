@@ -47,7 +47,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.policy = AccessPolicy(settings.access)
     app.state.sessions = SessionStore(settings.server.session_ttl_seconds)
     app.state.oauth = setup_oauth(settings)
-    app.state.engine = make_engine(settings.database)
+    app.state.engine = make_engine(settings.database)          # Robinhood (read only)
+    app.state.store_engine = make_engine(settings.store)       # rbh_webui (collector output)
     app.state.token_verifier = (TokenVerifier(settings.oidc, settings.monitoring)
                                 if settings.oidc and settings.monitoring and settings.monitoring.enabled
                                 else None)

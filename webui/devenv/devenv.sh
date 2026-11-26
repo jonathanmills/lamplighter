@@ -38,6 +38,7 @@ usage: ./devenv.sh COMMAND
   build     build Robinhood (POSIX mode) from the repository
   data      (re)generate the sample file tree   [--scale N]
   scan      run a full Robinhood scan of the sample tree into MariaDB
+  collect   run the web UI collector once (age histogram, usage snapshot)
   test      run the smoke test (LDAP, Keycloak, MariaDB/Robinhood)
   webui-test [ARGS]  run the web UI back end's pytest suite (unit + integration)
   shots     render pages in headless Chromium; screenshots go to .shots/
@@ -57,6 +58,8 @@ case $cmd in
         ./gen-certs.sh
         mkdir -p ../frontend/dist
         compose up -d --build
+        # the web UI's own schema and user (idempotent; also run on fresh volumes)
+        compose exec -T mariadb mariadb -uroot -pdevroot < mariadb/rbh_webui.sql
         wait_keycloak
         compose ps
         ;;
@@ -73,6 +76,9 @@ case $cmd in
         wb mysql -h mariadb -u robinhood -probinhood robinhood_dev -e \
             "SELECT COUNT(*) AS entries FROM ENTRIES; SELECT uid, type, count, size FROM ACCT_STAT ORDER BY size DESC;"
         ;;
+    collect)
+        compose exec -T webui rbh-webui-collector run
+        ;;
     test)
         wait_keycloak
         wb bash /devenv/smoke-test.sh
@@ -87,7 +93,7 @@ case $cmd in
             sh -c "pip install -q playwright==1.48.0 && python /devenv/tools/screenshot.py"
         ;;
     all)
-        "$0" up && "$0" build && "$0" data && "$0" scan && "$0" test && "$0" webui-test
+        "$0" up && "$0" build && "$0" data && "$0" scan && "$0" collect && "$0" test && "$0" webui-test
         ;;
     sql)
         compose exec workbench mysql -h mariadb -u robinhood -probinhood robinhood_dev

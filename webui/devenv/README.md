@@ -21,6 +21,7 @@ cd webui/devenv
 The first run downloads images and takes a few minutes. Later runs take seconds. Run `./devenv.sh` with no arguments to list all commands. The main ones:
 
 - `./devenv.sh scan` re-scans the sample tree into MariaDB.
+- `./devenv.sh collect` runs the web UI collector once: the age histogram and usage snapshot, written to the `rbh_webui` schema. The Overview's age chart and the Cold data page need at least one run.
 - `./devenv.sh data --scale 4` generates four times as many files (about 100k).
 - `./devenv.sh sql` opens a SQL shell on the Robinhood database.
 - `./devenv.sh test` runs the smoke test (19 checks covering LDAP, Keycloak and Robinhood/MariaDB).

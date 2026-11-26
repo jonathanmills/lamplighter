@@ -215,15 +215,33 @@ This needs a jobstats collector on or near the Lustre servers. It is Phase 3, an
 - Lookup by path, or by owner within a subtree. Bounded queries only, with pagination and time limits.
 
 ## 6. Collector design (`rbh-webui-collector`)
-- One pass over `ENTRIES` per cycle (nightly at first). Streams rows with a server-side cursor and aggregates in memory or in temporary tables.
-- Outputs, all in `rbh_webui`:
-  - `age_hist` (owner/group/project × age bucket × {bytes, files})
-  - `dir_rollup`: per-directory totals down to a configurable depth, newest and oldest access, owner mix
-  - `cold_candidates`
-  - `acct_history`: timestamped copies of `ACCT_STAT`
-- Runs against a **read replica** where one is available, so the daemon's database never feels it.
-- Records each run's duration and row counts, shown in the status panel.
-- Must be proven at full scale: billions of rows within a nightly window. Prototype this early (Phase 1).
+
+Status: **v1 implemented** (`webui/backend/src/rbh_webui/collector.py`), covering the age histogram and the `ACCT_STAT` history. Directory rollups are still to be designed (6.3).
+
+### 6.1 How a run works
+- The collector runs from a timer (nightly), never from a web request. Only one collector runs at a time (MariaDB `GET_LOCK`), and each run is recorded in `collector_runs`.
+- **Age histogram: one scan, aggregated by MariaDB.** The collector sends a single `SELECT … GROUP BY uid, gid, access_band, modify_band` over `ENTRIES`, with the age bands computed in SQL `CASE` expressions. MariaDB reads every row once, and only a few thousand summary rows come back, whatever the size of the filesystem. Python never streams the entries themselves.
+- The scan runs under `max_statement_time` (setting `collector.max_scan_seconds`, 6 h by default), so a runaway scan aborts instead of loading the server indefinitely.
+- **`ACCT_STAT` snapshot:** a cheap copy each run (Robinhood's triggers keep `ACCT_STAT` current), which gives usage history over time.
+- **Retention:** the newest `keep_runs` runs are kept, and their rows are deleted with them (`ON DELETE CASCADE`).
+- **Where it runs:** point `database` at a **read replica**. A long consistent read on the primary holds InnoDB's undo history while Robinhood writes changelog updates.
+
+### 6.2 Schema (`rbh_webui`, managed by numbered migrations in `rbh_webui/migrations/`)
+- `collector_runs`: start and finish times, status, file count, error.
+- `age_hist`: run × uid × gid × access band × modify band → files, bytes, for regular files. Bands: < 7 d, 7–30 d, 30–90 d, 90 d–1 y, 1–3 y, > 3 y. Storing the joint distribution means "written long ago but still read" can also be answered.
+- `acct_history`: run × uid × gid × type → entries, bytes, blocks.
+
+The web UI's database user has `SELECT` on Robinhood's schema and full rights on `rbh_webui` only. Robinhood's own tables are never written.
+
+### 6.3 Still to design: per-directory rollups (Phase 3)
+The cold-*directory* views need totals per subtree, which `ENTRIES` cannot give cheaply: only `parent_id` is indexed, and no path is stored. Options to evaluate against a real-scale copy:
+1. Compute each directory's direct totals with one `GROUP BY parent_id`, then roll them up the tree in a recursive CTE (MariaDB supports `WITH RECURSIVE`), limited to a configurable depth.
+2. Walk the top levels of the tree through the `parent_id` index, and run one aggregate per tracked subtree.
+
+The deciding factor is the number of directories (likely hundreds of millions at full scale). That needs a measurement on a copy of the production database before choosing.
+
+### 6.4 Scale test (open)
+The one-scan approach needs timing on a production-size copy: the expected cost is one full table scan of `ENTRIES`. Run it on the replica once and record the duration here.
 
 ## 7. Checkmk monitoring
 
@@ -278,7 +296,7 @@ web_gui/          # legacy PHP GUI, removed once the new UI covers its features
 | Phase | Delivers |
 |---|---|
 | 0. Skeleton | Repo layout, FastAPI app, OIDC login against a local Keycloak container (a test realm with the `rbh-webui` and `rbh-checkmk` clients), an OpenLDAP test container (RFC 2307bis), LDAP directory lookups and the ACL model, nginx config, read-only DB user, dev environment (Linux container with MariaDB and a sample Robinhood DB). |
-| 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. |
+| 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. *Done: Overview, collector v1, and a first Cold data page (owners with the most cold data, LDAP contact details, audited CSV export). Still open: Users/Groups page, scale test.* |
 | 2. Checkmk | Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
 | 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. |
 | 4. Triage | Jobstats collector, Slurm integration, triage dashboard. Rate metrics also feed Checkmk. |

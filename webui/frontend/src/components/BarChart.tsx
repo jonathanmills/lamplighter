@@ -68,7 +68,7 @@ export default function BarChart({ categories, values, colorTokens, horizontal, 
       xAxis: horizontal ? valAxis : catAxis,
       yAxis: horizontal ? catAxis : valAxis,
       series: [{
-        type: "bar", barCategoryGap: "28%",
+        type: "bar", barCategoryGap: "28%", barMaxWidth: horizontal ? 28 : 96,
         data: values.map((v, i) => ({ value: v, itemStyle: { color: colors[i], borderRadius: radius } })),
         label: { show: true, position: horizontal ? "right" : "top", color: text, formatter: (p: { value: number }) => format(p.value) },
         emphasis: { itemStyle: { opacity: 0.85 } },

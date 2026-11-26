@@ -21,7 +21,9 @@ SHOTS = [
     ("dave", "/", "light", 1440, "overview-light"),
     ("dave", "/", "dark", 1000, "overview-medium"),
     ("dave", "/", "dark", 400, "overview-phone"),
-    ("dave", "/cold", "dark", 1440, "cold-placeholder"),
+    ("carol", "/cold", "dark", 1440, "cold-dark"),
+    ("carol", "/cold?older_than=3y", "light", 1440, "cold-light-3y"),
+    ("carol", "/cold", "dark", 400, "cold-phone"),
     ("alice", "/", "dark", 1440, "alice-viewer"),
     ("alice", "/admin/access", "dark", 1440, "alice-forbidden"),
 ]

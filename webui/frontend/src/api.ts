@@ -30,6 +30,16 @@ export interface UsageSummary {
   file_sizes: { bucket: string; files: number }[];
 }
 
+export interface AgeBand { band: number; label: string; files: number; bytes: number }
+export interface AgeBands { run_id: number; as_of: number; basis: "access" | "modify"; bands: AgeBand[] }
+
+export interface ColdOwner {
+  user: string; name: string | null; mail: string | null;
+  cold_bytes: number; cold_files: number; total_bytes: number; oldest_band: number;
+}
+export interface ColdOwners { run_id: number; as_of: number; min_band: number; owners: ColdOwner[] }
+export type ColdAge = "90d" | "1y" | "3y";
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -52,4 +62,23 @@ export const api = {
   me: () => get<Me>("/me"),
   status: () => get<Status>("/status"),
   usage: () => get<UsageSummary>("/usage/summary"),
+  age: (basis: "access" | "modify" = "access") => get<AgeBands>(`/usage/age?basis=${basis}`),
+  coldOwners: (olderThan: ColdAge) => get<ColdOwners>(`/cold/owners?older_than=${olderThan}`),
+  coldCsvUrl: (olderThan: ColdAge) => `/api/v1/cold/owners.csv?older_than=${olderThan}`,
 };
+
+/** The collector's six age bands, grouped into the four shown in charts
+ *  (the validated four-step ordinal ramp). */
+export const DISPLAY_BANDS: { label: string; bands: number[] }[] = [
+  { label: "< 30 days", bands: [0, 1] },
+  { label: "30 days – 1 year", bands: [2, 3] },
+  { label: "1–3 years", bands: [4] },
+  { label: "> 3 years", bands: [5] },
+];
+
+export function toDisplayBands(bands: AgeBand[]) {
+  return DISPLAY_BANDS.map((d) => {
+    const mine = bands.filter((b) => d.bands.includes(b.band));
+    return { label: d.label, files: mine.reduce((a, b) => a + b.files, 0), bytes: mine.reduce((a, b) => a + b.bytes, 0) };
+  });
+}

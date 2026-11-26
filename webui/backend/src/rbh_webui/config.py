@@ -130,6 +130,12 @@ class DatabaseConfig(BaseModel):
     password_file: str
 
 
+class CollectorConfig(BaseModel):
+    keep_runs: int = 90                # older runs (and their rows) are deleted
+    # Abort the scan if it runs longer than this (MariaDB max_statement_time).
+    max_scan_seconds: int = 6 * 3600
+
+
 class MonitoringConfig(BaseModel):
     enabled: bool = True
     audience: str                      # expected "aud" in machine tokens
@@ -142,7 +148,9 @@ class Settings(BaseModel):
     ldap: LDAPConfig
     login: LoginConfig = LoginConfig()
     access: AccessConfig = AccessConfig()
-    database: DatabaseConfig
+    database: DatabaseConfig           # Robinhood's schema: read only (ideally a replica)
+    store: DatabaseConfig              # the web UI's own rbh_webui schema: read-write
+    collector: CollectorConfig = CollectorConfig()
     monitoring: MonitoringConfig | None = None
 
     @model_validator(mode="after")

@@ -6,6 +6,7 @@ import { api, type Me } from "./api";
 import { NAV, navByPath, type NavItem } from "./nav";
 import { setTheme, useTheme } from "./theme";
 import Overview from "./pages/Overview";
+import ColdData from "./pages/ColdData";
 import { ComingSoon, Forbidden, NotFound } from "./pages/States";
 
 const MeContext = createContext<Me | null>(null);
@@ -83,6 +84,7 @@ function Page({ item }: { item: NavItem }) {
   useEffect(() => { document.title = `${item.title} · Robinhood`; }, [item]);
   if (!can(me, item.perm)) return <Forbidden perm={item.perm} />;
   if (item.path === "/") return <Overview />;
+  if (item.path === "/cold") return <ColdData />;
   return <ComingSoon item={item} />;
 }
 

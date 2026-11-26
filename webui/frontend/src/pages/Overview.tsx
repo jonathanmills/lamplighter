@@ -3,7 +3,7 @@
 // Overview: Robinhood's status and the shape of the filesystem, from
 // cheap reads only (VARS and ACCT_STAT; never a scan of ENTRIES).
 import { useEffect, useMemo, useState } from "react";
-import { api, type Status, type UsageSummary } from "../api";
+import { api, ApiError, toDisplayBands, type AgeBands, type Status, type UsageSummary } from "../api";
 import { ago, bytes, dateTime, duration, int } from "../format";
 import BarChart from "../components/BarChart";
 import Panel from "../components/Panel";
@@ -14,13 +14,19 @@ const fmtFiles = (v: number) => int(v);
 export default function Overview() {
   const [status, setStatus] = useState<Status | null>(null);
   const [usage, setUsage] = useState<UsageSummary | null>(null);
+  const [age, setAge] = useState<AgeBands | null | "none">(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([api.status(), api.usage()])
       .then(([s, u]) => { setStatus(s); setUsage(u); })
       .catch((e) => setError(String(e.message ?? e)));
+    // 404 means the collector has not run yet: show that, not an error.
+    api.age().then(setAge).catch((e) => setAge(e instanceof ApiError && e.status === 404 ? "none" : null));
   }, []);
+  const ageBands = useMemo(() => (age && age !== "none" ? toDisplayBands(age.bands) : []), [age]);
+  const ageLabels = useMemo(() => ageBands.map((b) => b.label), [ageBands]);
+  const ageBytes = useMemo(() => ageBands.map((b) => b.bytes), [ageBands]);
 
   const owners = useMemo(() => (usage?.top_users ?? []).filter((u) => u.bytes > 0).slice(0, 8), [usage]);
   const ownerNames = useMemo(() => owners.map((o) => o.user), [owners]);
@@ -61,12 +67,23 @@ export default function Overview() {
       </section>
 
       <div className="grid">
-        <Panel span={7} title="Largest owners by volume" meta="logical size"
+        <Panel span={4} title="Largest owners by volume" meta="logical size"
                table={{ columns: ["Owner", "Volume", "Entries"], rows: owners.map((o) => [o.user, bytes(o.bytes), int(o.entries)]) }}>
           <BarChart horizontal binary categories={ownerNames} values={ownerBytes} colorTokens="--chart-1"
                     format={bytes} ariaLabel={"Volume by owner: " + owners.map((o) => `${o.user} ${bytes(o.bytes)}`).join(", ")} />
         </Panel>
-        <Panel span={5} title="Files by size" meta="file count"
+        <Panel span={4} title="Data by last access" meta={age && age !== "none" ? `as of ${ago(status.now - age.as_of)}` : undefined}
+               table={ageBands.length ? { columns: ["Last accessed", "Volume", "Files"], rows: ageBands.map((b) => [b.label, bytes(b.bytes), int(b.files)]) } : undefined}>
+          {age === "none" ? (
+            <div className="empty" style={{ padding: 8 }}>
+              <p className="muted">Appears after the collector's first run (<span className="cmd">rbh-webui-collector run</span>).</p>
+            </div>
+          ) : (
+            <BarChart binary categories={ageLabels} values={ageBytes} colorTokens={RAMP} format={bytes}
+                      ariaLabel={"Volume by time since last access: " + ageBands.map((b) => `${b.label} ${bytes(b.bytes)}`).join(", ")} />
+          )}
+        </Panel>
+        <Panel span={4} title="Files by size" meta="file count"
                table={{ columns: ["Size", "Files"], rows: usage.file_sizes.map((b) => [b.bucket, int(b.files)]) }}>
           <BarChart categories={sizeBuckets} values={sizeFiles} colorTokens={RAMP}
                     format={fmtFiles} ariaLabel={"Files by size: " + usage.file_sizes.map((b) => `${b.bucket} ${int(b.files)}`).join(", ")} />

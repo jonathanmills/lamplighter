@@ -47,6 +47,15 @@ database:
   user: robinhood
   password_file: /devenv/webui/db.secret
 
+store:
+  host: mariadb
+  name: rbh_webui
+  user: rbh_webui
+  password_file: /devenv/webui/store.secret
+
+collector:
+  keep_runs: 90
+
 monitoring:
   enabled: true
   audience: rbh-webui

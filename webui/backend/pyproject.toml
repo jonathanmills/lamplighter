@@ -33,8 +33,14 @@ dev = [
     "watchfiles>=0.22",           # MIT (uvicorn --reload)
 ]
 
+[project.scripts]
+rbh-webui-collector = "rbh_webui.collector:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+rbh_webui = ["migrations/*.sql"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

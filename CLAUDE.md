@@ -65,6 +65,7 @@ Other top-level targets: `make cppcheck`, `make lcov`, `make check-valgrind` (un
 webui/devenv/devenv.sh all     # from scratch: certs, start, build, sample data, scan, all tests
 webui/devenv/devenv.sh build   # rebuild Robinhood (incremental)
 webui/devenv/devenv.sh scan    # rescan the sample tree into MariaDB
+webui/devenv/devenv.sh collect # run the web UI collector once
 webui/devenv/devenv.sh test    # smoke test; must stay green
 webui/devenv/devenv.sh webui-test [-k EXPR]  # back-end pytest suite (unit + live LDAP/Keycloak/DB); must stay green
 webui/devenv/devenv.sh shell   # shell in the Rocky 9.7 workbench (repo mounted read-only at /src)
@@ -72,7 +73,7 @@ webui/devenv/devenv.sh shell   # shell in the Rocky 9.7 workbench (repo mounted 
 
 On macOS, `docker` is Podman (`podman machine start` if it isn't running). Test identities come from `webui/devenv/ldap/data.ldif`. Never point the dev environment at real LDAP or Keycloak servers.
 
-Web UI back end: `webui/backend/` (Python 3.12, FastAPI, package `rbh_webui`). Configuration is `config.py` (YAML; secrets always in separate `*_file`s), LDAP is `ldapdir.py`, ACLs are `acl.py` (permissions, roles, LDAP group DNs), login and sessions are `auth.py` and `sessions.py`, Checkmk bearer-token checks are `machine.py`, and DB reads are `db.py` (cheap reads only: never scan `ENTRIES` on a request). The dev config is `webui/devenv/webui/config.yaml`.
+Web UI back end: `webui/backend/` (Python 3.12, FastAPI, package `rbh_webui`). Configuration is `config.py` (YAML; secrets always in separate `*_file`s), LDAP is `ldapdir.py`, ACLs are `acl.py` (permissions, roles, LDAP group DNs), login and sessions are `auth.py` and `sessions.py`, Checkmk bearer-token checks are `machine.py`, and DB reads are `db.py` (cheap reads only: never scan `ENTRIES` on a request). The collector (`collector.py`, CLI `rbh-webui-collector`) is the only code that scans `ENTRIES`: once per run, aggregated by MariaDB (`GROUP BY`), writing to the UI's own `rbh_webui` schema (`store.py`; schema changes are new numbered files in `migrations/`, never edits to released ones). The dev config is `webui/devenv/webui/config.yaml`.
 
 Web UI front end: `webui/frontend/` (React + TypeScript + Vite, ECharts; no component library). Node runs only in the devenv `frontend` container, which rebuilds `dist/` on every save; the back end serves `dist/` (any non-API URL gets `index.html` after a login check). Colors come only from the tokens in `src/styles/tokens.css`; layout follows the rules in `src/styles/app.css`. Pages and their permissions are listed in `src/nav.tsx`. Before adding an npm dependency, check its license (all must be GPLv3-compatible). `webui/devenv/devenv.sh shots` renders pages in headless Chromium (both themes, phone width) to `webui/devenv/.shots/`, and reports console errors and horizontal overflow.
 
