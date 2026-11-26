@@ -112,6 +112,24 @@ services:
       - .:/devenv:ro
       - rbh-node-modules:/app/node_modules
 
+  # Optional: Checkmk Community 2.5 for installing the plugin in a real site.
+  # x86-64 hosts only: the image is amd64-only, and the site does not start
+  # under emulation on Apple Silicon (use "devenv.sh checkmk-test" there).
+  # Start with: docker compose --profile checkmk up -d checkmk
+  checkmk:
+    image: docker.io/checkmk/check-mk-community:2.5.0p21
+    profiles: [checkmk]
+    environment:
+      CMK_SITE_ID: cmk
+      CMK_PASSWORD: cmkadmin            # TEST-ONLY password for cmkadmin
+      TZ: UTC
+    volumes:
+      - ../checkmk:/plugin:ro           # the plugin source (webui/checkmk)
+      - ./.certs:/certs:ro
+    ports:
+      - "127.0.0.1:5000:5000"
+    depends_on: [webui]
+
 volumes:
   rbh-db:
   rbh-build:

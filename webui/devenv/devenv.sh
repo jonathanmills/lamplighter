@@ -30,6 +30,20 @@ wait_keycloak() {
     return 1
 }
 
+# Checkmk 2.5's plugin APIs and packaging code (GPLv2), copied out of the
+# official image for testing and packaging only; never committed. The image
+# is x86-64 only: on Apple Silicon it runs emulated, which is fine for copying
+# files (a full Checkmk site does not run under emulation).
+CMK_IMAGE=docker.io/checkmk/check-mk-community:2.5.0p21
+cmk_api() {
+    [[ -d .cmk-api/cmk/agent_based/v2 && -d .cmk-api/cmk/mkp_tool ]] && return 0
+    mkdir -p .cmk-api
+    docker run --rm --platform linux/amd64 --entrypoint sh -v "$PWD/.cmk-api:/out" "$CMK_IMAGE" -c '
+        S=$(ls -d /omd/versions/*/lib/python3.*/site-packages | head -1)
+        mkdir -p /out/cmk && for d in agent_based rulesets server_side_calls password_store mkp_tool; do
+            cp -r "$S/cmk/$d" /out/cmk/; done' 2>&1 | grep -v -e qemu -e "Segmentation fault" || true
+}
+
 usage() {
     cat <<'EOF'
 usage: ./devenv.sh COMMAND
@@ -41,6 +55,8 @@ usage: ./devenv.sh COMMAND
   collect   run the web UI collector once (age histogram, usage snapshot)
   test      run the smoke test (LDAP, Keycloak, MariaDB/Robinhood)
   webui-test [ARGS]  run the web UI back end's pytest suite (unit + integration)
+  checkmk-test  test the Checkmk plugin (Python 3.13, Checkmk 2.5's real APIs, live dev data)
+  mkp       build the Checkmk extension package into ../checkmk/dist/
   shots     render pages in headless Chromium; screenshots go to .shots/
   all       up + build + data + scan + test + webui-test
   sql       open a MariaDB shell on the Robinhood database
@@ -86,6 +102,21 @@ case $cmd in
     webui-test)
         wait_keycloak
         compose exec -T webui pytest -q -p no:cacheprovider tests "$@"
+        ;;
+    checkmk-test|mkp)
+        cmk_api
+        run_py313() {
+            docker run --rm --network rbh-dev_default -v "$PWD/.cmk-api:/cmkapi:ro" \
+                -v "$PWD/../checkmk:/plugin" -v "$PWD/.certs:/certs:ro" \
+                -e PYTHONPATH=/cmkapi:/plugin -e PYTHONDONTWRITEBYTECODE=1 \
+                docker.io/library/python:3.13-slim sh -c "pip install -q pytest pydantic cryptography 2>/dev/null; $1"
+        }
+        if [[ $cmd == checkmk-test ]]; then
+            run_py313 "python -m pytest -q -p no:cacheprovider /plugin/tests"
+        else
+            mkdir -p ../checkmk/dist
+            run_py313 "python /plugin/build_mkp.py /plugin/dist"
+        fi
         ;;
     shots)
         # Hard time limit and one retry: headless Chromium can stall at start-up.

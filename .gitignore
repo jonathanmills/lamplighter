@@ -112,3 +112,5 @@ __pycache__/
 webui/frontend/dist/
 webui/frontend/node_modules/
 webui/devenv/.shots/
+webui/devenv/.cmk-api/
+webui/checkmk/dist/

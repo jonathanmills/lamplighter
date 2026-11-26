@@ -77,6 +77,8 @@ Web UI back end: `webui/backend/` (Python 3.12, FastAPI, package `rbh_webui`). C
 
 Web UI front end: `webui/frontend/` (React + TypeScript + Vite, ECharts; no component library). Node runs only in the devenv `frontend` container, which rebuilds `dist/` on every save; the back end serves `dist/` (any non-API URL gets `index.html` after a login check). Colors come only from the tokens in `src/styles/tokens.css`; layout follows the rules in `src/styles/app.css`. Pages and their permissions are listed in `src/nav.tsx`. Before adding an npm dependency, check its license (all must be GPLv3-compatible). `webui/devenv/devenv.sh shots` renders pages in headless Chromium (both themes, phone width) to `webui/devenv/.shots/`, and reports console errors and horizontal overflow.
 
+Checkmk plugin: `webui/checkmk/` (Checkmk 2.5 plug-in family `cmk_addons/plugins/robinhood`: special agent, agent-based checks, rulesets, server-side calls; see its README). Test with `webui/devenv/devenv.sh checkmk-test` (Python 3.13 + Checkmk's real APIs copied out of the image into `webui/devenv/.cmk-api/`, never committed) and build the MKP with `devenv.sh mkp`. Checkmk images are x86-64 only and a site does not run under emulation on Apple Silicon. Secrets go to the agent by password-store reference only (`--client-secret-id`).
+
 ## Architecture
 
 `src/` is split into static libtool libraries that are linked into every executable in `src/robinhood/` (`robinhood` daemon, `rbh-report`, `rbh-find`, `rbh-du`, `rbh-diff`, `rbh-undelete`, `rbh-rebind`):

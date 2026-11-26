@@ -19,9 +19,15 @@ mkdir -p "$out"
 cd "$out"
 
 if [[ ! -f ca.pem ]]; then
-    openssl req -x509 -newkey rsa:3072 -nodes -sha256 -days 3650 \
+    # Full CA extensions: strict verifiers (Python 3.13, used by Checkmk 2.5,
+    # sets VERIFY_X509_STRICT) reject certificates without them.
+    printf 'basicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\n' > ca.ext
+    openssl req -new -newkey rsa:3072 -nodes -sha256 \
         -subj "/O=Robinhood Dev/CN=Robinhood Dev Test CA" \
-        -keyout ca.key -out ca.pem 2>/dev/null
+        -keyout ca.key -out ca.csr 2>/dev/null
+    openssl x509 -req -in ca.csr -signkey ca.key -days 3650 -sha256 \
+        -extfile ca.ext -out ca.pem 2>/dev/null
+    rm -f ca.csr ca.ext
     echo "created test CA: $(pwd)/ca.pem"
 fi
 
@@ -32,7 +38,7 @@ issue() {
     openssl req -newkey rsa:2048 -nodes -sha256 \
         -subj "/O=Robinhood Dev/CN=$name" \
         -keyout "$name.key" -out "$name.csr" 2>/dev/null
-    printf 'subjectAltName=%s\nextendedKeyUsage=serverAuth\nkeyUsage=digitalSignature,keyEncipherment\n' \
+    printf 'subjectAltName=%s\nextendedKeyUsage=serverAuth\nkeyUsage=critical,digitalSignature,keyEncipherment\nbasicConstraints=critical,CA:FALSE\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n' \
         "$sans" > "$name.ext"
     openssl x509 -req -in "$name.csr" -CA ca.pem -CAkey ca.key \
         -CAcreateserial -days "$days" -sha256 -extfile "$name.ext" \
