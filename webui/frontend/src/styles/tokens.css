@@ -10,11 +10,12 @@
   color-scheme: dark;
   /* surfaces */
   --bg: #262523;
-  --sidebar: #1F1E1C;
-  --sidebar-text: #AEA79F;
-  --sidebar-label: #AEA79F;
-  --sidebar-hover: rgba(223, 219, 210, 0.06);
-  --sidebar-active: rgba(75, 156, 211, 0.16);
+  /* faint aubergine over the deep charcoal, matching the light theme's wash */
+  --sidebar: linear-gradient(180deg, rgba(119, 33, 111, 0.16) 0%, rgba(94, 39, 80, 0.10) 100%), #1F1E1C;
+  --sidebar-text: #AEA79F;   /* 6.6:1 on the tint */
+  --sidebar-label: #B3A3AE;  /* plum-tinted warm grey, 6.6:1 */
+  --sidebar-hover: rgba(176, 90, 164, 0.10);
+  --sidebar-active: rgba(176, 90, 164, 0.22);  /* text 8.8:1 */
   --panel: #2F2E2B;
   --bar: #3C3B37;            /* Ubuntu window bar */
   --border: #4D4C47;

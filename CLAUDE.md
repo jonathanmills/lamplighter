@@ -18,7 +18,7 @@ This fork keeps the Robinhood v3 engine and its MariaDB backend, and modernizes 
     - Never use HTML frames (`<frame>`, `<frameset>`, `<iframe>`). Every view is a whole page with its own URL, and there is one scroll per page.
     - Panels go on a column grid with one gutter and content-sized heights, and never trap whitespace.
     - See `doc/webui-design.md` §5.0.1.
-  - **Colors:** see `webui/design/palette-draft.html`. The UI is dark-first (Ubuntu charcoal plus Carolina Blue); the light theme has no bright white backgrounds, and its sidebar has a translucent aubergine wash. Aubergine appears only on the login screen, code panels, the top-bar line and the light sidebar.
+  - **Colors:** see `webui/design/palette-draft.html`. The UI is dark-first (Ubuntu charcoal plus Carolina Blue); the light theme has no bright white backgrounds, and the sidebar has a translucent aubergine wash in both themes (faint over charcoal in dark mode). Aubergine appears only on the login screen, code panels, the top-bar line and the sidebar.
   - **No copied Checkmk code:** Checkmk's LDAP connector is proprietary (Pro edition). Use it as a functional reference only.
 - **Operational views** the GUI should provide:
   - **Slowdown triage:** what data is hot (recent access or modification) by user, group and directory, correlated with Slurm jobs. Robinhood only sees metadata, and Lustre updates atime lazily and leaves ATIME changelog records off by default. Real per-job I/O should come from Lustre jobstats (`jobid_var=SLURM_JOB_ID`) shown alongside Robinhood data.
