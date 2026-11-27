@@ -11,6 +11,13 @@ A self-contained test environment that runs on a laptop with Podman or Docker. E
 | `webui` | The web UI back end (FastAPI on Rocky 9.7, Python 3.12). It reloads live when you edit `webui/backend/src`, and serves the built front end. | `https://webui.test:8443` (host: `127.0.0.1:8443`) |
 | `frontend` | Node 22 build container: rebuilds `webui/frontend/dist` within about 3 seconds of a front-end file changing (refresh the browser to see the change). It polls for changes, because file events from a macOS host never reach containers in the Linux VM; the back end polls for the same reason. | none |
 
+### Optional services (opt-in, not started by `devenv.sh all`)
+
+| Service | What it is | Start with | Address |
+|---|---|---|---|
+| `prometheus` + `jobstats-exporter` | Prometheus 2.55 scraping a simulated Lustre jobstats exporter (`tools/fake_jobstats_exporter.py`), whose counters grow in real time. Used to try the Prometheus jobstats source; `tests/integration/test_prometheus_live.py` runs only while it is up. | `./devenv.sh prometheus` (stop: `prometheus-down`) | `http://127.0.0.1:9090` |
+| `checkmk` | Checkmk Community 2.5 for installing the plugin in a real site. The image is x86-64 only: on Apple Silicon it needs Rosetta in the Podman VM (QEMU emulation crashes it). | `docker compose --profile checkmk up -d checkmk` | `http://127.0.0.1:5000/cmk/` |
+
 ## Quick start
 
 ```sh

@@ -54,6 +54,8 @@ usage: ./devenv.sh COMMAND
   scan      run a full Robinhood scan of the sample tree into MariaDB
   collect   run the web UI collector once (age histogram, usage snapshot)
   jobstats  write simulated Lustre jobstats to the spool and run lux-jobstats
+  prometheus       start the optional Prometheus with a simulated jobstats exporter
+  prometheus-down  stop it
   test      run the smoke test (LDAP, Keycloak, MariaDB/Robinhood)
   webui-test [ARGS]  run the web UI back end's pytest suite (unit + integration)
   checkmk-test  test the Checkmk plugin (Python 3.13, Checkmk 2.5's real APIs, live dev data)
@@ -95,6 +97,13 @@ case $cmd in
         ;;
     collect)
         compose exec -T webui lux-collector run
+        ;;
+    prometheus)
+        # opt-in: Prometheus + simulated jobstats exporter (http://127.0.0.1:9090)
+        compose --profile prometheus up -d jobstats-exporter prometheus
+        ;;
+    prometheus-down)
+        compose --profile prometheus stop prometheus jobstats-exporter
         ;;
     jobstats)
         # simulated Lustre servers drop snapshots; lux-jobstats reads them.

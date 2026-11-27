@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+#
+# Dev Prometheus: scrapes the simulated jobstats exporter, so the
+# Prometheus jobstats source (jobstats.source: prometheus) can be tried
+# end to end. Started with "devenv.sh prometheus".
+global:
+  scrape_interval: 15s
+scrape_configs:
+  - job_name: lustre-jobstats
+    static_configs:
+      - targets: ["jobstats-exporter:9169"]

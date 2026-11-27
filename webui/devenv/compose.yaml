@@ -113,6 +113,23 @@ services:
       - .:/devenv:ro
       - lux-node-modules:/app/node_modules
 
+  # Optional: Prometheus scraping a simulated jobstats exporter, for the
+  # Prometheus jobstats source. Start with: devenv.sh prometheus
+  jobstats-exporter:
+    image: docker.io/library/python:3.12-slim
+    profiles: [prometheus]
+    command: ["python", "/devenv/tools/fake_jobstats_exporter.py", "9169"]
+    volumes:
+      - .:/devenv:ro
+  prometheus:
+    image: docker.io/prom/prometheus:v2.55.1
+    profiles: [prometheus]
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:9090:9090"
+    depends_on: [jobstats-exporter]
+
   # Optional: Checkmk Community 2.5 for installing the plugin in a real site.
   # x86-64 hosts only: the image is amd64-only, and the site does not start
   # under emulation on Apple Silicon (use "devenv.sh checkmk-test" there).
