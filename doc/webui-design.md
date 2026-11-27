@@ -6,7 +6,7 @@ Status: **draft for discussion**. It replaces Robinhood's PHP GUI (`gui_v3`, rem
 
 | Goal | Meaning |
 |---|---|
-| No PHP | Nothing PHP gets installed on any server. |
+| No PHP | Nothing PHP is installed on any server. PHP is not banned, but security teams treat it as an elevated risk and continuous monitoring (CISA's CDM program in US federal agencies) scrutinises the servers that run it; leaving it out keeps Lamplighter's servers out of that spotlight. |
 | Modern, polished UX | The *visual style* of the Checkmk Pro GUI (see section 5.0). Only the look is borrowed, not Checkmk's monitoring concepts. |
 | Multi-user auth and ACLs | OpenID Connect login through Keycloak (or a direct LDAP bind), with groups from LDAP (RFC 2307bis or RFC 2307) and ACLs tied to LDAP group membership (section 4). |
 | Operational insight | "Why is the filesystem slow?" triage, and cold-data discovery for data managers. |

@@ -107,7 +107,7 @@ Lamplighter continues the **Robinhood 3** line, on **MariaDB and MySQL**. Admini
 
 ### A web interface that a hardened site can actually run
 
-Robinhood's web GUI is written in PHP, and many sites, government ones especially, do not allow PHP on their servers. Lamplighter replaces it entirely:
+Robinhood's web GUI is written in PHP. PHP is not forbidden anywhere, but at many sites it is costly to run: security teams treat it as an elevated risk, a server that runs it draws closer scrutiny from continuous monitoring (in US federal agencies, for example, CISA's Continuous Diagnostics and Mitigation program, CDM), and every finding on it has to be tracked and patched. Lamplighter keeps PHP off your servers altogether and replaces the GUI entirely:
 
 - **No PHP, anywhere.** A Python (FastAPI) back end and a React front end, packaged as an RPM for Rocky Linux / RHEL 9, behind nginx.
 - **It reads Robinhood's database as it is**, with no engine changes. A separate collector does the heavy aggregation, once per run, into the UI's own schema, so the interface stays fast however large the filesystem is.
