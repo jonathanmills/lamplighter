@@ -28,7 +28,7 @@ id lux-webui >/dev/null && ok "system user lux-webui exists"
 [[ $(stat -c "%a %U:%G" /etc/lux-webui) == "750 root:lux-webui" ]] && ok "/etc/lux-webui is 750 root:lux-webui"
 [[ $(stat -c "%a" /etc/lux-webui/config.yaml) == "640" ]] && ok "config.yaml is 640"
 /opt/lux-webui/bin/python -c "import lux_webui, ldap, authlib" && ok "venv imports work (python-ldap compiled)"
-for u in lux-webui.service lux-collector.service lux-collector.timer; do
+for u in lux-webui.service lux-collector.service lux-collector.timer lux-jobstats.service lux-jobstats.timer; do
     systemd-analyze verify /usr/lib/systemd/system/$u 2>&1 | grep -v "^$" | grep -vi "unknown lvalue\|Failed to load\|bpf" | head -3 || true
 done; ok "systemd units verified"
 
@@ -56,6 +56,15 @@ curl -s -c $J -b $J -o /dev/null -H "Origin: https://localhost" -H "X-Forwarded-
 curl -s -b $J https://localhost/api/v1/me | grep -q "\"roles\":\[\"admin\"\]" && ok "LDAP sign-in through nginx; dave is admin"
 curl -s -b $J https://localhost/ | grep -q "id=\"root\"" && ok "front end served from /usr/share/lux-webui"
 su -s /bin/bash lux-webui -c "LUX_WEBUI_CONFIG=/etc/lux-webui/config.yaml /opt/lux-webui/bin/lux-collector run" 2>&1 | grep -q "ok:" && ok "collector runs as lux-webui"
+[[ $(stat -c "%a %U:%G" /var/spool/lux-jobstats) == "2770 lux-webui:lux-jobstats" ]] && ok "jobstats spool is 2770 lux-webui:lux-jobstats"
+# A delivering account (the account a Lustre server delivers snapshots with) joins lux-jobstats only.
+useradd -r -G lux-jobstats -s /bin/bash jsdeliver
+su -s /bin/bash jsdeliver -c "/opt/lux-webui/bin/python /devenv/tools/gen_jobstats.py /var/spool/lux-jobstats" >/dev/null 2>&1 \
+    && ok "a lux-jobstats member can deliver snapshots"
+! su -s /bin/bash jsdeliver -c "cat /etc/lux-webui/config.yaml" >/dev/null 2>&1 && ok "a delivering account cannot read /etc/lux-webui"
+su -s /bin/bash lux-webui -c "LUX_WEBUI_CONFIG=/etc/lux-webui/config.yaml /opt/lux-webui/bin/lux-jobstats" 2>&1 | grep -qE "stored [1-9][0-9]* intervals" \
+    && ok "lux-jobstats runs as lux-webui and stores intervals"
+curl -s -b $J "https://localhost/api/v1/triage?window=1h" | grep -q "\"find.20003\"" && ok "triage API serves the jobstats"
 sleep 1
 last=$(curl -s -b $J "https://localhost/api/v1/admin/audit?event=login&user=dave&since_hours=1&limit=1")
 echo "$last" | grep -qE "\"client\":\"(::1|127\.0\.0\.1)\"" && ok "real client address recorded through the proxy"

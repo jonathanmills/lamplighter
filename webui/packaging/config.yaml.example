@@ -71,6 +71,34 @@ collector:
   rollup_depth: 4
   audit_retention_days: 400
 
+# Lustre jobstats for the triage view (optional; without this section,
+# triage shows Robinhood's side only). No job scheduler is needed.
+#
+# Default source: a spool directory. On each Lustre server (MDS and OSS),
+# a cron job writes a snapshot every minute, for example in
+# /etc/cron.d/lux-jobstats:
+#
+#   * * * * * root f=/path/to/spool/$(hostname -s).$(date +\%s).jobstats; lctl get_param 'mdt.*.job_stats' 'obdfilter.*.job_stats' > $f.tmp 2>/dev/null && mv $f.tmp $f
+#
+# The files must end up in spool.directory on this host, by any transport
+# (an NFS export, rsync or scp as an account in the lux-jobstats group).
+# Write them as *.tmp and rename, so half-written files are never read.
+#
+#jobstats:
+#  source: spool                 # or: prometheus (if the site already runs it)
+#  spool:
+#    directory: /var/spool/lux-jobstats
+#  retention_hours: 168
+#  stale_after_seconds: 300
+#  # Lustre's jobid_name: the default "%e.%u" gives process name and UID.
+#  jobid_pattern: '^(?P<process>.+)\.(?P<uid>\d+)$'
+#  prometheus:                   # only with source: prometheus
+#    url: https://prometheus.example.org:9090
+#    metrics:                    # counter names of your Lustre exporter
+#      md_ops: lustre_job_md_ops_total
+#      read_bytes: lustre_job_read_bytes_total
+#      write_bytes: lustre_job_write_bytes_total
+
 # Checkmk polls /api/v1/monitoring with a Keycloak client-credentials token.
 monitoring:
   enabled: true

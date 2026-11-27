@@ -38,3 +38,13 @@ export function duration(seconds: number | undefined): string {
 
 export const dateTime = (epoch: number | undefined) =>
   epoch === undefined ? "—" : new Date(epoch * 1000).toLocaleString();
+
+/** A per-second rate: 950/s, 12.3k/s, 4.1M/s. */
+export function rate(perSecond: number): string {
+  if (!Number.isFinite(perSecond) || perSecond <= 0) return "0/s";
+  if (perSecond < 10) return `${perSecond.toFixed(1)}/s`;
+  if (perSecond < 1000) return `${Math.round(perSecond)}/s`;
+  if (perSecond < 1e6) return `${(perSecond / 1e3).toFixed(perSecond < 1e4 ? 1 : 0)}k/s`;
+  return `${(perSecond / 1e6).toFixed(1)}M/s`;
+}
+export const bytesRate = (perSecond: number) => `${bytes(perSecond)}/s`;

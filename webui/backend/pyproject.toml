@@ -35,6 +35,7 @@ dev = [
 
 [project.scripts]
 lux-collector = "lux_webui.collector:main"
+lux-jobstats = "lux_webui.jobstats:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

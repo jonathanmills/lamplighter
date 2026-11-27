@@ -143,6 +143,56 @@ class CollectorConfig(BaseModel):
     audit_retention_days: int = 400
 
 
+class JobstatsSpool(BaseModel):
+    # Each Lustre server drops <host>.<unix time>.jobstats files here
+    # (written as .tmp, then renamed). The service account owns it.
+    directory: str = "/var/spool/lux-jobstats"
+    max_file_bytes: int = 64 * 1024 * 1024
+    # Snapshots further apart than this are not differenced (a gap would
+    # smear hours of activity into one interval): the newer one becomes
+    # the next baseline.
+    max_interval_seconds: int = 900
+
+
+class JobstatsPrometheus(BaseModel):
+    url: str                            # e.g. https://prometheus.example.org:9090
+    ca_file: str | None = None
+    bearer_token_file: str | None = None
+    timeout_seconds: float = 10.0
+    # Metric and label names differ between exporters, so they are mapped
+    # here. Each metric is a counter; lux-jobstats queries increase() over
+    # the interval since its previous run.
+    job_label: str = "jobid"
+    target_label: str = "target"
+    source_label: str = "instance"
+    metrics: dict[Literal["md_ops", "read_bytes", "write_bytes", "read_ops", "write_ops",
+                          "other_ops"], str] = {}
+
+
+class JobstatsConfig(BaseModel):
+    source: Literal["spool", "prometheus"] = "spool"
+    spool: JobstatsSpool = JobstatsSpool()
+    prometheus: JobstatsPrometheus | None = None
+    retention_hours: int = 7 * 24
+    # A source whose newest snapshot is older than this is shown as stale.
+    stale_after_seconds: int = 300
+    # How to read Lustre's job IDs (jobid_name). Named groups "process",
+    # "uid" and "host" are shown when present; the default matches
+    # Lustre's default "%e.%u" (process name and numeric UID).
+    jobid_pattern: str = r"^(?P<process>.+)\.(?P<uid>\d+)$"
+    # Optional scheduler details for job IDs. Only "none" exists today;
+    # scheduler plug-ins are opt-in and never required.
+    job_details: Literal["none"] = "none"
+
+    @model_validator(mode="after")
+    def _check(self) -> "JobstatsConfig":
+        import re
+        re.compile(self.jobid_pattern)
+        if self.source == "prometheus" and self.prometheus is None:
+            raise ValueError("jobstats.source is prometheus: configure jobstats.prometheus")
+        return self
+
+
 class MonitoringConfig(BaseModel):
     enabled: bool = True
     audience: str                      # expected "aud" in machine tokens
@@ -159,6 +209,7 @@ class Settings(BaseModel):
     store: DatabaseConfig              # the web UI's own lux_webui schema: read-write
     collector: CollectorConfig = CollectorConfig()
     monitoring: MonitoringConfig | None = None
+    jobstats: JobstatsConfig | None = None   # None: triage shows Robinhood's side only
 
     @model_validator(mode="after")
     def _need_a_login_method(self) -> "Settings":

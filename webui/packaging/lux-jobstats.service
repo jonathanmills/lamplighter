@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+[Unit]
+Description=Lamplighter jobstats reader (Lustre jobstats for the triage view)
+Documentation=file:///usr/share/doc/lamplighter-webui/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=lux-webui
+Group=lux-webui
+Environment=LUX_WEBUI_CONFIG=/etc/lux-webui/config.yaml
+ExecStart=/opt/lux-webui/bin/lux-jobstats
+# Reads the spool (or Prometheus); small and quick, runs every minute.
+TimeoutStartSec=5min
+# Processed snapshots are renamed and pruned in the spool.
+ReadWritePaths=/var/spool/lux-jobstats
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+UMask=0077

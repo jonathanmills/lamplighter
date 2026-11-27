@@ -142,3 +142,16 @@ def user_age_bands(engine: Engine, uid: str) -> dict | None:
     return {"as_of": latest[1], "bands": [
         {"band": n, "label": label, "files": rows.get(n, (0, 0))[0], "bytes": rows.get(n, (0, 0))[1]}
         for n, label, _ in AGE_BANDS]}
+
+
+def recent_changes(engine: Engine, limit: int = 15) -> dict | None:
+    """Owners with the most data modified in the newest age band (< 7 days)."""
+    with engine.connect() as c:
+        latest = _latest_ok(c)
+        if latest is None:
+            return None
+        rows = c.execute(text(
+            "SELECT uid, SUM(files), SUM(bytes) FROM age_hist WHERE run_id = :r AND modify_band = 0 "
+            "GROUP BY uid ORDER BY SUM(bytes) DESC LIMIT :n"), {"r": latest[0], "n": limit}).all()
+    return {"as_of": latest[1], "band": "< 7 days",
+            "owners": [{"user": u, "files": int(f), "bytes": int(b)} for u, f, b in rows]}

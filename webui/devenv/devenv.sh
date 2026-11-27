@@ -53,6 +53,7 @@ usage: ./devenv.sh COMMAND
   data      (re)generate the sample file tree   [--scale N]
   scan      run a full Robinhood scan of the sample tree into MariaDB
   collect   run the web UI collector once (age histogram, usage snapshot)
+  jobstats  write simulated Lustre jobstats to the spool and run lux-jobstats
   test      run the smoke test (LDAP, Keycloak, MariaDB/Robinhood)
   webui-test [ARGS]  run the web UI back end's pytest suite (unit + integration)
   checkmk-test  test the Checkmk plugin (Python 3.13, Checkmk 2.5's real APIs, live dev data)
@@ -95,6 +96,23 @@ case $cmd in
     collect)
         compose exec -T webui lux-collector run
         ;;
+    jobstats)
+        # simulated Lustre servers drop snapshots; lux-jobstats reads them.
+        # Start from empty tables: each run simulates the last two hours anew.
+        compose exec -T webui python - <<'PY'
+from sqlalchemy import text
+from lux_webui.config import load_settings
+from lux_webui.db import make_engine
+from lux_webui.store import migrate
+engine = make_engine(load_settings().store)
+migrate(engine)
+with engine.begin() as c:
+    c.execute(text("DELETE FROM jobstats_interval"))
+    c.execute(text("DELETE FROM jobstats_sources"))
+PY
+        compose exec -T webui python /devenv/tools/gen_jobstats.py /var/spool/lux-jobstats
+        compose exec -T webui python -m lux_webui.jobstats
+        ;;
     test)
         wait_keycloak
         wb bash /devenv/smoke-test.sh
@@ -130,7 +148,7 @@ case $cmd in
         done
         ;;
     all)
-        "$0" up && "$0" build && "$0" data && "$0" scan && "$0" collect && "$0" test && "$0" webui-test
+        "$0" up && "$0" build && "$0" data && "$0" scan && "$0" collect && "$0" jobstats && "$0" test && "$0" webui-test
         ;;
     sql)
         compose exec workbench mysql -h mariadb -u robinhood -probinhood robinhood_dev

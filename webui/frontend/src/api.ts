@@ -116,6 +116,34 @@ async function get<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+export type TriageWindow = "15m" | "1h" | "6h" | "24h";
+export type TriageSort = "md" | "io";
+export interface JobFigures {
+  md_ops: number; read_bytes: number; write_bytes: number; read_ops: number; write_ops: number; other_ops: number;
+}
+export interface TriageJob extends JobFigures {
+  job_id: string; targets: number; top_ops: [string, number][];
+  parts: { process?: string; uid?: string; host?: string };
+  user: string | null; name: string | null; details: Record<string, unknown>;
+}
+export interface JobstatsSource {
+  source: string; last_snapshot: number | null; age_seconds: number | null; stale: boolean;
+  targets: string[]; jobs: number; error: string | null;
+}
+export interface Triage {
+  window: TriageWindow;
+  jobstats: { configured: false } | {
+    configured: true; source: "spool" | "prometheus"; job_details: string; sources: JobstatsSource[];
+    window: number; step: number; now: number; as_of: number | null; totals: JobFigures;
+    jobs: TriageJob[]; targets: (JobFigures & { target: string; jobs: number })[];
+    series: (JobFigures & { t: number })[];
+  };
+  robinhood: {
+    changelog?: Status["changelog"]; last_scan?: Status["last_scan"];
+    recent: { as_of: number; band: string; owners: { user: string; name: string | null; files: number; bytes: number }[] } | null;
+  };
+}
+
 export const api = {
   me: () => get<Me>("/me"),
   status: () => get<Status>("/status"),
@@ -134,6 +162,7 @@ export const api = {
   coldDirs: (olderThan: "1y" | "3y") => get<{ as_of: number; directories: DirTotals[] }>(`/cold/directories?older_than=${olderThan}`),
   coldOwners: (olderThan: ColdAge) => get<ColdOwners>(`/cold/owners?older_than=${olderThan}`),
   coldCsvUrl: (olderThan: ColdAge) => `/api/v1/cold/owners.csv?older_than=${olderThan}`,
+  triage: (window: TriageWindow, sort: TriageSort) => get<Triage>(`/triage?window=${window}&sort=${sort}`),
 };
 
 /** The collector's six age bands, grouped into the four shown in charts

@@ -16,7 +16,7 @@
 
 Name:           lamplighter-webui
 Version:        0.1.0
-Release:        1%{?dist}
+Release:        2%{?dist}
 Summary:        Web UI and monitoring API for Lamplighter
 License:        GPL-2.0-or-later
 URL:            https://github.com/jonathanmills/robinhood
@@ -57,6 +57,9 @@ cp -a frontend-dist %{buildroot}%{_datadir}/lux-webui/frontend
 install -D -m 0644 packaging/lux-webui.service           %{buildroot}%{_unitdir}/lux-webui.service
 install -D -m 0644 packaging/lux-collector.service %{buildroot}%{_unitdir}/lux-collector.service
 install -D -m 0644 packaging/lux-collector.timer   %{buildroot}%{_unitdir}/lux-collector.timer
+install -D -m 0644 packaging/lux-jobstats.service  %{buildroot}%{_unitdir}/lux-jobstats.service
+install -D -m 0644 packaging/lux-jobstats.timer    %{buildroot}%{_unitdir}/lux-jobstats.timer
+install -d %{buildroot}%{_localstatedir}/spool/lux-jobstats
 install -D -m 0644 packaging/lux-webui.sysusers          %{buildroot}%{_sysusersdir}/lux-webui.conf
 install -D -m 0640 packaging/config.yaml.example         %{buildroot}%{_sysconfdir}/lux-webui/config.yaml
 # Templates are regular files, not %%doc: minimal installs skip documentation.
@@ -67,13 +70,16 @@ install -D -m 0644 packaging/config.yaml.example         %{buildroot}%{_datadir}
 getent group lux-webui >/dev/null || groupadd -r lux-webui
 getent passwd lux-webui >/dev/null || \
     useradd -r -g lux-webui -d /var/lib/lux-webui -s /sbin/nologin -c "Lamplighter web UI" lux-webui
+# Accounts that deliver jobstats snapshots join lux-jobstats, never lux-webui.
+getent group lux-jobstats >/dev/null || groupadd -r lux-jobstats
+id -nG lux-webui | grep -qw lux-jobstats || usermod -a -G lux-jobstats lux-webui
 exit 0
 
 %post
-%systemd_post lux-webui.service lux-collector.timer
+%systemd_post lux-webui.service lux-collector.timer lux-jobstats.timer
 
 %preun
-%systemd_preun lux-webui.service lux-collector.service lux-collector.timer
+%systemd_preun lux-webui.service lux-collector.service lux-collector.timer lux-jobstats.service lux-jobstats.timer
 
 %postun
 %systemd_postun_with_restart lux-webui.service
@@ -86,10 +92,17 @@ exit 0
 %{_unitdir}/lux-webui.service
 %{_unitdir}/lux-collector.service
 %{_unitdir}/lux-collector.timer
+%{_unitdir}/lux-jobstats.service
+%{_unitdir}/lux-jobstats.timer
+# setgid: delivered files stay group lux-jobstats
+%dir %attr(2770,lux-webui,lux-jobstats) %{_localstatedir}/spool/lux-jobstats
 %{_sysusersdir}/lux-webui.conf
 %dir %attr(0750,root,lux-webui) %{_sysconfdir}/lux-webui
 %config(noreplace) %attr(0640,root,lux-webui) %{_sysconfdir}/lux-webui/config.yaml
 
 %changelog
+* Fri Nov 27 2026 Jonathan Mills - 0.1.0-2
+- lux-jobstats service and timer, and the jobstats spool directory.
+
 * Thu Nov 26 2026 Jonathan Mills - 0.1.0-1
 - First package: back end, front end, collector timer, nginx example.

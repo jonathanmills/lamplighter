@@ -90,6 +90,7 @@ services:
       - ../frontend/dist:/srv/frontend:ro   # built by the frontend service
       - .:/devenv:ro
       - ./.certs:/certs:ro
+      - lux-jobstats-spool:/var/spool/lux-jobstats
     networks:
       default:
         aliases: [webui.test]
@@ -134,3 +135,4 @@ volumes:
   lux-db:
   lux-build:
   lux-node-modules:
+  lux-jobstats-spool:

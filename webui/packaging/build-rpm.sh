@@ -28,7 +28,7 @@ rm -rf ".build/$name/backend/tests" ".build/$name/backend/.pytest_cache"
 find ".build/$name/backend" -name __pycache__ -prune -exec rm -rf {} +
 cp -a "$webui/frontend/dist" ".build/$name/frontend-dist"
 mkdir -p ".build/$name/packaging"
-cp README.md config.yaml.example nginx-lux-webui.conf lux-webui*.service lux-collector.timer \
+cp README.md config.yaml.example nginx-lux-webui.conf lux-*.service lux-*.timer \
    lux-webui.sysusers ".build/$name/packaging/"
 cp lamplighter-webui.spec "$webui/LICENSE" ".build/$name/"
 # no macOS metadata ("._*" files): rpmbuild would see two spec files

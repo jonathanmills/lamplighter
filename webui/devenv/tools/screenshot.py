@@ -20,6 +20,9 @@ SHOTS = [
     (None, "/auth/login", "dark", 1440, "login"),
     (None, "/auth/login", "dark", 400, "login-phone"),
     ("dave", "/", "dark", 1440, "overview-dark"),
+    ("dave", "/triage", "dark", 1440, "triage-dark"),
+    ("dave", "/triage?sort=io&window=6h", "light", 1440, "triage-light-io"),
+    ("dave", "/triage", "dark", 400, "triage-phone"),
     ("dave", "/", "light", 1440, "overview-light"),
     ("dave", "/", "dark", 1000, "overview-medium"),
     ("dave", "/", "dark", 400, "overview-phone"),
@@ -94,7 +97,23 @@ def main() -> int:
             page.screenshot(path=str(OUT / f"{name}.png"), full_page=True)
             # Layout check: the page body must never scroll sideways.
             if page.evaluate("document.documentElement.scrollWidth > window.innerWidth"):
-                errors.append(f"{name}: horizontal page overflow at {width}px")
+                # Name the outermost elements that stick out (not those inside
+                # a container that scrolls sideways, which is allowed).
+                culprits = page.evaluate("""() => {
+                  const w = window.innerWidth, out = [];
+                  const scrolls = (el) => { for (let p = el.parentElement; p; p = p.parentElement)
+                    if (getComputedStyle(p).overflowX !== 'visible') return true; return false; };
+                  for (const el of document.querySelectorAll('body *')) {
+                    if (el.getBoundingClientRect().right > w + 1 && !scrolls(el)
+                        && !(el.parentElement && el.parentElement.getBoundingClientRect().right > w + 1)) {
+                      out.push(el.tagName.toLowerCase() + (el.className && typeof el.className === 'string'
+                        ? '.' + el.className.trim().split(/\\s+/).join('.') : ''));
+                      if (out.length >= 3) break;
+                    }
+                  }
+                  return out;
+                }""")
+                errors.append(f"{name}: horizontal page overflow at {width}px: {', '.join(culprits) or '?'}")
             ctx.close()
         browser.close()
     for e in errors:

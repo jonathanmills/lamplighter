@@ -13,6 +13,7 @@ import Directory from "./pages/Directory";
 import AuditLog from "./pages/AuditLog";
 import Access from "./pages/Access";
 import Browse from "./pages/Browse";
+import Triage from "./pages/Triage";
 import { ComingSoon, Forbidden, NotFound } from "./pages/States";
 
 const MeContext = createContext<Me | null>(null);
@@ -97,6 +98,7 @@ function Page({ item }: { item: NavItem }) {
   if (item.path === "/admin/audit") return <AuditLog />;
   if (item.path === "/admin/access") return <Access />;
   if (item.path === "/browse") return <Browse />;
+  if (item.path === "/triage") return <Triage />;
   return <ComingSoon item={item} />;
 }
 

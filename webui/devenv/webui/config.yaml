@@ -56,6 +56,14 @@ store:
 collector:
   keep_runs: 90
 
+# Lustre jobstats for triage. The dev spool is filled by
+# 'devenv.sh jobstats' (tools/gen_jobstats.py) with simulated servers.
+jobstats:
+  source: spool
+  spool:
+    directory: /var/spool/lux-jobstats
+  stale_after_seconds: 300
+
 monitoring:
   enabled: true
   audience: lux-webui
