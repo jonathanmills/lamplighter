@@ -117,3 +117,4 @@ webui/checkmk/dist/
 webui/design/logo/work/
 webui/packaging/dist/
 webui/packaging/.build/
+.idea/
