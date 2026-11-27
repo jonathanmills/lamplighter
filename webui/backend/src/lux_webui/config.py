@@ -141,6 +141,9 @@ class CollectorConfig(BaseModel):
     # Audit events older than this are deleted from the database copy
     # (journald keeps its own retention).
     audit_retention_days: int = 400
+    # Entries and bytes per Robinhood fileclass and policy status: one more
+    # GROUP BY pass over ENTRIES per run (Policies page, Checkmk services).
+    policy_counts: bool = True
 
 
 class JobstatsSpool(BaseModel):

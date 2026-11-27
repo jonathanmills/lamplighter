@@ -28,6 +28,7 @@ from sqlalchemy.engine import Connection, Engine
 
 from .config import Settings, load_settings
 from .db import make_engine
+from .policies import collect_counts
 from .rollup import compute as compute_rollups
 from .store import migrate
 
@@ -76,7 +77,11 @@ def _age_histogram(src: Connection, now: int, max_seconds: int) -> list[dict]:
 
 
 def _acct_snapshot(src: Connection) -> list[dict]:
-    rows = src.execute(text("SELECT uid, gid, type, count, size, blocks FROM ACCT_STAT")).all()
+    # Summed: once a site defines policies with status managers, Robinhood
+    # adds their status columns to ACCT_STAT's key (e.g. alert_status), so
+    # one owner, group and type can span several rows.
+    rows = src.execute(text("SELECT uid, gid, type, SUM(count), SUM(size), SUM(blocks) FROM ACCT_STAT "
+                            "GROUP BY uid, gid, type")).all()
     return [{"uid": _s(u), "gid": _s(g), "type": _s(t), "n": int(n or 0),
              "b": int(b or 0), "bl": int(bl or 0)} for u, g, t, n, b, bl in rows]
 
@@ -111,6 +116,7 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
             acct = _acct_snapshot(src)
             fs_path = src.execute(text("SELECT value FROM VARS WHERE varname = 'FS_Path'")).scalar()
             dirs = compute_rollups(src, now, settings.collector.rollup_depth, _s(fs_path or "/"))
+            classes = collect_counts(src) if settings.collector.policy_counts else []
         files = sum(r["files"] for r in hist)
         with store.begin() as c:
             if hist:
@@ -128,10 +134,15 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
                     f"cold_3y_bytes) VALUES ({run_id}, :dir_id, :parent_dir, :depth, :path, :owner, "
                     ":top_owner, :top_owner_bytes, :subdirs, :files, :bytes, :newest_access, "
                     ":oldest_access, :cold_1y_bytes, :cold_3y_bytes)"), dirs)
+            if classes:
+                c.execute(text(
+                    "INSERT INTO policy_counts (run_id, fileclass, status_field, status_value, entries, bytes) "
+                    f"VALUES ({run_id}, :fileclass, :field, :value, :entries, :bytes)"), classes)
             c.execute(text("UPDATE collector_runs SET status = 'ok', finished_at = NOW(3), "
                            "entries = :n WHERE id = :id"), {"n": files, "id": run_id})
-        log.info("run %d ok: %d files in %d age rows, %d acct rows, %d directories, %.1fs",
-                 run_id, files, len(hist), len(acct), len(dirs), time.monotonic() - t0)
+        log.info("run %d ok: %d files in %d age rows, %d acct rows, %d directories, "
+                 "%d fileclass/status rows, %.1fs",
+                 run_id, files, len(hist), len(acct), len(dirs), len(classes), time.monotonic() - t0)
     except Exception as exc:
         with store.begin() as c:
             c.execute(text("UPDATE collector_runs SET status = 'failed', finished_at = NOW(3), "

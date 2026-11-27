@@ -52,6 +52,7 @@ usage: ./devenv.sh COMMAND
   build     build Robinhood (POSIX mode) from the repository
   data      (re)generate the sample file tree   [--scale N]
   scan      run a full Robinhood scan of the sample tree into MariaDB
+  classify  run the classifier alert policy once (fileclasses, alert_status)
   collect   run the web UI collector once (age histogram, usage snapshot)
   jobstats  write simulated Lustre jobstats to the spool and run lux-jobstats
   prometheus       start the optional Prometheus with a simulated jobstats exporter
@@ -90,10 +91,16 @@ case $cmd in
         ;;
     scan)
         wb env LD_LIBRARY_PATH=/build/lamplighter/src/modules/.libs \
-            /build/lamplighter/src/robinhood/lamplighter --scan --once \
+            /build/lamplighter/src/robinhood/lamplighter --scan --once --alter-db \
             -f /devenv/engine/lamplighter.conf
         wb mysql -h mariadb -u robinhood -probinhood robinhood_dev -e \
             "SELECT COUNT(*) AS entries FROM ENTRIES; SELECT uid, type, count, size FROM ACCT_STAT ORDER BY size DESC;"
+        ;;
+    classify)
+        # the classifier alert policy: marks entries alert/clear (alert_status)
+        wb env LD_LIBRARY_PATH=/build/lamplighter/src/modules/.libs \
+            /build/lamplighter/src/robinhood/lamplighter --run="alert(all)" --once \
+            -f /devenv/engine/lamplighter.conf
         ;;
     collect)
         compose exec -T webui lux-collector run
@@ -157,7 +164,7 @@ PY
         done
         ;;
     all)
-        "$0" up && "$0" build && "$0" data && "$0" scan && "$0" collect && "$0" jobstats && "$0" test && "$0" webui-test
+        "$0" up && "$0" build && "$0" data && "$0" scan && "$0" classify && "$0" collect && "$0" jobstats && "$0" test && "$0" webui-test
         ;;
     sql)
         compose exec workbench mysql -h mariadb -u robinhood -probinhood robinhood_dev

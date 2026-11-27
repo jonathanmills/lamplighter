@@ -155,3 +155,30 @@ def recent_changes(engine: Engine, limit: int = 15) -> dict | None:
             "GROUP BY uid ORDER BY SUM(bytes) DESC LIMIT :n"), {"r": latest[0], "n": limit}).all()
     return {"as_of": latest[1], "band": "< 7 days",
             "owners": [{"user": u, "files": int(f), "bytes": int(b)} for u, f, b in rows]}
+
+
+def policy_counts(engine: Engine) -> dict | None:
+    """Fileclass and policy-status counts from the newest successful run."""
+    from .policies import ALL
+    with engine.connect() as c:
+        latest = _latest_ok(c)
+        if latest is None:
+            return None
+        rows = c.execute(text(
+            "SELECT fileclass, status_field, status_value, entries, bytes FROM policy_counts "
+            "WHERE run_id = :r"), {"r": latest[0]}).all()
+    classes: dict[str, dict] = {}
+    policies: dict[str, dict] = {}
+    for fc, field, value, n, b in rows:
+        n, b = int(n), int(b)
+        if fc == ALL:
+            policy = field[:-len("_status")] if field.endswith("_status") else field
+            policies.setdefault(policy, {"field": field, "statuses": {}})["statuses"][value] = {"entries": n, "bytes": b}
+            continue
+        cls = classes.setdefault(fc, {"entries": 0, "bytes": 0, "statuses": {}})
+        if field == "":
+            cls["entries"], cls["bytes"] = n, b
+        else:
+            policy = field[:-len("_status")] if field.endswith("_status") else field
+            cls["statuses"].setdefault(policy, {})[value] = n
+    return {"run_id": latest[0], "as_of": latest[1], "fileclasses": classes, "policies": policies}
