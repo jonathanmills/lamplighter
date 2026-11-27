@@ -1,0 +1,2 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+u rbh-webui - "Robinhood web UI" /var/lib/rbh-webui /sbin/nologin

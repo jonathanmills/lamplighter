@@ -45,7 +45,6 @@
 %endif
 
 # target install dir for web gui
-%define installdir_www  /var/www
 
 ###### end of macro definitions #####
 
@@ -162,20 +161,6 @@ Group: Applications/System
 This RPM provides an admin/config helper for Robinhood PolicyEngine (command rbh-config).
 
 
-%package webgui
-Summary: Web interface to vizualize filesystems stats
-Group: Applications/System
-Requires: php, php-pdo
-%if 0%{?rhel} <= 7
-Requires: php-mysql
-%else
-Requires: php-mysqlnd
-%endif
-
-%description webgui
-Web interface to vizualize filesystems stats.
-This uses robinhood database to display misc. user and group stats.
-
 
 %if %{with recovtools}
 %package recov-tools
@@ -237,13 +222,6 @@ make install DESTDIR=$RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
 install -m 644 scripts/sysconfig_robinhood $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/robinhood
 
-%if %{with common_rpms}
-mkdir -p $RPM_BUILD_ROOT/%{installdir_www}/robinhood
-cp -r web_gui/gui_v3/* $RPM_BUILD_ROOT/%{installdir_www}/robinhood/.
-cp    web_gui/gui_v3/api/.htaccess $RPM_BUILD_ROOT/%{installdir_www}/robinhood/api/.
-mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/httpd/conf.d/
-install -m 644 web_gui/robinhood.conf $RPM_BUILD_ROOT/%{_sysconfdir}/httpd/conf.d/.
-%endif
 
 rm -f $RPM_BUILD_ROOT/%{_libdir}/robinhood/librbh_mod_*.a
 rm -f $RPM_BUILD_ROOT/%{_libdir}/robinhood/librbh_mod_*.la
@@ -366,14 +344,6 @@ rm -rf $RPM_BUILD_ROOT
 %{_sbindir}/gen_lov_objid
 %{_sbindir}/ost_fids_remap
 %endif
-
-%files webgui
-
-# set apache permissions
-%defattr(640, root, apache, 750)
-%{installdir_www}/robinhood
-%config(noreplace) %{_sysconfdir}/httpd/conf.d/robinhood.conf
-
 
 %files tests
 %defattr(-,root,root,-)
