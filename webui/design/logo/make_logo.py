@@ -287,3 +287,34 @@ def build() -> None:
 
 if __name__ == "__main__" and "--build" in sys.argv:
     build()
+
+
+def social_preview() -> None:
+    """GitHub social preview card: 1280x640, the lamp on the aubergine gradient."""
+    from PIL import ImageDraw, ImageFont
+    W, H = 1280, 640
+    card = Image.new("RGB", (W, H))
+    d = ImageDraw.Draw(card)
+    a, b = (0x77, 0x21, 0x6F), (0x2C, 0x00, 0x1E)          # the login page's aubergine
+    for x in range(W):                                    # diagonal-ish gradient
+        for y in range(0, H, 4):
+            t = min(1.0, max(0.0, (x / W) * 0.75 + (y / H) * 0.25))
+            card.paste(tuple(int(a[i] + (b[i] - a[i]) * t) for i in range(3)), (x, y, x + 1, y + 4))
+    lamp = tinted(shape_mask(trim_post(cutout())), rgb("#7FB8E1"))
+    lh = 520
+    lamp = lamp.resize((int(lamp.width * lh / lamp.height), lh), Image.LANCZOS)
+    card.paste(lamp, (150, (H - lh) // 2), lamp)
+    fonts = ["/usr/share/fonts/truetype/ubuntu/Ubuntu-M.ttf", "/usr/share/fonts/truetype/ubuntu/Ubuntu-R.ttf",
+             "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf"]
+    font = lambda i, s: ImageFont.truetype(next(f for f in fonts[i:] if Path(f).exists()), s)
+    x0 = 150 + lamp.width + 80
+    d.text((x0, 205), "Lamplighter", fill=(0xDF, 0xDB, 0xD2), font=font(0, 92))
+    d.text((x0, 330), "A fork of the Robinhood Policy Engine", fill=(0xC9, 0xB8, 0xC4), font=font(1, 34))
+    d.text((x0, 378), "for Lustre and POSIX filesystems", fill=(0xC9, 0xB8, 0xC4), font=font(1, 34))
+    d.text((x0, 450), "lux-find · lux-du · lux-report · web UI", fill=(0x7F, 0xB8, 0xE1), font=font(1, 28))
+    card.save(DIST / "lamplighter-social-preview.png", optimize=True)
+    print("wrote dist/lamplighter-social-preview.png")
+
+
+if __name__ == "__main__" and "--social" in sys.argv:
+    social_preview()
