@@ -1,195 +1,162 @@
-## ![robinhood logo](http://robinhood.sourceforge.net/images/logo_rh.gif) Robinhood Policy Engine
-                                                                                 
-Robinhood Policy Engine is a versatile tool to manage contents of large file systems. It maintains a replicate of filesystem medatada in a database that can be queried at will. It makes it possible to schedule mass action on filesystem entries by defining attribute-based policies, provides fast 'find' and 'du' enhanced clones, gives to administrators an overall view of filesystem contents through its web UI and command line tools.
-It supports any POSIX filesystem and implements advanced features for  [Lustre](https://www.lustre.org) filesystems (list/purge files per OST or pool, read MDT changelogs...)
-                                                                                 
-Originally developped for HPC, it has been designed to perform all its tasks in parallel, so it is particularly adapted for running on large filesystems with millions of entries and petabytes of data. But of course, you can take benefits of all its features for managing smaller filesystems.
-                                                                                 
-Robinhood is distributed under the [CeCILL-C](http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html) license, which is a French transposition of the [GNU LGPL](http://www.gnu.org/licenses/lgpl.html) and is fully LGPL-compatible.
-                                                                                 
-### Main features                                                                
-* Policy Engine: schedule actions on filesystem entries according to admin-defined criteria, based on entry attributes.
-* User/group usage accounting, including file size profiling.                    
-* Fast 'du' and 'find' clones.                                                   
-* Customizable alerts on filesystem entries.                                     
-* Aware of Lustre OSTs, pools and projects.                                      
-                                                                                 
-For more information, refer to the [online documentation](https://github.com/cea-hpc/robinhood/wiki).
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="webui/design/logo/dist/lamplighter-blue-on-dark.png">
+    <img src="webui/design/logo/dist/lamplighter-blue-on-light.png" alt="Lamplighter logo: a Victorian gas street lamp" height="200">
+  </picture>
+</p>
 
-I - License
-===========
+<h1 align="center">Lamplighter</h1>
 
-Copyright (C) 2004-2017 CEA/DAM.
-Copyright 2013-2016 Cray Inc. All Rights Reserved.
+<p align="center"><em>Shedding light on your Lustre filesystem.</em></p>
 
-This program is free software; you can redistribute it and/or modify
-it under the terms of the CeCILL-C License.
+Lamplighter is a policy engine and metadata mirror for large Lustre and POSIX filesystems. It keeps a copy of a filesystem's metadata in a MariaDB or MySQL database, runs attribute-based policies over it (purge, archive, rmdir, checksum and more), provides fast `find` and `du` tools, and shows administrators and data managers what is on their filesystem, who owns it, and how old it is.
 
-The fact that you are presently reading this means that you have had
-knowledge of the CeCILL-C license (http://www.cecill.info) and that you
-accept its terms.
+**Lamplighter is a fork of the [Robinhood Policy Engine](https://github.com/cea-hpc/robinhood)**, created by CEA in France. The engine at its heart is Robinhood's, and we intend to keep it that way.
 
-II - Compiling
-==============
+> **Status: early work in progress.** The rename has only just begun. The code, commands and packages still use Robinhood's names (`robinhood`, `rbh-find`, `rbh-report`…). The new web UI and Checkmk plugin work in the development environment, but nothing here is released yet. See [Status](#status).
 
-2.1 - From source tarball
--------------------------
+## Standing on the shoulders of Robinhood
 
-It is advised to build RobinHood on your target system, to ensure the best
-compatibility with your Lustre and MySQL versions.
+Lamplighter exists because Robinhood is excellent.
 
-Build requirements: glib2-devel, libattr-devel, mysql-devel or mariadb-devel,
-s-nail, bison, flex, jemalloc, jemalloc-devel.
-For lustre support: lustre or lustre-client, lustre-devel (Lustre >= 2.15)
-For running RobinHood's CI: lustre-tests (Lustre >= 2.15)
+Robinhood was written at **CEA** (the French Alternative Energies and Atomic Energy Commission), at CEA/DAM, to look after some of the largest filesystems in the world. Its authors designed it from the start to do everything in parallel, so it scans hundreds of millions of entries, follows the Lustre MDT changelog in near real time, and applies policies to petabytes of data. For nearly two decades (its copyright notices start in 2004) it has quietly done this job at HPC centres around the world, and it was given away under a free license for anyone to use.
 
-Unzip and untar the source distribution:
-```
-tar zxvf robinhood-3.x.x.tar.gz
-cd robinhood-3.x.x
-```
+Our thanks go first to **Thomas Leibovici**, Robinhood's principal author, whose hand is on most of its history. We also thank **Frank Zago** and **Davide Tacchella** of Cray, and **Dominique Martinet**, **Antoine Obert**, **Jerome Andrieu**, **Henri Doreau**, **Kilian Cavalotti**, **Quentin Bouget**, **Guillaume Courrier**, **Maxime Cottret**, **Aurelien Degremont** and every other one of Robinhood's more than forty named contributors. Their work is preserved here in full: this repository carries Robinhood's complete git history, and every commit keeps its author.
 
-Configure and build:
-```
-./configure
-make rpm
-```
+Robinhood's copyright notices (CEA/DAM, Cray Inc.) and its CeCILL-C license stay in place on all the code they cover. Fixes we make that would help Robinhood's users too are offered back to CEA.
 
-RPMs are generated in the 'rpms/RPMS/*arch*' directory.
+## Our promise: Lamplighter stays compatible with Robinhood
 
-2.2 - From git repository
--------------------------
+As a firm project goal, and out of respect for Robinhood, **a site running Robinhood can try Lamplighter, and go back, without converting anything.**
 
-Install git, and autotools stuff:
-```
-yum install git automake autoconf libtool
-```
+- **The database is unchanged.** Lamplighter uses Robinhood 3's database schema and data structures exactly as they are: the same tables, columns, triggers and stored functions. The same configuration produces the same schema in either program. We will not change them.
+- **Configuration files work unchanged.** Copy `/etc/robinhood.d/my-lustre-fs.conf` to `/etc/lamplighter.d/my-lustre-fs.conf` and it works: same syntax, same policies, same module names, same standard include files.
+- **Renamed helper programs are handled for you.** If a policy action runs a helper that Lamplighter renamed, Lamplighter uses the new name and logs a clear warning, and `lux-config check` helps you tidy your configuration once.
+- **Old command names are available.** The optional `lamplighter-compat` package provides `rbh-find`, `rbh-report` and the other old names, so existing scripts and cron jobs keep running.
 
-Retrieve robinhood sources
-```
-git clone https://github.com/cea-hpc/robinhood.git
-cd robinhood
-git checkout master *(or other branch)*
+### Trying Lamplighter on a copy of your Robinhood database
+
+1. `mysqldump` your Robinhood database and restore it on a test node: a Lustre client configured like your production Robinhood host, with the same filesystem mounted.
+2. Install Lamplighter, copy your configuration file into `/etc/lamplighter.d/`, and point it at the restored database.
+3. Explore with the read-only tools and the web UI.
+
+> [!WARNING]
+> **The test node shares your production filesystem.** Never read the MDT changelog with your production Robinhood's reader ID (usually `cl1`): reading clears records, and your production Robinhood would silently miss them. And never run real policies on the test node: a purge there deletes **real files**. Use dry-run modes only.
+
+The full contract, including exactly how renamed commands in configuration files are handled, is in [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md).
+
+## Why a new name?
+
+**Because Lamplighter is going in its own direction, and that shouldn't be blamed on Robinhood.** A fork that keeps its parent's name causes confusion: users can't tell which project a bug report, a package or a piece of advice belongs to. Robinhood's name and reputation belong to CEA and its community. A new name keeps that clear, and lets Robinhood's users choose either project knowing exactly what each one is.
+
+**And because a new name lets us say what the tool is for.** Today "Robinhood" first brings to mind a stock-trading app. We wanted a name that carries the idea at the heart of the tool: **light**. Lustre means shine. The real value of this software is that it *illuminates* a filesystem: who owns what, how old it is, where the space is going, and what can safely go.
+
+**The lamplighter** was the person who walked the streets at dusk lighting the lamps, so people could see their way, and put them out again at dawn. The software does the same rounds:
+
+| The lamplighter… | Lamplighter… |
+|---|---|
+| walks the same rounds every night | scans the filesystem and follows the Lustre changelog |
+| lights the lamps so people can see the street | gives admins reports, `find`/`du` tools and a web UI to see the filesystem |
+| puts out the lamps at dawn | runs purge policies to clear what is no longer needed |
+| tends the city's lights | looks after shared storage |
+
+There is a French connection too: the lamplighter (*l'allumeur de réverbères*) is one of the best-loved characters in Saint-Exupéry's *Le Petit Prince*, a fitting nod to Robinhood's French origins.
+
+**The commands use the prefix `lux-`**, Latin for *light*: `lux-find`, `lux-du`, `lux-report`. The daemon is `lamplighter`, run as `lamplighter@<fsname>.service`.
+
+**And a second story, from Rome:** once the census of the whole people was complete, a censor performed the *lustrum*, the purification of the people. First you count everything, then you purify. Lamplighter works the same way: it takes a census of the filesystem into a database, then runs policies over what it found. *Lustrum* is also an ancestor of the word "lustre". The whole naming discussion is in [doc/NAMING.md](doc/NAMING.md).
+
+## What Lamplighter sets out to do
+
+### Keep the engine, modernize everything around it
+
+Robinhood's scanner, changelog reader, pipeline and policy engine are proven at very large scale. We trust them, and we change them only when there is no other way. Lamplighter's work happens *around* the engine, in a new web interface, integrations, packaging and tooling, so improvements never put the core at risk.
+
+Lamplighter continues the **Robinhood 3** line, on **MariaDB and MySQL**. Administrators who know these databases well can keep using what they know, at the scale of tens of petabytes.
+
+### A web interface that a hardened site can actually run
+
+Robinhood's web GUI is written in PHP, and many sites, government ones especially, do not allow PHP on their servers. Lamplighter replaces it entirely:
+
+- **No PHP, anywhere.** A Python (FastAPI) back end and a React front end, packaged as an RPM for Rocky Linux / RHEL 9, behind nginx.
+- **It reads Robinhood's database as it is**, with no engine changes. A separate collector does the heavy aggregation, once per run, into the UI's own schema, so the interface stays fast however large the filesystem is.
+- **Information-dense and calm to look at.** Dashboards, sortable tables and drill-down from filesystem to user to directory. Dark-first, with a light theme that has no glaring white. Every view is a whole page with its own URL. No HTML frames, ever.
+
+### Real users, real identities, real permissions
+
+A tool that shows who owns every file on a shared filesystem needs proper access control, from the start:
+
+- **Single sign-on with OpenID Connect**, against Keycloak, or an optional direct LDAP bind.
+- **Identity and groups come from your directory:** LDAP over TLS only, with configurable base DNs and filters, and both RFC 2307 and RFC 2307bis.
+- **Permissions are granted to roles, and roles to LDAP groups.** They are enforced in the API, not just hidden in the interface, and every sign-in and sensitive view is audited.
+
+### Insight operations staff need
+
+- **Cold data, for data managers:** the oldest, largest and least-used files and directories, and the **owners to contact**, as candidates to purge or move to cold storage such as an archive tier or cloud cold storage. This supports data-retention mandates without anyone writing SQL.
+- **"Why is the cluster slow?" triage** (planned): what data is hot, by user, group and directory, correlated with **Slurm** jobs. Robinhood sees only metadata, and Lustre updates access times lazily, so real per-job I/O will come from **Lustre jobstats** shown alongside it.
+
+### One alerting tool: yours
+
+**Lamplighter never alerts.** No alert mail, no syslog alerts, no red-amber-green states in the interface. Monitoring and alerting belong in your monitoring system, and two alerting systems are one too many.
+
+Instead, Lamplighter exposes read-only metrics (its own health, scan and changelog status, usage, and match counts per policy and fileclass) through a monitoring API. A **Checkmk** plugin (special agent, checks and rulesets for Checkmk 2.5) polls that API from the Checkmk server, with nothing installed on the Lamplighter host. All thresholds live in Checkmk. Robinhood's alert policies are still useful as classifiers, whose counts Checkmk can watch.
+
+### Modern, maintainable tooling
+
+Perl build helpers are being replaced with Python, and the kernel's `checkpatch.pl` with `clang-format`. Everything is packaged and tested in a reproducible container development environment (Rocky Linux 9, MariaDB, OpenLDAP and Keycloak, all with TLS).
+
+## Status
+
+| Area | Where it stands |
+|---|---|
+| Policy engine, scanner, changelog reader, `find`/`du`/`report` tools | Robinhood 3, working, unchanged. Still under Robinhood's names. |
+| Rename to Lamplighter (`lux-*`, `lamplighter`, `/etc/lamplighter.d`, packages) | Designed ([doc/COMPATIBILITY.md](doc/COMPATIBILITY.md)), not yet done |
+| Web UI: sign-in (OIDC and LDAP), LDAP groups and ACLs, audit log | Working in the development environment |
+| Web UI: overview, users and groups, cold data, directory browsing | Working in the development environment |
+| Web UI: slowdown triage with Slurm and jobstats | Planned |
+| Checkmk 2.5 plugin | Built and tested against Checkmk's APIs, not yet run on a live site |
+| RPM packaging for Rocky Linux / RHEL 9 | On the `feature/packaging` branch |
+| PHP web GUI | Removed from the build. Its sources are still in the tree, to be deleted later. |
+
+The design for everything web-related is in [doc/webui-design.md](doc/webui-design.md).
+
+## Getting started
+
+Lamplighter has no release yet. To build it today, the Robinhood instructions apply unchanged, with Robinhood's names: see [doc/ROBINHOOD-README.md](doc/ROBINHOOD-README.md). In short, on Rocky Linux / RHEL 9:
+
+```sh
 sh autogen.sh
+./configure            # --disable-lustre for a POSIX-only build
+make rpm               # RPMs in rpms/RPMS/<arch>
 ```
 
-Then refer to section 2.1 for next compilation steps.
+To work on the web UI, the Checkmk plugin or the packaging, use the container development environment (it also runs on macOS with Podman):
 
-2.3 - Build using src rpm
----------------------------
-
-### 2.3.1 - Creating src rpm
-Only requirements: rpm-build, gcc, flex, bison
-
-To create src rpm on a host with minimal requirements, run:
-```
-./configure --enable-dist
-make srpm
+```sh
+webui/devenv/devenv.sh all
 ```
 
-### 2.3.2 - Building from src rpm
-By default, the src rpm builds robinhood for POSIX filesystems:
-```
-rpmbuild --rebuild robinhood-3.0*.src.rpm
-```
+See [webui/devenv/README.md](webui/devenv/README.md).
 
-To build robinhood binary RPM for a Lustre filsystem, run:
-```
-rpmbuild --rebuild robinhood-3.0*.src.rpm --with lustre --define "lversion x.y"
-```
+## Repository layout
 
-where x.y is your target lustre version (e.g. 2.7).
+| Path | Contents |
+|---|---|
+| `src/` | The Robinhood engine, daemon and command-line tools (C) |
+| `webui/backend/` | Web UI back end and collector (Python, FastAPI) |
+| `webui/frontend/` | Web UI front end (React, TypeScript) |
+| `webui/checkmk/` | Checkmk 2.5 plugin |
+| `webui/packaging/` | RPM, systemd and nginx packaging for the web UI |
+| `webui/devenv/` | Container development and test environment |
+| `webui/design/` | Color palette and logo |
+| `doc/` | Design documents, the compatibility promise, the naming discussion and the original Robinhood README |
+| `tests/test_suite/` | Robinhood's integration tests |
 
-Note: if lustre-client is not installed on your target system, you can specify
-an alternative lustre package by defining "lpackage", e.g.
-```
-rpmbuild [...] --define "lpackage lustre"
-```
+## License
 
-Note: 'lversion' can be omitted, by it is strongly recommanded to prevent
-incompatibility issues between lustreapi versions.
+- **Code from Robinhood**, and changes to it, are under the **[CeCILL-C](http://www.cecill.info/licences/Licence_CeCILL-C_V1-en.html)** license, a French free-software license compatible with the GNU LGPL.
+  Copyright (C) 2004-2017 CEA/DAM. Copyright 2013-2016 Cray Inc. All Rights Reserved.
+- **New code under `webui/`** (the web UI, collector, Checkmk plugin and packaging) is under the **GNU General Public License, version 2 or later** ([webui/LICENSE](webui/LICENSE)). Each file carries an `SPDX-License-Identifier`.
+- **The logo** is derived from a photograph by Jonathan Mills, stylized with Google Gemini. See [webui/design/logo/README.md](webui/design/logo/README.md).
 
-III - Install
-=============
-
-For installing robinhood on your target system, install **robinhood-adm** RPM.
-It includes configuration helper for DB, changelogs, ...
-
-* For lustre filesystems install **robinhood-lustre** RPM.
-* For other filesystems install **robinhood-posix** RPM.
-
-IV - Database Configuration
-===========================
-
-Robinhood needs a MySQL database for storing information about files.
-This database can run on a different node from Robinhood daemon.
-
-* Install MySQL server on the machine (mysql-server and mysql packages).
-* Start the DB engine:
-    * systemctl start mariadb
-* Run the configuration helper script as root on the database host to create
-the database:
-```
-rbh-config create_db
-```
-
-* Write the DB password to a file with read access for root only (600)
-  e.g. to /etc/robinhood.d/.dbpassword
-
-Note: initially, the database schema is empty. Robinhood will create it the first time it is launched.
-
-V - Lustre 2.x Filesystems only: enabling changelogs
-====================================================
-For Lustre, you must register robinhood as a MDT changelog consumer.
-
-* Run the configuration helper script on Lustre MDS:
-```
-rbh-config enable_chglogs
-```
-
-  This registers a changelog consumer and activate required changelog records.
-
-Note: by default, the script checks for a 'cl1' consumer.
-If you need to register several changelog consumers on your file system,
-refer to lustre documentation.
-
-VI - Configuration file
-=======================
-Examples of config files are installed in /etc/robinhood.d/templates/
-
-You can also use the '--template' option to generate a documented configuration file template:
-```
-robinhood --template=<template_file>
-```
-
-For more details, refer to [Robinhood v3 admin guide](https://github.com/cea-hpc/robinhood/wiki/robinhood_v3_admin_doc).
-
-Note: by default, robinhood searches configuration files in "/etc/robinhood.d".
-
-VII - First run
-===============
-
-Even if your filesystem is empty, you need to perform an initial scan in order to initialize robinhood database.
-This prevents from having entries in filesystem that it wouldn't know about.
-```
-robinhood --scan --once
-```
-
-VIII - Start the daemon
-=======================
-* Configure per-filesystem daemon options in **/etc/sysconfig/robinhood.\<fsname\>**
-
-Example: to read lustre changelogs and run all policies:
-```
-RBH_OPT="--readlog --run=all"
-```
-
-Example: to regularly scan filesystem and run all policies:
-```
-RBH_OPT="--scan --run=all"
-```
-
-Start the daemon:
-```
-systemctl start robinhood@*fsname*
-```
+Lamplighter is an independent project. It is not affiliated with or endorsed by CEA, by the Robinhood project, or by Checkmk GmbH. *Lustre* is a trademark of its owner, and *Checkmk* is a trademark of Checkmk GmbH.
