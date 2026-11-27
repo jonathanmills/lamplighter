@@ -8,7 +8,7 @@ Lamplighter, a fork of the Robinhood Policy Engine (v3) by CEA: a C daemon plus 
 
 ## Fork goals
 
-- **Design for HPC scale.** Target sites run Lustre filesystems that will grow beyond 100 PB: plan for 5 to 20 billion entries per filesystem, several filesystems per site, and serious hardware. Judge every feature by its cost at that size (no full-table work on requests; collector work partitioned and parallel; storage that does not grow with jobs x targets x time), and do not claim scale without measurements. Known gaps and the plan are in `doc/webui-design.md` (Scale).
+- **Design for HPC scale.** Target sites run Lustre filesystems that will grow beyond 100 PB: plan for 5 to 20 billion entries per filesystem and serious hardware. One Lamplighter installation serves one filesystem (as Robinhood does); sites run one installation per filesystem. Judge every feature by its cost at that size (no full-table work on requests; collector work partitioned and parallel; storage that does not grow with jobs x targets x time), and do not claim scale without measurements. Known gaps and the plan are in `doc/webui-design.md` (Scale).
 This fork keeps the Robinhood v3 engine and its MariaDB backend, and modernizes everything around them:
 
 - **Leave the C engine alone.** The scanner, changelog reader, pipeline, policy engine and modules in `src/` are trusted as they are. Make changes outside `src/` where possible. If a C change seems unavoidable, raise it before making it.

@@ -312,13 +312,12 @@ webui/
 
 ## 8.5 Scale (target: beyond 100 PB)
 
-Target sites are HPC centres whose Lustre filesystems will grow beyond 100 PB: 5 to 20 billion entries per filesystem, several filesystems per site, and hardware to match. What holds today: live pages read ACCT_STAT and indexed NAMES links (cost grows with users and directories, not files); Browse and directory-scoped search are bounded; Checkmk reads pre-computed figures. What must change (in this order):
+Target sites are HPC centres whose Lustre filesystems will grow beyond 100 PB: 5 to 20 billion entries per filesystem, and hardware to match. **One Lamplighter installation serves one filesystem**, like Robinhood (one instance and database per filesystem); a site with several filesystems runs several installations, each a host in Checkmk. What holds today: live pages read ACCT_STAT and indexed NAMES links (cost grows with users and directories, not files); Browse and directory-scoped search are bounded; Checkmk reads pre-computed figures. What must change (in this order):
 
 1. **Scale tests.** A synthetic Robinhood database generator and timing harness: 10^7 to 10^8 entries in the dev environment, 10^9 and more on site hardware. No scale claim without a measurement.
 2. **Jobstats storage.** One row per job and per target per interval (not job x target), and downsampled roll-ups for older data. Job x target x minute is about 400 million rows a week at 2,000 jobs over 20 OSTs.
-3. **Multiple filesystems.** Robinhood runs one instance and database per filesystem; the web UI, collector, API and Checkmk services must handle several.
-4. **One collector pass, in parallel.** Today the collector makes three full passes over ENTRIES (age histogram, directory rollups, fileclass/status counts). Combine them, split by primary-key range across parallel workers, on a replica.
-5. **Replica indexes for whole-filesystem search.** Opt-in secondary indexes on the read replica only (the primary stays exactly as Robinhood made it), detected by the search API.
+3. **One collector pass, in parallel.** Today the collector makes three full passes over ENTRIES (age histogram, directory rollups, fileclass/status counts). Combine them, split by primary-key range across parallel workers, on a replica.
+4. **Replica indexes for whole-filesystem search.** Opt-in secondary indexes on the read replica only (the primary stays exactly as Robinhood made it), detected by the search API.
 
 If measurements call for it, an analytical copy of ENTRIES in MariaDB ColumnStore could make whole-filesystem aggregation take seconds.
 
