@@ -55,6 +55,7 @@ usage: ./devenv.sh COMMAND
   classify  run the classifier alert policy once (fileclasses, alert_status)
   collect   run the web UI collector once (age histogram, usage snapshot)
   jobstats  write simulated Lustre jobstats to the spool and run lamplighter-jobstats
+  docshots  render the README's screenshot gallery into doc/screenshots
   prometheus       start the optional Prometheus with a simulated jobstats exporter
   prometheus-down  stop it
   test      run the smoke test (LDAP, Keycloak, MariaDB/Robinhood)
@@ -152,6 +153,22 @@ PY
             mkdir -p ../checkmk/dist
             run_py313 "python /plugin/build_mkp.py /plugin/dist"
         fi
+        ;;
+    docshots)
+        # The README gallery: fresh sample data, then a fixed-size render of
+        # a few pages into doc/screenshots (committed).
+        "$0" collect >/dev/null && "$0" jobstats >/dev/null || exit 1
+        rm -rf .shots/docs
+        # one retry: headless Chromium can stall at start-up
+        for attempt in 1 2; do
+            docker run --rm --network lamplighter-dev_default --ipc=host -v "$PWD:/devenv" \
+                mcr.microsoft.com/playwright/python:v1.48.0-noble \
+                sh -c "pip install -q playwright==1.48.0 pillow && timeout 240 python /devenv/tools/screenshot.py --docs" && break
+            [[ $attempt == 2 ]] && exit 1
+            echo "docshots: attempt 1 failed or timed out; retrying" >&2
+        done
+        rm -rf ../../doc/screenshots && mkdir -p ../../doc/screenshots && cp .shots/docs/*.webp ../../doc/screenshots/
+        ls -la ../../doc/screenshots
         ;;
     shots)
         # Hard time limit and one retry: headless Chromium can stall at start-up.

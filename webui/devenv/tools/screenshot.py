@@ -5,6 +5,10 @@
 Run with ./devenv.sh shots. It signs in with the LDAP form as each test
 user, captures pages in both themes and at phone width, and reports any
 browser console errors (for example CSP violations).
+
+With --docs (./devenv.sh docshots) it renders the README gallery
+instead: DOC_SHOTS, a fixed 1440x900 window (not full pages), saved to
+/devenv/.shots/docs and copied to doc/screenshots by devenv.sh.
 """
 
 import sys
@@ -52,9 +56,31 @@ SHOTS = [
     ("alice", "/admin/access", "dark", 1440, "alice-forbidden"),
 ]
 
+# The README gallery (doc/screenshots): sample data only, no browser frame.
+DOC_SHOTS = [
+    ("dave", "/", "dark", 1440, "overview"),
+    ("dave", "/triage", "dark", 1440, "triage"),
+    ("carol", "/cold", "light", 1440, "cold-data"),
+    ("carol", "/usage", "dark", 1440, "users"),
+    ("carol", "/policies", "light", 1440, "policies"),
+    ("carol", "/search?owner=erin&min_size=21474836480&unit=GiB&type=file&go=1", "dark", 1440, "search"),
+    ("carol", "/browse?dir={projects}", "light", 1440, "browse"),
+    (None, "/auth/login", "dark", 1440, "sign-in"),
+]
+DOCS = "--docs" in sys.argv
+if DOCS:
+    SHOTS, OUT = DOC_SHOTS, OUT / "docs"
+
+
+def to_webp(png: Path) -> None:
+    """README images: WebP is much smaller than PNG at the same sharpness."""
+    from PIL import Image
+    Image.open(png).save(png.with_suffix(".webp"), "WEBP", quality=90, method=6)
+    png.unlink()
+
 
 def main() -> int:
-    OUT.mkdir(exist_ok=True)
+    OUT.mkdir(parents=True, exist_ok=True)
     errors: list[str] = []
     with sync_playwright() as p:
         # --disable-gpu: avoids an intermittent startup stall of headless
@@ -74,7 +100,9 @@ def main() -> int:
             if user is None:
                 page.goto(BASE + path)
                 page.wait_for_timeout(800)
-                page.screenshot(path=str(OUT / f"{name}.png"), full_page=True)
+                page.screenshot(path=str(OUT / f"{name}.png"), full_page=not DOCS)
+                if DOCS:
+                    to_webp(OUT / f"{name}.png")
                 ctx.close()
                 continue
             page.goto(BASE + "/auth/login")
@@ -98,7 +126,9 @@ def main() -> int:
                 page.wait_for_selector("text=Can sign in")
             page.evaluate("window.scrollTo(0, 0)")  # full-page capture from the top
             page.wait_for_timeout(1200)  # let charts finish drawing
-            page.screenshot(path=str(OUT / f"{name}.png"), full_page=True)
+            page.screenshot(path=str(OUT / f"{name}.png"), full_page=not DOCS)
+            if DOCS:
+                to_webp(OUT / f"{name}.png")
             # Layout check: the page body must never scroll sideways.
             if page.evaluate("document.documentElement.scrollWidth > window.innerWidth"):
                 # Name the outermost elements that stick out (not those inside

@@ -68,6 +68,37 @@ There is a French connection too: the lamplighter (*l'allumeur de réverbères*)
 
 ## What Lamplighter sets out to do
 
+### A look at the web interface
+
+<p align="center"><img src="doc/screenshots/overview.webp" alt="Overview: files, directories, volume and scan status, the largest owners, data by last access and files by size" width="100%"></p>
+<p align="center"><em>Overview: the filesystem at a glance, from Robinhood's own accounting.</em></p>
+
+<table>
+  <tr>
+    <td width="50%"><img src="doc/screenshots/triage.webp" alt="Triage: metadata requests per second over time and the busiest jobs from Lustre jobstats, with their owners"><br>
+      <b>Triage.</b> When the filesystem is slow: the busiest jobs from Lustre jobstats, their owners and what they are doing. No job scheduler required.</td>
+    <td width="50%"><img src="doc/screenshots/cold-data.webp" alt="Cold data: owners holding data not read in over a year, and the coldest directories"><br>
+      <b>Cold data.</b> For data managers: who holds data nobody has read in a year (or three), the coldest datasets, and an export of owners to contact.</td>
+  </tr>
+  <tr>
+    <td><img src="doc/screenshots/users.webp" alt="Users and groups: files, volume, share of the filesystem and small files per user"><br>
+      <b>Users &amp; groups.</b> Usage per owner and group, with names from your directory, small-file counts and change since the last snapshot.</td>
+    <td><img src="doc/screenshots/policies.webp" alt="Fileclasses and policies: volume per fileclass and entries per policy status"><br>
+      <b>Fileclasses &amp; policies.</b> What each fileclass in your Robinhood configuration covers, and how many entries each policy has classified.</td>
+  </tr>
+  <tr>
+    <td><img src="doc/screenshots/search.webp" alt="Search: files by owner and size under a directory tree, with path, size and ages"><br>
+      <b>Search.</b> Find files by owner, group, name, size or age within any directory tree, and export the results.</td>
+    <td><img src="doc/screenshots/browse.webp" alt="Browse: a directory's totals and its subdirectories, with volume and last access"><br>
+      <b>Browse.</b> Walk the tree with subtree totals: volume, files, last access and the share not read in a year.</td>
+  </tr>
+</table>
+
+<p align="center"><img src="doc/screenshots/sign-in.webp" alt="Sign-in page: single sign-on or directory password" width="60%"><br>
+<em>Sign in with single sign-on (Keycloak) or your directory password. Dark and light themes; every page also works on a phone.</em></p>
+
+<sub>Screenshots from the development environment's sample data; regenerate them with <code>webui/devenv/devenv.sh docshots</code>.</sub>
+
 ### Keep the engine, modernize everything around it
 
 Robinhood's scanner, changelog reader, pipeline and policy engine are proven at very large scale. We trust them, and we change them only when there is no other way. Lamplighter's work happens *around* the engine, in a new web interface, integrations, packaging and tooling, so improvements never put the core at risk.
