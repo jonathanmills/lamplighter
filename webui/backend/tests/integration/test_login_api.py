@@ -115,6 +115,12 @@ def test_monitoring_with_checkmk_token():
     assert body["lamplighter"]["last_scan"]["status"] == "done"
     assert body["lamplighter"]["last_scan"]["entries"] > 1000
     assert "file" in body["usage"]["by_type"]
+    # per fileclass and policy status (collector), and jobstats rates
+    pol = body["policies"]
+    assert pol["policies"]["alert"]["statuses"]["alert"]["entries"] > 0
+    assert pol["fileclasses"]["outsized"]["statuses"]["alert"]["alert"] > 0
+    js = body["jobstats"]
+    assert js["configured"] and js["window_seconds"] == 300 and "sources_not_reporting" in js
 
 
 @pytest.mark.parametrize("auth", [None, "Bearer", "Bearer not-a-jwt", "Basic Zm9vOmJhcg=="])

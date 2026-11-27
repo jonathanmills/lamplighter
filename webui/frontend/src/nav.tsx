@@ -30,6 +30,8 @@ export const NAV: NavItem[] = [
     icon: I("M22 12h-4l-3 9L9 3l-3 9H2") },
   { path: "/cold", title: "Cold data", group: "Data", perm: "cold.view",
     icon: I("M12 2v20M4.9 4.9l14.2 14.2M2 12h20M4.9 19.1 19.1 4.9") },
+  { path: "/policies", title: "Fileclasses & policies", group: "Data", perm: "usage.view_aggregates",
+    icon: I("M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01") },
   { path: "/browse", title: "Browse", group: "Data", perm: "paths.view_all",
     icon: I("M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z") },
   { path: "/admin/access", title: "Access control", group: "Administration", perm: "admin.acl",

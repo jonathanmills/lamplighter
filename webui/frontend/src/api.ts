@@ -116,6 +116,15 @@ async function get<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+export interface PolicyCounts {
+  run_id: number; as_of: number;
+  filesystem: { entries: number; bytes: number };
+  /** "" is the entries that match no fileclass. */
+  fileclasses: Record<string, { entries: number; bytes: number; statuses: Record<string, Record<string, number>> }>;
+  /** status value "" = never set by that policy */
+  policies: Record<string, { field: string; statuses: Record<string, { entries: number; bytes: number }> }>;
+}
+
 export type TriageWindow = "15m" | "1h" | "6h" | "24h";
 export type TriageSort = "md" | "io";
 export interface JobFigures {
@@ -162,6 +171,7 @@ export const api = {
   coldDirs: (olderThan: "1y" | "3y") => get<{ as_of: number; directories: DirTotals[] }>(`/cold/directories?older_than=${olderThan}`),
   coldOwners: (olderThan: ColdAge) => get<ColdOwners>(`/cold/owners?older_than=${olderThan}`),
   coldCsvUrl: (olderThan: ColdAge) => `/api/v1/cold/owners.csv?older_than=${olderThan}`,
+  policies: () => get<PolicyCounts>("/policies"),
   triage: (window: TriageWindow, sort: TriageSort) => get<Triage>(`/triage?window=${window}&sort=${sort}`),
 };
 

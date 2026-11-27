@@ -91,6 +91,12 @@ p { margin: 0; }
 .btn-ghost:hover { background: var(--hover); }
 
 .user-menu { position: relative; }
+/* phones: initials only (the name stays available to screen readers), and
+   the crumbs drop their section so the page title fits */
+@media (max-width: 560px) {
+  .user-name { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .crumbs > span:first-child, .crumbs > span:first-child + .sep { display: none; }
+}
 .user-btn { display: flex; align-items: center; gap: 8px; background: none; border: 1px solid transparent;
   color: var(--text); border-radius: 6px; padding: 4px 8px; font: inherit; cursor: pointer; }
 .user-btn:hover, .user-btn[aria-expanded="true"] { border-color: var(--border); background: var(--hover); }

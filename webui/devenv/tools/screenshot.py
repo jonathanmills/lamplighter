@@ -21,6 +21,8 @@ SHOTS = [
     (None, "/auth/login", "dark", 400, "login-phone"),
     ("dave", "/", "dark", 1440, "overview-dark"),
     ("dave", "/triage", "dark", 1440, "triage-dark"),
+    ("carol", "/policies", "dark", 1440, "policies-dark"),
+    ("carol", "/policies", "light", 400, "policies-phone-light"),
     ("dave", "/triage?sort=io&window=6h", "light", 1440, "triage-light-io"),
     ("dave", "/triage", "dark", 400, "triage-phone"),
     ("dave", "/", "light", 1440, "overview-light"),

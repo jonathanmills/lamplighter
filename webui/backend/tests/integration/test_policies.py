@@ -10,6 +10,7 @@ the collector's figures with Robinhood's ENTRIES table directly.
 import pytest
 from sqlalchemy import text
 
+from conftest import oidc_login
 from lux_webui.collector import run_once
 from lux_webui.db import make_engine
 from lux_webui.policies import split_classes, status_columns
@@ -63,3 +64,12 @@ def test_every_entry_is_counted_once_per_policy(counts, rbh):
 def test_split_classes():
     assert split_classes("+a+b+") == ["a", "b"]
     assert split_classes("++") == [""] and split_classes(None) == [""] and split_classes(b"+x+") == ["x"]
+
+
+def test_policies_api(client, counts):
+    oidc_login(client, "alice", "password")             # viewer: aggregates only
+    r = client.get("/api/v1/policies")
+    assert r.status_code == 200, r.text
+    body = r.json()
+    assert body["fileclasses"]["outsized"]["entries"] == counts["fileclasses"]["outsized"]["entries"]
+    assert body["filesystem"]["entries"] >= body["fileclasses"]["big_files"]["entries"]

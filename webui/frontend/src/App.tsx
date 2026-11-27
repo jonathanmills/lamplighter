@@ -14,6 +14,7 @@ import AuditLog from "./pages/AuditLog";
 import Access from "./pages/Access";
 import Browse from "./pages/Browse";
 import Triage from "./pages/Triage";
+import Policies from "./pages/Policies";
 import { ComingSoon, Forbidden, NotFound } from "./pages/States";
 
 const MeContext = createContext<Me | null>(null);
@@ -99,6 +100,7 @@ function Page({ item }: { item: NavItem }) {
   if (item.path === "/admin/access") return <Access />;
   if (item.path === "/browse") return <Browse />;
   if (item.path === "/triage") return <Triage />;
+  if (item.path === "/policies") return <Policies />;
   return <ComingSoon item={item} />;
 }
 
@@ -138,7 +140,7 @@ function UserMenu() {
     <div className="user-menu" ref={ref}>
       <button className="user-btn" type="button" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
         <span className="avatar" aria-hidden="true">{initials}</span>
-        <span>{me.name}</span>
+        <span className="user-name">{me.name}</span>
       </button>
       {open && (
         <div className="menu" role="menu">

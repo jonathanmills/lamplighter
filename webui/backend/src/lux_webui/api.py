@@ -4,6 +4,8 @@
 
 from __future__ import annotations
 
+import time
+
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
@@ -15,7 +17,7 @@ from .auth import Principal, current_principal, require
 from .db import robinhood_status, usage_summary
 from .ldapdir import DirectoryError
 from .machine import MachineClient, monitoring_client
-from .store import age_bands, cold_owners, collector_runs
+from .store import age_bands, cold_owners, collector_runs, policy_counts
 
 NO_RUN = "The collector has not completed a run yet."
 
@@ -122,6 +124,36 @@ def monitoring(request: Request, client: MachineClient = Depends(monitoring_clie
         }
     except SQLAlchemyError as exc:
         body["collector"] = {"error": type(exc).__name__}
+    try:
+        # Entries per fileclass and policy status (collector), e.g. how many
+        # entries a classifier alert policy marked "alert", per fileclass.
+        body["policies"] = policy_counts(request.app.state.store_engine)
+    except SQLAlchemyError as exc:
+        body["policies"] = {"error": type(exc).__name__}
+    body["jobstats"] = _jobstats_rates(request)
     # Successful polls are not audited: Checkmk polls every minute and would
     # bury the events that matter. Refused requests are audited in machine.py.
     return body
+
+
+def _jobstats_rates(request: Request) -> dict:
+    """Filesystem-wide jobstats rates over the last 5 minutes, for Checkmk."""
+    cfg = request.app.state.settings.jobstats
+    if cfg is None:
+        return {"configured": False}
+    from .jobstats import source_status, triage_jobs
+    now = int(time.time())
+    window = 300
+    try:
+        js = triage_jobs(request.app.state.store_engine, window, "md", 1, now)
+        sources = source_status(request.app.state.store_engine, cfg.stale_after_seconds, now)
+    except SQLAlchemyError as exc:
+        return {"configured": True, "error": type(exc).__name__}
+    t = js["totals"]
+    top = js["jobs"][0] if js["jobs"] else None
+    return {"configured": True, "window_seconds": window, "as_of": js["as_of"],
+            "md_ops_per_second": t["md_ops"] / window,
+            "read_bytes_per_second": t["read_bytes"] / window,
+            "write_bytes_per_second": t["write_bytes"] / window,
+            "sources": len(sources), "sources_not_reporting": sum(1 for s in sources if s["stale"]),
+            "top_md_job": {"job_id": top["job_id"], "md_ops_per_second": top["md_ops"] / window} if top else None}
