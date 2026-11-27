@@ -686,7 +686,7 @@ static int insert_field(db_conn_t *pconn, const char *table, int def_index,
         if (!alter_no_display)
             DisplayLog(LVL_CRIT, LISTMGR_TAG,
                        "DB schema change detected: field '%s.%s' must be added "
-                       " => Run 'robinhood --alter-db' to apply this change.",
+                       " => Run 'lamplighter --alter-db' to apply this change.",
                        table, field_name(def_index));
         return DB_NEED_ALTER;
     }
@@ -743,7 +743,7 @@ static int drop_field(db_conn_t *pconn, const char *table, const char *field)
         if (!alter_no_display)
             DisplayLog(LVL_CRIT, LISTMGR_TAG,
                        "DB schema change detected: field '%s.%s' must be DROPPED "
-                       " => Run 'robinhood --alter-db' to confirm this change.",
+                       " => Run 'lamplighter --alter-db' to confirm this change.",
                        table, field);
         return DB_NEED_ALTER;
     }
@@ -845,7 +845,7 @@ static int check_renamed_db_field(db_conn_t *pconn, table_enum table,
                     DisplayLog(LVL_CRIT, LISTMGR_TAG,
                                "DB schema change detected: "
                                "field '%s.%s' renamed to '%s.%s' "
-                               " => Run 'robinhood --alter-db' to apply this change.",
+                               " => Run 'lamplighter --alter-db' to apply this change.",
                                tname, compat_table[i].old_name, tname,
                                compat_table[i].new_name);
                 return -DB_NEED_ALTER;
@@ -974,7 +974,7 @@ static int check_and_fix_def(db_conn_t *pconn, table_enum table, int def_index,
             if (!alter_no_display)
                 DisplayLog(LVL_CRIT, LISTMGR_TAG,
                            "DB schema change detected: type of field '%s.%s' must be changed "
-                           " => Run 'robinhood --alter-db' to confirm this change.",
+                           " => Run 'lamplighter --alter-db' to confirm this change.",
                            table2name(table), field_name(def_index));
             return DB_NEED_ALTER;
         }
@@ -1800,7 +1800,7 @@ static int acct_drop_or_warn(db_conn_t *pconn, bool *affects_trig)
         DisplayLog(LVL_CRIT, LISTMGR_TAG, "DB schema change detected: "
                    "modification in " ACCT_TABLE
                    " requires to drop and repopulate the table"
-                   " => Run 'robinhood --alter-db' to apply this change.");
+                   " => Run 'lamplighter --alter-db' to apply this change.");
         return DB_NEED_ALTER;
     }
     DisplayLog(LVL_CRIT, LISTMGR_TAG, "DB schema change detected:"
@@ -2068,7 +2068,7 @@ static int check_table_softrm(db_conn_t *pconn, bool *affects_trig)
                     DisplayLog(LVL_CRIT, LISTMGR_TAG,
                                "DB schema change detected: "
                                "field '%s.%s' renamed to '%s.%s' "
-                               " => Run 'robinhood --alter-db' to apply this change.",
+                               " => Run 'lamplighter --alter-db' to apply this change.",
                                SOFT_RM_TABLE, "fid", SOFT_RM_TABLE, "id");
                     need_alter = true;
                 } else {

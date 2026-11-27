@@ -189,9 +189,9 @@ int rbh_cfg_write_template(FILE *stream)
 {
     const struct mod_cfgs *p_module;
 
-    fprintf(stream, "##########################################\n");
-    fprintf(stream, "# Robinhood configuration file template  #\n");
-    fprintf(stream, "##########################################\n\n");
+    fprintf(stream, "###########################################\n");
+    fprintf(stream, "# Lamplighter configuration file template #\n");
+    fprintf(stream, "###########################################\n\n");
 
     for (p_module = &cfglist[0]; p_module->funcs != NULL; p_module++) {
         fprintf(stream, "# %s configuration\n", p_module->funcs->module_name);

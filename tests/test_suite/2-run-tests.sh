@@ -7298,7 +7298,7 @@ function db_schema_convert
     [ "$DEBUG" = "1" ] && cat rh.log
 
     # robinhood should have suggested to run '--alter-db'
-    grep "Run 'robinhood --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
+    grep "Run 'lamplighter --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
 
     # no ALTER TABLE expected
     grep "ALTER TABLE" rh.log && error "no ALTER TABLE expected"
@@ -7309,7 +7309,7 @@ function db_schema_convert
     $RH -f $cfg1 --scan --once -l FULL -L rh.log
 
     # robinhood should have suggested to run '--alter-db'
-    grep "Run 'robinhood --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
+    grep "Run 'lamplighter --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
     # it should change the default size
     grep "Changing default value of 'ENTRIES.size'" rh.log || error "default value should have been changed"
     grep "ALTER COLUMN size SET DEFAULT 0" rh.log || error "change of default size expected"
@@ -7318,7 +7318,7 @@ function db_schema_convert
     grep -v "SET DEFAULT" rh.log | grep "ALTER TABLE" && error "no ALTER TABLE expected"
 
     :> rh.log
-    echo "robinhood --alter-db"
+    echo "lamplighter --alter-db"
     # run alter DB on initial schema
     $RH -f $cfg1 --alter-db -l FULL -L rh.log
 
@@ -7336,7 +7336,7 @@ function db_schema_convert
     [ "$DEBUG" = "1" ] && cat rh.log
     :> rh.log
     $REPORT -f $cfg1 -i > rh.log || error "Report should succeed"
-    grep "Run 'robinhood --alter-db'" rh.log && error "DB should be right"
+    grep "Run 'lamplighter --alter-db'" rh.log && error "DB should be right"
     [ "$DEBUG" = "1" ] && cat rh.log
     config_file=$(basename $cfg1) check_fcount $nbent
 
@@ -7347,13 +7347,13 @@ function db_schema_convert
     $RH -f $cfg2 --scan --once -l FULL -L rh.log
 
     # robinhood should have suggested to run '--alter-db'
-    grep "Run 'robinhood --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
+    grep "Run 'lamplighter --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
 
     # no ALTER TABLE expected
     grep "ALTER TABLE" rh.log && error "no ALTER TABLE expected"
 
     :> rh.log
-    echo "cfg2: robinhood --alter-db"
+    echo "cfg2: lamplighter --alter-db"
     # run alter DB on initial schema
     $RH -f $cfg2 --alter-db -l FULL -L rh.log
 
@@ -7370,7 +7370,7 @@ function db_schema_convert
     [ "$DEBUG" = "1" ] && cat rh.log
     :> rh.log
     $REPORT -f $cfg2 -i > rh.log || error "Report should succeed"
-    grep "Run 'robinhood --alter-db'" rh.log && error "DB should be right"
+    grep "Run 'lamplighter --alter-db'" rh.log && error "DB should be right"
     [ "$DEBUG" = "1" ] && cat rh.log
     config_file=$(basename $cfg2) check_fcount $nbent
 
@@ -7385,7 +7385,7 @@ function db_schema_convert
 	    # robinhood must report field shuffling
 	    grep "Shuffled DB fields" rh.log || error "lismgr should report shuffled fields"
 	    # alter is only required for the ACCT_STAT table
-	    grep "Run 'robinhood --alter-db'" rh.log | grep -v "modification in ACCT_STAT" && error "lismgr should deal with field shuffling"
+	    grep "Run 'lamplighter --alter-db'" rh.log | grep -v "modification in ACCT_STAT" && error "lismgr should deal with field shuffling"
 	    # no ALTER TABLE expected
 	    grep "ALTER TABLE" rh.log && error "no ALTER TABLE expected"
 
@@ -7400,7 +7400,7 @@ function db_schema_convert
 	    # report should work
 	    echo "cfg3: report"
 	    $REPORT -f $cfg3 -i -l FULL 2>&1 > rh.log || error "Report should work"
-	    grep "Run 'robinhood --alter-db'" rh.log && error "DB should be right"
+	    grep "Run 'lamplighter --alter-db'" rh.log && error "DB should be right"
 	    [ "$DEBUG" = "1" ] && cat rh.log
 	    config_file=$(basename $cfg3) check_fcount $nbent
     fi
@@ -7409,7 +7409,7 @@ function db_schema_convert
     echo "cfg1: report"
     $REPORT -f $cfg1 -i -l FULL 2>&1 > rh.log || error "Report should work"
     [ "$DEBUG" = "1" ] && cat rh.log
-    grep "Run 'robinhood --alter-db'" rh.log | grep -v "modification in ACCT_STAT" && error "report should deal with policy removal"
+    grep "Run 'lamplighter --alter-db'" rh.log | grep -v "modification in ACCT_STAT" && error "report should deal with policy removal"
     config_file=$(basename $cfg1) check_fcount $nbent
 
     :> rh.log
@@ -7418,13 +7418,13 @@ function db_schema_convert
     $RH -f $cfg1 --scan --once -l FULL -L rh.log
 
     # robinhood should have suggested to run '--alter-db'
-    grep "Run 'robinhood --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
+    grep "Run 'lamplighter --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
 
     # no ALTER TABLE expected
     grep "ALTER TABLE" rh.log && error "no ALTER TABLE expected"
 
     :> rh.log
-    echo "cfg1: robinhood --alter-db"
+    echo "cfg1: lamplighter --alter-db"
     # run alter DB on initial schema
     $RH -f $cfg1 --alter-db -l FULL -L rh.log
 
@@ -7442,7 +7442,7 @@ function db_schema_convert
     [ "$DEBUG" = "1" ] && cat rh.log
     :> rh.log
     $REPORT -f $cfg1 -i > rh.log || error "Report should succeed"
-    grep "Run 'robinhood --alter-db'" rh.log && error "DB should be right"
+    grep "Run 'lamplighter --alter-db'" rh.log && error "DB should be right"
     [ "$DEBUG" = "1" ] && cat rh.log
     config_file=$(basename $cfg1) check_fcount $nbent
 
@@ -7454,7 +7454,7 @@ function db_schema_convert
         echo "Numeric to text conversion (no alter)..."
         RBH_NUM_UIDGID=no $RH -f $cfg1 --scan --once -l FULL -L rh.log
         # robinhood should have suggested to run '--alter-db'
-        grep "Run 'robinhood --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
+        grep "Run 'lamplighter --alter-db'" rh.log || error "robinhood should have reported DB schema changes"
 
         :> rh.log
         echo "Numeric to text conversion (alter)..."

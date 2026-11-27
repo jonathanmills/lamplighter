@@ -420,7 +420,7 @@ static void lmgr_cfg_write_template(FILE *output)
     print_line(output, 2, "server = \"localhost\" ;");
     print_line(output, 2, "db     = \"robinhood_db\" ;");
     print_line(output, 2, "user   = \"robinhood\" ;");
-    print_line(output, 2, "password_file = \"/etc/robinhood.d/.dbpassword\" ;");
+    print_line(output, 2, "password_file = \"/etc/lamplighter.d/.dbpassword\" ;");
     print_line(output, 2, "# port   = 3306 ;");
     print_line(output, 2, "# socket = \"/tmp/mysql.sock\" ;");
     print_line(output, 2, "engine = InnoDB ;");

@@ -55,7 +55,7 @@
 /**
  * Common info
  */
-#define DEFAULT_CFG_VAR "RBH_CFG_DEFAULT"
+#define DEFAULT_CFG_VAR "LUX_CFG_DEFAULT"
 
 /**
  *  Miscellaneous parsing macros

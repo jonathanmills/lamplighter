@@ -144,7 +144,7 @@ static int global_cfg_read(config_file_t config, void *module_config,
 #ifdef _LUSTRE
     if (strcmp(conf->fs_type, "lustre")) {
         strcpy(msg_out,
-               "This robinhood version has been built for Lustre filesystem support only");
+               "This Lamplighter version has been built for Lustre filesystem support only");
         return EINVAL;
     }
 #endif

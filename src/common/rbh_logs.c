@@ -495,7 +495,7 @@ static void display_line_log(log_stream_t *p_log, const char *tag,
                      "%.4d/%.2d/%.2d %.2d:%.2d:%.2d %s[%lu/%u] %s%s",
                      1900 + date.tm_year, date.tm_mon + 1, date.tm_mday,
                      date.tm_hour, date.tm_min, date.tm_sec,
-                     log_config.log_process ? "robinhood" : "",
+                     log_config.log_process ? "lamplighter" : "",
                      (unsigned long)getpid(), th, tag ? tag : "",
                      tag ? " | " : "");
 
@@ -662,12 +662,12 @@ static void FlushAlerts(bool release_mutex_asap)
     now = time(NULL);
     localtime_r(&now, &date);
 
-    if (asprintf(&title, "robinhood alert summary (%s on %s): %u alerts",
+    if (asprintf(&title, "Lamplighter alert summary (%s on %s): %u alerts",
                  global_config.fs_path, machine_name, alert_count) == -1) {
         if (release_mutex_asap)
             V(alert_mutex);
         DisplayLog(LVL_CRIT, "LogAlert",
-                   "Could not allocate mail title (robinhood alert summary (%s on %s): %u alerts",
+                   "Could not allocate mail title (Lamplighter alert summary (%s on %s): %u alerts",
                    global_config.fs_path, machine_name, alert_count);
         return;
     }
@@ -877,12 +877,12 @@ void RaiseEntryAlert(const char *alert_name,    /* alert name (if set) */
 
         Alert_Add(title, entry_path, entry_info);
     } else {
-        if (asprintf((char **)&title, "Robinhood alert (%s on %s): %s",
+        if (asprintf((char **)&title, "Lamplighter alert (%s on %s): %s",
                      global_config.fs_path, machine_name,
                      (alert_name && !EMPTY_STRING(alert_name) ?
                       alert_name : "entry matches alert rule")) == -1) {
             DisplayLog(LVL_CRIT, "LogAlert",
-                       "Could not allocate log alert title: Robinhood alert (%s on %s): %s",
+                       "Could not allocate log alert title: Lamplighter alert (%s on %s): %s",
                        global_config.fs_path, machine_name,
                        (alert_name && !EMPTY_STRING(alert_name) ?
                         alert_name : "entry matches alert rule"));
@@ -974,11 +974,11 @@ static void log_cfg_set_default(void *module_config)
     log_config_t *conf = (log_config_t *) module_config;
 
     conf->debug_level = LVL_EVENT;
-    rh_strncpy(conf->log_file, "/var/log/robinhood.log", RBH_PATH_MAX);
-    rh_strncpy(conf->report_file, "/var/log/robinhood_actions.log",
+    rh_strncpy(conf->log_file, "/var/log/lamplighter.log", RBH_PATH_MAX);
+    rh_strncpy(conf->report_file, "/var/log/lamplighter_actions.log",
                RBH_PATH_MAX);
 
-    rh_strncpy(conf->alert_file, "/var/log/robinhood_alerts.log",
+    rh_strncpy(conf->alert_file, "/var/log/lamplighter_alerts.log",
                RBH_PATH_MAX);
     conf->alert_mail[0] = '\0';
 
@@ -1002,11 +1002,11 @@ static void log_cfg_write_default(FILE *output)
 {
     print_begin_block(output, 0, RBH_LOG_CONFIG_BLOCK, NULL);
     print_line(output, 1, "debug_level    :   EVENT");
-    print_line(output, 1, "log_file       :   \"/var/log/robinhood.log\"");
+    print_line(output, 1, "log_file       :   \"/var/log/lamplighter.log\"");
     print_line(output, 1,
-               "report_file    :   \"/var/log/robinhood_actions.log\"");
+               "report_file    :   \"/var/log/lamplighter_actions.log\"");
     print_line(output, 1,
-               "alert_file     :   \"/var/log/robinhood_alerts.log\"");
+               "alert_file     :   \"/var/log/lamplighter_alerts.log\"");
     print_line(output, 1, "syslog_facility:   local1.info");
     print_line(output, 1, "stats_interval :   15min");
     print_line(output, 1, "batch_alert_max:   1 (no batching)");
@@ -1026,19 +1026,19 @@ static void log_cfg_write_template(FILE *output)
     print_line(output, 1, "debug_level = EVENT ;");
     fprintf(output, "\n");
     print_line(output, 1, "# Log file");
-    print_line(output, 1, "log_file = \"/var/log/robinhood.log\" ;");
+    print_line(output, 1, "log_file = \"/var/log/lamplighter.log\" ;");
     fprintf(output, "\n");
     print_line(output, 1, "# File for reporting purge events");
-    print_line(output, 1, "report_file = \"/var/log/robinhood_actions.log\" ;");
+    print_line(output, 1, "report_file = \"/var/log/lamplighter_actions.log\" ;");
     fprintf(output, "\n");
     print_line(output, 1,
                "# set alert_file, alert_mail or both depending on the alert method you wish");
-    print_line(output, 1, "alert_file = \"/var/log/robinhood_alerts.log\" ;");
+    print_line(output, 1, "alert_file = \"/var/log/lamplighter_alerts.log\" ;");
     print_line(output, 1, "alert_mail = \"root@localhost\" ;");
     fprintf(output, "\n");
 #ifdef HAVE_CHANGELOGS
     print_line(output, 1, "# File to dump changelogs into");
-    print_line(output, 1, "changelogs_file = \"/var/log/robinhood_cl.log\" ;");
+    print_line(output, 1, "changelogs_file = \"/var/log/lamplighter_cl.log\" ;");
 #endif
     fprintf(output, "\n");
     print_line(output, 1, "# Interval for dumping stats (to logfile)");

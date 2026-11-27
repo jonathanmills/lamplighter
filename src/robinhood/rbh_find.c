@@ -491,16 +491,16 @@ static const char *help_string =
     "    " _B "-printf" B_
     " \t Format string to display the matching entries.\n\n"
     "       The supported escapes and directives are a subset of those of `find`,\n"
-    "       with some Robinhood additions prefixed with %R:\n" "            " _B
+    "       with some Lamplighter additions prefixed with %R:\n" "            " _B
     "%%%%" B_ "\t Escapes %\n" "            " _B "%%A" B_
-    "\t Robinhood’s \"last access time\", which is a compound of the file's atime and mtime, unless the global configuration "
+    "\t Lamplighter’s \"last access time\", which is a compound of the file's atime and mtime, unless the global configuration "
     _B "last_access_only_atime" B_
     " is set, in which case it is exactly the atime of the file. An " _B
     "strftime" B_ "(1) directive must be added. For example: " _B "%%Ap %%AT" B_
     ". This option can also take an strftime format option between brackets. For instance: "
     _B "%%A{%%A, %%B %%dth, %%Y %%F}" B_ ".\n" "            " _B "%%b" B_
     "\t Number of blocks\n" "            " _B "%%C" B_
-    "\t Robinhood’s \"last MD change\" which is the ctime of the file.\n"
+    "\t Lamplighter’s \"last MD change\" which is the ctime of the file.\n"
     "            " _B "%%d" B_ "\t Depth\n" "            " _B "%%f" B_
     "\t File name, without its path\n" "            " _B "%%g" B_
     "\t Group name\n" "            " _B "%%M" B_
@@ -508,11 +508,11 @@ static const char *help_string =
     _B "%%m" B_ "\t File mode in octal\n" "            " _B "%%n" B_
     "\t Number of hard links\n" "            " _B "%%p" B_ "\t Full file name\n"
     "            " _B "%%s" B_ "\t File size\n" "            " _B "%%T" B_
-    "\t Robinhood’s \"modification time\", which is the file's mtime.\n"
+    "\t Lamplighter’s \"modification time\", which is the file's mtime.\n"
     "            " _B "%%u" B_ "\t File owner\n" "            " _B "%%Y" B_
     "\t Full file type (file, dir, fifo, ...)\n" "            " _B "%%y" B_
     "\t File type as one letter (f, d, p, ...)\n" "            " _B "%%RC" B_
-    "\t Robinhood’s \"creation time\", which is the oldest ctime seen for that file. It is always lesser or equal to the current ctime of the file. When Lustre changelogs are used, \"creation time\" is really the creation time. An "
+    "\t Lamplighter’s \"creation time\", which is the oldest ctime seen for that file. It is always lesser or equal to the current ctime of the file. When Lustre changelogs are used, \"creation time\" is really the creation time. An "
     _B "strftime" B_ "(1) directive must be added. For example: " _B "%%RCc" B_
     ". This option can also take an strftime format option between curly brackets. For instance: "
     _B "%%RC{%%A, %%B %%dth, %%Y %%F}" B_ ".\n"
@@ -538,7 +538,7 @@ static const char *help_string =
     "       cmd must be a single (quoted) shell param, not necessarily terminated with ';'.\n"
     "       '{}' is replaced by the entry path. Example: -exec 'md5sum {}'\n"
     "\n" _B "Behavior:" B_ "\n" "    " _B "-nobulk" B_ "\n"
-    "       When running rbh-find on the filesystem root, rbh-find automatically switches\n"
+    "       When running lux-find on the filesystem root, lux-find automatically switches\n"
     "       to bulk DB request instead of browsing the namespace from the DB.\n"
     "       This speeds up the query, but this may result in an arbitrary output ordering,\n"
     "       and a single path may be displayed in case of multiple hardlinks.\n"

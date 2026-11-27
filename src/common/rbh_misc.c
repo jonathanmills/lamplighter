@@ -326,7 +326,7 @@ int SendMail(const char *recipient, const char *subject, const char *message)
 }
 
 /**
- * Search for Robinhood config file.
+ * Search for a Lamplighter config file.
  * search a config file with the given name (+extension)
  * If cfg_in is empty: search any config in config paths
  * /!\ not thread safe
@@ -334,7 +334,7 @@ int SendMail(const char *recipient, const char *subject, const char *message)
 int SearchConfig(const char *cfg_in, char *cfg_out, bool *changed,
                  char *unmatched, size_t max_len)
 {
-    static const char *default_cfg_path = SYSCONFDIR "/robinhood.d";
+    static const char *default_cfg_path = SYSCONFDIR "/lamplighter.d";
     DIR *dir;
     struct dirent *ent;
     const char *cfg = cfg_in;
