@@ -125,7 +125,8 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
             hist = timed("age", _age_histogram, src, now, settings.collector.max_scan_seconds)
             acct = timed("acct", _acct_snapshot, src)
             fs_path = src.execute(text("SELECT value FROM VARS WHERE varname = 'FS_Path'")).scalar()
-            dirs = timed("rollup", compute_rollups, src, now, settings.collector.rollup_depth, _s(fs_path or "/"))
+            dirs = timed("rollup", compute_rollups, src, now, settings.collector.rollup_depth, _s(fs_path or "/"),
+                         settings.collector.work_mem)
             classes = (timed("classes", collect_counts, src) if settings.collector.policy_counts else [])
         t_store = time.monotonic()
         files = sum(r["files"] for r in hist)

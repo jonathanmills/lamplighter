@@ -62,3 +62,29 @@ def test_classes_and_alerts_are_consistent(db):
                  "((size > 20*POW(1024,3)) <> (alert_status = 'alert') OR "
                  "(size > 20*POW(1024,3)) <> (fileclass LIKE '%+outsized+%'))")
     assert rows[0][0] == 0
+
+
+def test_rollup_same_with_and_without_covering_index(db):
+    """The rollup's two paths (temporary id-ordered copy of NAMES, or a
+    replica's covering index on NAMES (id, parent_id)) agree exactly."""
+    from lamplighter_webui import rollup
+
+    def run():
+        with db.connect() as c:
+            return sorted(rollup.compute(c, 1_795_000_000, 4, "/scale"), key=lambda r: r["dir_id"])
+
+    with db.connect() as c:
+        assert rollup.covering_index(c) is None
+    plain = run()
+    with db.connect() as c:
+        c.execute(text("ALTER TABLE NAMES ADD INDEX names_by_id (id, parent_id)"))
+    try:
+        with db.connect() as c:
+            assert rollup.covering_index(c) == "names_by_id"
+        assert run() == plain
+    finally:
+        with db.connect() as c:
+            c.execute(text("ALTER TABLE NAMES DROP INDEX names_by_id"))
+    root = next(r for r in plain if r["depth"] == 0)
+    [(files, size)] = q(db, "SELECT COUNT(*), SUM(size) FROM ENTRIES WHERE type = 'file'")
+    assert (root["files"], root["bytes"]) == (files, size)

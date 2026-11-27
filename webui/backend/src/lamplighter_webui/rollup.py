@@ -2,16 +2,28 @@
 # Copyright (C) 2026 Jonathan Mills
 """Per-directory subtree totals, computed mostly inside MariaDB.
 
-1. A recursive query walks only the *directories* through the NAMES
-   parent_id index and maps each one to its ancestor at ``depth``
-   (itself, when shallower). The result goes in a TEMPORARY table, which
-   works on a read-only replica (the user needs CREATE TEMPORARY TABLES).
-2. One GROUP BY over the files gives totals per tracked directory, plus
-   a second one per (directory, owner) for the top owner.
-3. Python adds the totals up the tracked tree, bottom-up. Only the
-   tracked directories (depth <= ``depth``) ever reach Python.
+Designed for billions of entries (measured with lamplighter-scale; see
+doc/webui-design.md, Scale). The expensive part is unavoidable: every
+file's directory lives in NAMES and its size and times in ENTRIES, so
+each file must be joined once. Done row by row through random lookups,
+that is about 30 times slower than a scan; done in id order, it is
+close to a scan. So:
 
-Run it on one connection: the temporary table lives on that connection.
+1. The root comes from VARS (RootId), as Robinhood records it.
+2. The directory tree (directories only, about 1% of entries) goes into
+   a TEMPORARY table, with each directory's depth and its tracked
+   ancestor (itself down to ``depth``, else its ancestor at ``depth``),
+   assigned level by level.
+3. ONE pass over the files, joined in id order: ENTRIES (clustered by
+   id) against NAMES keyed by id. On a replica with a covering index on
+   NAMES (id, parent_id), the index is used directly; otherwise a
+   TEMPORARY id-ordered copy of NAMES (id, parent_id) is built first.
+   The pass groups by (tracked directory, owner) in memory
+   (``work_mem``), which also gives each directory's top owner.
+4. Python adds the totals up the tracked tree, bottom-up.
+
+TEMPORARY tables work on a read-only replica (the user needs CREATE
+TEMPORARY TABLES). Run it on one connection: they live on it.
 """
 
 from __future__ import annotations
@@ -22,6 +34,8 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection
 
 YEAR = 365 * 86400
+DIRS = "lamplighter_rollup_dirs"
+BYID = "lamplighter_rollup_names"
 
 
 def _s(v) -> str:
@@ -29,67 +43,92 @@ def _s(v) -> str:
 
 
 def _root(c: Connection):
-    """The root's id: a parent that is nobody's child (the one with most children)."""
+    """The root's id, from VARS (RootId is stored as fsid/inode); the old
+    full NAMES anti-join only as a fallback for databases without it."""
+    rid = c.execute(text("SELECT value FROM VARS WHERE varname = 'RootId'")).scalar()
+    if rid:
+        rid = _s(rid).replace("/", ":")
+        if c.execute(text("SELECT 1 FROM NAMES WHERE parent_id = :r LIMIT 1"), {"r": rid}).first():
+            return rid.encode()
     row = c.execute(text(
         "SELECT parent_id, COUNT(*) AS n FROM NAMES WHERE parent_id NOT IN "
         "(SELECT id FROM NAMES WHERE id IS NOT NULL) GROUP BY parent_id ORDER BY n DESC LIMIT 1")).first()
     return row[0] if row else None
 
 
-def compute(c: Connection, now: int, depth: int, fs_path: str) -> list[dict]:
+def covering_index(c: Connection) -> str | None:
+    """A NAMES index whose first columns are (id, parent_id), if the
+    database has one (an optional replica index; Robinhood creates none)."""
+    rows = c.execute(text(
+        "SELECT INDEX_NAME, SEQ_IN_INDEX, COLUMN_NAME FROM information_schema.STATISTICS "
+        "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'NAMES' ORDER BY INDEX_NAME, SEQ_IN_INDEX")).all()
+    cols: dict[str, list[str]] = defaultdict(list)
+    for name, _, col in rows:
+        cols[_s(name)].append(_s(col))
+    for name, c_ in cols.items():
+        if c_[:2] == ["id", "parent_id"]:
+            return name
+    return None
+
+
+def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2 * 1024**3) -> list[dict]:
     root = _root(c)
     if root is None:
         return []
-    c.execute(text("DROP TEMPORARY TABLE IF EXISTS lamplighter_webui_tree"))
+    # Group in memory: MariaDB's 16 MB default spills these GROUP BYs to disk.
+    c.execute(text(f"SET SESSION tmp_table_size = {int(work_mem)}, max_heap_table_size = {int(work_mem)}"))
+
+    # 2. the directory tree, with depth and tracked ancestor (root: depth 0)
+    c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {DIRS}"))
     c.execute(text(
-        "CREATE TEMPORARY TABLE lamplighter_webui_tree (id VARBINARY(64), parent_id VARBINARY(64), "
-        "name VARBINARY(255), depth INT, anc VARBINARY(64), KEY (id), KEY (anc)) ENGINE=InnoDB "
-        "WITH RECURSIVE tree AS ("
-        "  SELECT n.id, n.parent_id, n.name, 1 AS depth, n.id AS anc"
-        "    FROM NAMES n JOIN ENTRIES e ON e.id = n.id"
-        "   WHERE e.type = 'dir' AND n.parent_id = :root"
-        "  UNION ALL"
-        "  SELECT n.id, n.parent_id, n.name, t.depth + 1, IF(t.depth < :depth, n.id, t.anc)"
-        "    FROM tree t JOIN NAMES n ON n.parent_id = t.id"
-        "    JOIN ENTRIES e ON e.id = n.id AND e.type = 'dir'"
-        ") SELECT * FROM tree"), {"root": root, "depth": depth})
+        f"CREATE TEMPORARY TABLE {DIRS} (id VARBINARY(64) PRIMARY KEY, parent_id VARBINARY(64), "
+        "name VARBINARY(255), depth INT, anc VARBINARY(64), uid VARBINARY(127), KEY (depth)) ENGINE=InnoDB "
+        "SELECT STRAIGHT_JOIN n.id, n.parent_id, n.name, NULL AS depth, NULL AS anc, e.uid "
+        "FROM ENTRIES e JOIN NAMES n ON n.id = e.id WHERE e.type = 'dir'"))
+    c.execute(text(f"INSERT IGNORE INTO {DIRS} (id, parent_id, name, depth, anc) VALUES (:r, NULL, '', 0, :r)"),
+              {"r": root})
+    level = 0
+    while c.execute(text(
+            f"UPDATE {DIRS} d JOIN {DIRS} p ON p.id = d.parent_id "
+            "SET d.depth = p.depth + 1, d.anc = IF(p.depth < :depth, d.id, p.anc) "
+            "WHERE p.depth = :lvl AND d.depth IS NULL"), {"depth": depth, "lvl": level}).rowcount:
+        level += 1
 
-    # The tracked directories themselves (few): id, parent, name, depth, owner.
-    tracked = c.execute(text(
-        "SELECT t.id, t.parent_id, t.name, t.depth, e.uid FROM lamplighter_webui_tree t "
-        "JOIN ENTRIES e ON e.id = t.id WHERE t.depth <= :depth"), {"depth": depth}).all()
+    tracked = c.execute(text(f"SELECT id, parent_id, name, depth, uid FROM {DIRS} WHERE depth <= :d"),
+                        {"d": depth}).all()
 
-    cold1, cold3 = now - YEAR, now - 3 * YEAR
-    agg_sql = (
-        "SELECT {key} AS k, {owner} COUNT(*), COALESCE(SUM(e.size), 0), MAX(e.last_access), "
+    # 3. one ordered pass over the files
+    cover = covering_index(c)
+    if cover:
+        names = f"NAMES n FORCE INDEX (`{cover}`)"
+    else:
+        c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {BYID}"))
+        c.execute(text(f"CREATE TEMPORARY TABLE {BYID} (id VARBINARY(64) PRIMARY KEY, parent_id VARBINARY(64)) "
+                       "ENGINE=InnoDB SELECT id, parent_id FROM NAMES WHERE id IS NOT NULL ORDER BY id"))
+        names = f"{BYID} n"
+    rows = c.execute(text(
+        f"SELECT STRAIGHT_JOIN d.anc, e.uid, COUNT(*), COALESCE(SUM(e.size), 0), MAX(e.last_access), "
         "MIN(e.last_access), COALESCE(SUM(IF(e.last_access < :c1, e.size, 0)), 0), "
         "COALESCE(SUM(IF(e.last_access < :c3, e.size, 0)), 0) "
-        "FROM ENTRIES e JOIN NAMES n ON n.id = e.id {join} WHERE e.type = 'file' {where} "
-        "GROUP BY k {group_owner}")
-    p = {"c1": cold1, "c3": cold3, "root": root}
-    # files under tracked directories, keyed by their tracked ancestor
-    direct = c.execute(text(agg_sql.format(key="t.anc", owner="", join="JOIN lamplighter_webui_tree t ON t.id = n.parent_id",
-                                           where="", group_owner="")), p).all()
-    # files directly in the root
-    direct += c.execute(text(agg_sql.format(key="n.parent_id", owner="", join="",
-                                            where="AND n.parent_id = :root", group_owner="")), p).all()
-    owners = c.execute(text(
-        "SELECT t.anc, e.uid, COALESCE(SUM(e.size), 0) FROM ENTRIES e JOIN NAMES n ON n.id = e.id "
-        "JOIN lamplighter_webui_tree t ON t.id = n.parent_id WHERE e.type = 'file' GROUP BY t.anc, e.uid")).all()
-    c.execute(text("DROP TEMPORARY TABLE IF EXISTS lamplighter_webui_tree"))
+        f"FROM ENTRIES e JOIN {names} ON n.id = e.id JOIN {DIRS} d ON d.id = n.parent_id "
+        "WHERE e.type = 'file' GROUP BY d.anc, e.uid"),
+        {"c1": now - YEAR, "c3": now - 3 * YEAR}).all()
+    c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {DIRS}"))
+    c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {BYID}"))
 
-    # --- assemble and roll up in Python (tracked directories only) ---
-    node: dict[bytes, dict] = {root: {"dir_id": root, "parent_dir": None, "depth": 0, "name": "",
-                                      "owner": None, "children": []}}
+    # 4. assemble and roll up in Python (tracked directories only)
+    node: dict[bytes, dict] = {}
     for i, par, name, d, uid in tracked:
-        node[i] = {"dir_id": i, "parent_dir": par, "depth": int(d), "name": _s(name),
-                   "owner": _s(uid), "children": []}
+        d = int(d)
+        node[i] = {"dir_id": i, "parent_dir": par if d > 0 else None, "depth": d, "name": _s(name),
+                   "owner": _s(uid) if uid is not None else None, "children": [],
+                   "files": 0, "bytes": 0, "newest": None, "oldest": None, "cold1": 0, "cold3": 0,
+                   "mix": defaultdict(int)}
     for n in node.values():
-        n.update(files=0, bytes=0, newest=None, oldest=None, cold1=0, cold3=0, mix=defaultdict(int))
         if n["parent_dir"] in node:
             node[n["parent_dir"]]["children"].append(n["dir_id"])
-    for k, files, size, newest, oldest, c1, c3 in direct:
-        n = node.get(k)
+    for anc, uid, files, size, newest, oldest, c1, c3 in rows:
+        n = node.get(anc)
         if n is None:
             continue
         n["files"] += int(files)
@@ -98,9 +137,7 @@ def compute(c: Connection, now: int, depth: int, fs_path: str) -> list[dict]:
         n["cold3"] += int(c3)
         n["newest"] = max(filter(None, [n["newest"], newest]), default=None)
         n["oldest"] = min(filter(None, [n["oldest"], oldest]), default=None)
-    for k, uid, size in owners:
-        if k in node:
-            node[k]["mix"][_s(uid)] += int(size)
+        n["mix"][_s(uid)] += int(size)
 
     # bottom-up: deepest first, add each node into its parent
     for n in sorted(node.values(), key=lambda x: -x["depth"]):
@@ -123,12 +160,12 @@ def compute(c: Connection, now: int, depth: int, fs_path: str) -> list[dict]:
             n = node.get(n["parent_dir"])
         return (fs_path.rstrip("/") + "/" + "/".join(reversed(parts))) if parts else (fs_path or "/")
 
-    rows = []
+    out = []
     for n in node.values():
         top = max(n["mix"].items(), key=lambda kv: kv[1], default=(None, 0))
-        rows.append({"dir_id": n["dir_id"], "parent_dir": n["parent_dir"], "depth": n["depth"],
-                     "path": path_of(n)[:4096], "owner": n["owner"], "top_owner": top[0],
-                     "top_owner_bytes": top[1], "subdirs": len(n["children"]), "files": n["files"],
-                     "bytes": n["bytes"], "newest_access": n["newest"], "oldest_access": n["oldest"],
-                     "cold_1y_bytes": n["cold1"], "cold_3y_bytes": n["cold3"]})
-    return rows
+        out.append({"dir_id": n["dir_id"], "parent_dir": n["parent_dir"], "depth": n["depth"],
+                    "path": path_of(n)[:4096], "owner": n["owner"], "top_owner": top[0],
+                    "top_owner_bytes": top[1], "subdirs": len(n["children"]), "files": n["files"],
+                    "bytes": n["bytes"], "newest_access": n["newest"], "oldest_access": n["oldest"],
+                    "cold_1y_bytes": n["cold1"], "cold_3y_bytes": n["cold3"]})
+    return out
