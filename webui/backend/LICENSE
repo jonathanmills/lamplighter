@@ -1,4 +1,4 @@
-Robinhood Web UI
+Lamplighter Web UI
 Copyright (C) 2026 Jonathan Mills
 
 The software in this directory (webui/) is free software; you can
@@ -8,9 +8,9 @@ version 2 of the License, or (at your option) any later version.
 
 SPDX-License-Identifier: GPL-2.0-or-later
 
-This directory is a separate component of the Robinhood Policy Engine
-fork. The rest of the repository keeps its original CeCILL-C license
-(see ../LICENSE).
+This directory is a separate component of Lamplighter, a fork of the
+Robinhood Policy Engine. The rest of the repository keeps its original
+CeCILL-C license (see ../LICENSE).
 
 The full text of the GNU General Public License, version 2, follows.
 

@@ -29,4 +29,4 @@ if [[ ! -f Makefile ]]; then
 fi
 make -j"$(nproc)"
 
-echo "rbh-dev: robinhood built in $dst"
+echo "lux-dev: robinhood built in $dst"

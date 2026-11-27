@@ -52,8 +52,8 @@ objectClass: olcDatabaseConfig
 objectClass: olcMdbConfig
 olcDatabase: {1}mdb
 olcDbDirectory: /var/lib/ldap
-olcSuffix: dc=rbh,dc=test
-olcRootDN: cn=admin,dc=rbh,dc=test
+olcSuffix: dc=lamplighter,dc=test
+olcRootDN: cn=admin,dc=lamplighter,dc=test
 olcSecurity: ssf=71
 olcDbIndex: objectClass eq
 olcDbIndex: uid eq

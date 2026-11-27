@@ -37,7 +37,7 @@ SHOTS = [
     ("dave", "/admin/directory", "light", 1440, "directory-light"),
     ("dave", "/admin/access", "dark", 1440, "access-dark"),
     ("carol", "/browse", "dark", 1440, "browse-root-dark"),
-    ("carol", "/browse?dir=84ABCC3:E8C4", "light", 1440, "browse-projects-light"),
+    ("carol", "/browse?dir={projects}", "light", 1440, "browse-projects-light"),
     ("carol", "/browse", "dark", 400, "browse-phone"),
     ("dave", "/admin/audit", "dark", 1440, "audit-dark"),
     ("dave", "/admin/audit?outcome=denied", "light", 1440, "audit-light-denied"),
@@ -75,7 +75,12 @@ def main() -> int:
             page.fill("#password", "password")
             page.click("text=Sign in with directory password")
             page.wait_for_url(BASE + "/")
-            page.evaluate(f"localStorage.setItem('rbh-theme', '{theme}')")
+            page.evaluate(f"localStorage.setItem('lux-theme', '{theme}')")
+            if "{projects}" in path:
+                # Entry ids change with every fresh scan: look up /data/projects.
+                root = page.request.get(BASE + "/api/v1/browse").json()
+                pid = next(d["id"] for d in root["subdirs"] if d["path"].endswith("/projects"))
+                path = path.replace("{projects}", pid)
             page.goto(BASE + path)
             page.wait_for_selector(".content")
             if path == "/admin/directory":

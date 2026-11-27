@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Copyright (C) 2026 Jonathan Mills
-// Overview: Robinhood's status and the shape of the filesystem, from
+// Overview: Lamplighter's status and the shape of the filesystem, from
 // cheap reads only (VARS and ACCT_STAT; never a scan of ENTRIES).
 import { useEffect, useMemo, useState } from "react";
 import { api, ApiError, toDisplayBands, type AgeBands, type Status, type UsageSummary } from "../api";
@@ -76,7 +76,7 @@ export default function Overview() {
                table={ageBands.length ? { columns: ["Last accessed", "Volume", "Files"], rows: ageBands.map((b) => [b.label, bytes(b.bytes), int(b.files)]) } : undefined}>
           {age === "none" ? (
             <div className="empty" style={{ padding: 8 }}>
-              <p className="muted">Appears after the collector's first run (<span className="cmd">rbh-webui-collector run</span>).</p>
+              <p className="muted">Appears after the collector's first run (<span className="cmd">lux-collector run</span>).</p>
             </div>
           ) : (
             <BarChart binary categories={ageLabels} values={ageBytes} colorTokens={RAMP} format={bytes}

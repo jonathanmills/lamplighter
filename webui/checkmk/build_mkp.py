@@ -23,15 +23,15 @@ CHECKMK_MIN = "2.5.0"
 
 
 def plugin_files() -> list[Path]:
-    return sorted(p.relative_to(PLUGINS) for p in (PLUGINS / "robinhood").rglob("*")
+    return sorted(p.relative_to(PLUGINS) for p in (PLUGINS / "lamplighter").rglob("*")
                   if p.is_file() and "__pycache__" not in p.parts)
 
 
 def main(out_dir: str) -> int:
     manifest = Manifest(
-        title="Robinhood Policy Engine",
-        name="robinhood",
-        description=("Monitors the Robinhood Policy Engine through its web UI's monitoring API: "
+        title="Lamplighter",
+        name="lamplighter",
+        description=("Monitors Lamplighter through its web UI's monitoring API: "
                      "database and last scan (age, errors, changelog backlog), the web UI collector, "
                      "and filesystem usage including data not read for 1 or 3 years. A special agent "
                      "polls the API with a Keycloak client-credentials token; all thresholds are "
@@ -41,11 +41,11 @@ def main(out_dir: str) -> int:
         version_min_required=CHECKMK_MIN,
         version_usable_until=None,
         author="Jonathan Mills",
-        download_url="https://github.com/jonathanmills/robinhood",
+        download_url="https://github.com/jonathanmills/lamplighter",
         files={PackagePart.CMK_ADDONS_PLUGINS: plugin_files()},
     )
     mkp = create_mkp(manifest, lambda part: PLUGINS, CHECKMK_BUILT_WITH)
-    out = Path(out_dir) / f"robinhood-{VERSION}.mkp"
+    out = Path(out_dir) / f"lamplighter-{VERSION}.mkp"
     out.write_bytes(mkp)
     check = extract_manifest(mkp)                   # read it back with Checkmk's own reader
     print(f"built {out} ({len(mkp)} bytes): {check.name} {check.version}, "

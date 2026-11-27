@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy import text
 
 from conftest import BASE, SSL, client_credentials_token, oidc_login
-from rbh_webui.collector import run_once
-from rbh_webui.db import make_engine
+from lux_webui.collector import run_once
+from lux_webui.db import make_engine
 
 pytestmark = pytest.mark.integration
 
@@ -60,12 +60,12 @@ def test_acct_snapshot_matches_acct_stat(engines, run_id):
 
 def test_only_one_collector_at_a_time(settings, engines):
     with engines[1].connect() as other:
-        assert other.execute(text("SELECT GET_LOCK('rbh_webui_collector', 0)")).scalar() == 1
+        assert other.execute(text("SELECT GET_LOCK('lux_collector', 0)")).scalar() == 1
         try:
             with pytest.raises(RuntimeError, match="in progress"):
                 run_once(settings, *engines)
         finally:
-            other.execute(text("SELECT RELEASE_LOCK('rbh_webui_collector')"))
+            other.execute(text("SELECT RELEASE_LOCK('lux_collector')"))
 
 
 def test_retention_keeps_newest_runs(settings, engines):
@@ -98,7 +98,7 @@ def test_cold_owners_for_data_managers_with_contact(client, run_id):
     oidc_login(client, "carol", "password")          # data manager
     body = client.get("/api/v1/cold/owners?older_than=1y").json()
     top = body["owners"][0]
-    assert top["user"] == "frank" and top["mail"] == "frank@rbh.test" and top["name"] == "Frank Genome"
+    assert top["user"] == "frank" and top["mail"] == "frank@lamplighter.test" and top["name"] == "Frank Genome"
     assert top["cold_bytes"] <= top["total_bytes"]
     very = client.get("/api/v1/cold/owners?older_than=3y").json()["owners"]
     assert [o["user"] for o in very][:1] == ["frank"]
@@ -129,7 +129,7 @@ def test_csv_export_needs_cold_export_and_is_audited(client, run_id):
     assert "attachment" in r.headers["content-disposition"]
     lines = r.text.strip().splitlines()
     assert lines[0].startswith("user,name,mail,bytes_not_accessed_1y")
-    assert lines[1].startswith("frank,Frank Genome,frank@rbh.test,")
+    assert lines[1].startswith("frank,Frank Genome,frank@lamplighter.test,")
     client.cookies.clear()
     oidc_login(client, "alice", "password")          # viewer: may not
     assert client.get("/api/v1/cold/owners.csv").status_code == 403

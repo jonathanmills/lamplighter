@@ -1,15 +1,15 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
 #
-# Robinhood web UI development environment. Use ./devenv.sh rather
+# Lamplighter web UI development environment. Use ./devenv.sh rather
 # than calling compose directly. All passwords here are TEST-ONLY.
 
-name: rbh-dev
+name: lux-dev
 
 services:
   ldap:
     build: ./ldap
-    image: localhost/rbh-dev-ldap
+    image: localhost/lux-dev-ldap
     volumes:
       - ./.certs:/certs:ro
     networks:
@@ -35,7 +35,7 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: admin
     volumes:
       - ./.certs:/certs:ro
-      - ./keycloak/realm-rbh.json:/opt/keycloak/data/import/realm-rbh.json:ro
+      - ./keycloak/realm-lamplighter.json:/opt/keycloak/data/import/realm-lamplighter.json:ro
     networks:
       default:
         aliases: [keycloak.test]
@@ -52,8 +52,8 @@ services:
       MARIADB_USER: robinhood
       MARIADB_PASSWORD: robinhood
     volumes:
-      - rbh-db:/var/lib/mysql
-      - ./mariadb/rbh_webui.sql:/docker-entrypoint-initdb.d/20-rbh_webui.sql:ro
+      - lux-db:/var/lib/mysql
+      - ./mariadb/lux_webui.sql:/docker-entrypoint-initdb.d/20-lux_webui.sql:ro
     ports:
       - "127.0.0.1:13306:3306"
     healthcheck:
@@ -64,13 +64,13 @@ services:
   # Rocky Linux 9.7 workbench: builds and runs Robinhood, runs tests.
   workbench:
     build: ./robinhood
-    image: localhost/rbh-dev-robinhood
+    image: localhost/lux-dev-robinhood
     hostname: workbench
     volumes:
       - ../..:/src:ro             # the repository (read-only)
       - .:/devenv:ro              # this directory
       - ./.certs:/certs:ro
-      - rbh-build:/build          # out-of-tree copy + build of Robinhood
+      - lux-build:/build          # out-of-tree copy + build of Robinhood
     tmpfs:
       - /data:size=4g,mode=0755   # scanned filesystem (sparse test files)
     depends_on:
@@ -80,9 +80,9 @@ services:
   # Web UI back end (FastAPI), with live reload from the source tree.
   webui:
     build: ../backend
-    image: localhost/rbh-dev-webui
+    image: localhost/lux-dev-webui
     environment:
-      RBH_WEBUI_CONFIG: /devenv/webui/config.yaml
+      LUX_WEBUI_CONFIG: /devenv/webui/config.yaml
       # File events from a macOS host don't reach the VM: poll instead.
       WATCHFILES_FORCE_POLLING: "true"
     volumes:
@@ -110,7 +110,7 @@ services:
     volumes:
       - ../frontend:/app
       - .:/devenv:ro
-      - rbh-node-modules:/app/node_modules
+      - lux-node-modules:/app/node_modules
 
   # Optional: Checkmk Community 2.5 for installing the plugin in a real site.
   # x86-64 hosts only: the image is amd64-only, and the site does not start
@@ -131,6 +131,6 @@ services:
     depends_on: [webui]
 
 volumes:
-  rbh-db:
-  rbh-build:
-  rbh-node-modules:
+  lux-db:
+  lux-build:
+  lux-node-modules:

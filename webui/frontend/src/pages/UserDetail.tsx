@@ -20,7 +20,7 @@ export default function UserDetail() {
   const [err, setErr] = useState<{ status: number; msg: string } | null>(null);
 
   useEffect(() => {
-    document.title = `${uid} · Users & groups · Robinhood`;
+    document.title = `${uid} · Users & groups · Lamplighter`;
     setD(null); setErr(null);
     api.user(uid).then(setD).catch((e) => setErr({ status: e instanceof ApiError ? e.status : 0, msg: String(e.message ?? e) }));
   }, [uid]);

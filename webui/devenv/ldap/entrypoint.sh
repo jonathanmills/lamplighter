@@ -30,8 +30,8 @@ done
 
 if [[ $first_start == yes ]]; then
     ldapadd -Q -Y EXTERNAL -H ldapi:/// -f /opt/ldap/data.ldif >/dev/null
-    echo "rbh-dev-ldap: test data loaded"
+    echo "lux-dev-ldap: test data loaded"
 fi
-echo "rbh-dev-ldap: ready"
+echo "lux-dev-ldap: ready"
 
 wait $pid

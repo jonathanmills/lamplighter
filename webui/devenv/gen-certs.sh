@@ -23,7 +23,7 @@ if [[ ! -f ca.pem ]]; then
     # sets VERIFY_X509_STRICT) reject certificates without them.
     printf 'basicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\n' > ca.ext
     openssl req -new -newkey rsa:3072 -nodes -sha256 \
-        -subj "/O=Robinhood Dev/CN=Robinhood Dev Test CA" \
+        -subj "/O=Lamplighter Dev/CN=Lamplighter Dev Test CA" \
         -keyout ca.key -out ca.csr 2>/dev/null
     openssl x509 -req -in ca.csr -signkey ca.key -days 3650 -sha256 \
         -extfile ca.ext -out ca.pem 2>/dev/null
@@ -36,7 +36,7 @@ issue() {
     local name=$1 sans=$2
     [[ -f $name.pem ]] && return 0
     openssl req -newkey rsa:2048 -nodes -sha256 \
-        -subj "/O=Robinhood Dev/CN=$name" \
+        -subj "/O=Lamplighter Dev/CN=$name" \
         -keyout "$name.key" -out "$name.csr" 2>/dev/null
     printf 'subjectAltName=%s\nextendedKeyUsage=serverAuth\nkeyUsage=critical,digitalSignature,keyEncipherment\nbasicConstraints=critical,CA:FALSE\nsubjectKeyIdentifier=hash\nauthorityKeyIdentifier=keyid,issuer\n' \
         "$sans" > "$name.ext"

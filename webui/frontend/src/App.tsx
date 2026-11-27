@@ -20,7 +20,7 @@ export const useMe = () => useContext(MeContext)!;
 export const can = (me: Me, perm: string) => me.permissions.includes(perm);
 
 function readCollapsed(): boolean {
-  try { return localStorage.getItem("rbh-sidebar") === "collapsed"; } catch { return false; }
+  try { return localStorage.getItem("lux-sidebar") === "collapsed"; } catch { return false; }
 }
 
 export default function App() {
@@ -28,7 +28,7 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   useEffect(() => { api.me().then(setMe).catch((e) => setError(String(e.message ?? e))); }, []);
 
-  if (error) return <div className="empty"><h2>Robinhood could not load</h2><p className="error-line">{error}</p></div>;
+  if (error) return <div className="empty"><h2>Lamplighter could not load</h2><p className="error-line">{error}</p></div>;
   if (!me) return null; // a brief blank while /me loads; no layout shift
   return (
     <MeContext.Provider value={me}>
@@ -43,7 +43,7 @@ function Shell() {
   const toggle = () => {
     const next = !collapsed;
     setCollapsed(next);
-    try { localStorage.setItem("rbh-sidebar", next ? "collapsed" : "expanded"); } catch { /* ignore */ }
+    try { localStorage.setItem("lux-sidebar", next ? "collapsed" : "expanded"); } catch { /* ignore */ }
   };
   const visible = NAV.filter((n) => can(me, n.perm));
   const groups = [...new Set(visible.map((n) => n.group))];
@@ -51,7 +51,7 @@ function Shell() {
   return (
     <div className={"shell" + (collapsed ? " collapsed" : "")}>
       <aside className="sidebar" aria-label="Main navigation">
-        <div className="brand"><span className="brand-mark" role="img" aria-label="Lamplighter logo" /><span className="brand-text">Robinhood</span></div>
+        <div className="brand"><span className="brand-mark" role="img" aria-label="Lamplighter logo" /><span className="brand-text">Lamplighter</span></div>
         <nav className="nav">
           {groups.map((g) => (
             <div className="nav-group" key={g}>
@@ -88,7 +88,7 @@ function Shell() {
 
 function Page({ item }: { item: NavItem }) {
   const me = useMe();
-  useEffect(() => { document.title = `${item.title} · Robinhood`; }, [item]);
+  useEffect(() => { document.title = `${item.title} · Lamplighter`; }, [item]);
   if (!can(me, item.perm)) return <Forbidden perm={item.perm} />;
   if (item.path === "/") return <Overview />;
   if (item.path === "/cold") return <ColdData />;

@@ -3,6 +3,6 @@
 // Apply the saved theme before the first paint. Dark is the default.
 (function () {
   var t = "dark";
-  try { if (localStorage.getItem("rbh-theme") === "light") t = "light"; } catch (e) {}
+  try { if (localStorage.getItem("lux-theme") === "light") t = "light"; } catch (e) {}
   document.documentElement.setAttribute("data-theme", t);
 })();

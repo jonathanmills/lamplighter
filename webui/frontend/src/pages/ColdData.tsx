@@ -72,7 +72,7 @@ export default function ColdData() {
       {state === "none" && (
         <section className="panel"><div className="empty">
           <h2>No collector run yet</h2>
-          <p className="muted">Cold-data figures come from the nightly collector. Run it once with <span className="cmd">rbh-webui-collector run</span>.</p>
+          <p className="muted">Cold-data figures come from the nightly collector. Run it once with <span className="cmd">lux-collector run</span>.</p>
         </div></section>
       )}
       {state === "error" && (

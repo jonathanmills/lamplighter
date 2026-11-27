@@ -21,9 +21,9 @@ COPY src ./src
 RUN pip install --no-cache-dir --upgrade pip \
  && pip install --no-cache-dir -e '.[dev]'
 
-COPY entrypoint.sh /usr/local/bin/rbh-webui-entrypoint
-ENTRYPOINT ["/usr/local/bin/rbh-webui-entrypoint"]
-CMD ["uvicorn", "rbh_webui.app:create_app", "--factory", \
+COPY entrypoint.sh /usr/local/bin/lux-webui-entrypoint
+ENTRYPOINT ["/usr/local/bin/lux-webui-entrypoint"]
+CMD ["uvicorn", "lux_webui.app:create_app", "--factory", \
      "--host", "0.0.0.0", "--port", "8443", \
      "--ssl-certfile", "/certs/webui.test.pem", "--ssl-keyfile", "/certs/webui.test.key", \
      "--reload", "--reload-dir", "/app/src"]

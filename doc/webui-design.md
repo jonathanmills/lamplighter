@@ -33,7 +33,7 @@ What that means:
 **Design response:** the web UI never runs unbounded queries against `ENTRIES` while a page loads. Instead:
 
 1. **Live reads** use only cheap, indexed or aggregated sources: `ACCT_STAT`, `VARS`, and `NAMES`/`ENTRIES` by `id` or `parent_id`.
-2. A **collector** (a Python batch job, run on a timer) scans `ENTRIES` once per cycle, ideally on a **replica**. It writes pre-computed rollups into a separate `rbh_webui` schema that the UI owns. Age histograms, cold-data rankings and per-directory trees all come from these rollups.
+2. A **collector** (a Python batch job, run on a timer) scans `ENTRIES` once per cycle, ideally on a **replica**. It writes pre-computed rollups into a separate `lux_webui` schema that the UI owns. Age histograms, cold-data rankings and per-directory trees all come from these rollups.
 3. The collector also **snapshots** `ACCT_STAT` each cycle, giving per-user and per-group usage history. Robinhood itself only stores current values.
 
 ```
@@ -41,12 +41,12 @@ Lustre ──changelogs──▶ robinhood daemon ──▶ MariaDB (robinhood s
                                                 │
                                    (replica)    │ read-only
                                                 ▼
-                         rbh-webui-collector ──▶ MariaDB (rbh_webui schema: rollups, history)
+                               lux-collector ──▶ MariaDB (lux_webui schema: rollups, history)
                                                 │
 Lustre jobstats ─▶ jobstats collector ──────────┤
 Slurm (slurmrestd) ─────────────────────────────┤
                                                 ▼
-                       rbh-webui API (Python) ◀──▶ browser (static SPA)
+                       lux-webui API (Python) ◀──▶ browser (static SPA)
                                 ▲
                      OIDC IdP ──┘   (behind nginx, TLS)
 ```
@@ -61,7 +61,7 @@ Slurm (slurmrestd) ────────────────────�
 | Front end | **TypeScript + React** with React Router, built with **Vite** into static files that the API server serves (one origin, one session cookie) | Large ecosystem for dense data UIs. Node.js runs **only in a build container**: never on developer Macs or servers. |
 | UI kit | **No component library.** Hand-written CSS built on the palette tokens (`webui/frontend/src/styles/tokens.css`). **Apache ECharts** for charts. **TanStack Table** later, when tables need virtual scrolling. | Exact control over the Checkmk-style density, the palette and the layout rules, with fewer dependencies. Fonts are the system stack, with Ubuntu first where it is installed; bundling a web font is a separate licensing decision. |
 | Web server | **nginx**: TLS termination, serves static assets, reverse proxy to the API | Standard, fits SELinux and FIPS-mode setups. |
-| Packaging | **RPM** (`robinhood-webui`), alongside the existing RPMs | Same deployment path as the rest of Robinhood. |
+| Packaging | **RPM** (`lamplighter-webui`), alongside the existing RPMs | Same deployment path as the rest of Robinhood. |
 
 A lighter alternative is server-rendered HTML with htmx (no JavaScript build step at all). It would help if npm supply-chain policy is a problem, at the cost of a less rich interface. Decide before Phase 1.
 
@@ -75,13 +75,13 @@ Three concerns are kept separate:
 |---|---|---|
 | **Authentication** (login) | **OIDC via Keycloak** (preferred), or a **direct LDAP bind** (optional, configurable) | Either method can be enabled, or both. |
 | **Directory** (user identity and groups) | **LDAP**, always | Group memberships always come from LDAP, whichever login method was used. |
-| **Authorization** (ACLs) | Roles and permissions in the UI, **assigned to LDAP groups** | Managed in the UI's admin pages and stored in `rbh_webui`. |
+| **Authorization** (ACLs) | Roles and permissions in the UI, **assigned to LDAP groups** | Managed in the UI's admin pages and stored in `lux_webui`. |
 
 ### 4.1 Authentication
 
 **OIDC (Keycloak).** This is the preferred method: the UI never sees user passwords, and users get single sign-on and multi-factor authentication through Keycloak.
 - Authorization Code flow with PKCE, implemented **in the back end** (a "backend-for-frontend"). Tokens never reach the browser. The browser holds only an `HttpOnly; Secure; SameSite=Lax` session cookie containing a random session id. `Lax` rather than `Strict` is required, because the return from Keycloak is a cross-site navigation that must carry the cookie. Cross-site writes are refused by an Origin check. Library: Authlib.
-- `rbh-webui` is a **confidential** Keycloak client with standard flow and PKCE (S256) enabled, and redirect URIs restricted to the UI's hostname. The endpoints come from the realm's `.well-known/openid-configuration` discovery document.
+- `lux-webui` is a **confidential** Keycloak client with standard flow and PKCE (S256) enabled, and redirect URIs restricted to the UI's hostname. The endpoints come from the realm's `.well-known/openid-configuration` discovery document.
 - The logged-in user is mapped to the LDAP directory through a configured claim, `preferred_username` by default, matched against the LDAP `uid`. No roles are needed in Keycloak.
 - **Logout** uses RP-initiated logout (Keycloak's `end_session_endpoint`). Back-channel logout should also be enabled, so ending a session in Keycloak ends the UI session.
 
@@ -120,8 +120,8 @@ Example (site-specific values are placeholders):
 ldap:
   servers: [ldaps://ldap1.example.org, ldaps://ldap2.example.org]
   ca_file: /etc/pki/tls/certs/site-ca.pem
-  bind_dn: cn=rbh-webui,ou=services,dc=example,dc=org
-  bind_password_file: /etc/rbh-webui/ldap.secret
+  bind_dn: cn=lux-webui,ou=services,dc=example,dc=org
+  bind_password_file: /etc/lux-webui/ldap.secret
   directory_type: rfc2307bis
   users:
     base_dn: ou=people,dc=example,dc=org
@@ -157,10 +157,10 @@ The model follows Checkmk's: **permissions** are grouped into **roles**, and rol
   | `admin` | Everything, including triage, collector status, LDAP settings and ACL management |
 
 - **Data scope** is the second axis, separate from permissions. A role can be restricted to the user's own files (by `uidNumber`), to the user's Unix groups (`gidNumber`), or to specific path prefixes or projects. So a group's PI can see only their project's data.
-- **Mapping:** LDAP group DN to one or more roles, managed in the UI's admin pages and stored in `rbh_webui`. A bootstrap admin group is set in the configuration file, so the first login can configure the rest.
+- **Mapping:** LDAP group DN to one or more roles, managed in the UI's admin pages and stored in `lux_webui`. A bootstrap admin group is set in the configuration file, so the first login can configure the rest.
 - **Enforcement:** permissions are checked in the API, on every endpoint and query. The front end only hides what you can't use; it doesn't enforce anything.
-- **Audit log:** every login, permission denial, lookup and export is recorded with user identity and client address, as structured JSON to journald (the authoritative copy for the site's log collection). A copy also goes to `rbh_webui.audit_log` through a background writer, so admins can search it on the **Audit log page** (built; `admin.audit.view`). That copy is pruned after `collector.audit_retention_days`. Routine successful monitoring polls are not audited (one a minute would bury real events); refused ones are.
-- **Access control page** (built; `admin.acl`): a read-only roles × permissions matrix in plain words, and each mapped LDAP group with its members resolved to login names. Role mappings stay in the config file for now. *Open question:* make them editable in the UI (stored in `rbh_webui`, audited, with the config file as a fallback)?
+- **Audit log:** every login, permission denial, lookup and export is recorded with user identity and client address, as structured JSON to journald (the authoritative copy for the site's log collection). A copy also goes to `lux_webui.audit_log` through a background writer, so admins can search it on the **Audit log page** (built; `admin.audit.view`). That copy is pruned after `collector.audit_retention_days`. Routine successful monitoring polls are not audited (one a minute would bury real events); refused ones are.
+- **Access control page** (built; `admin.acl`): a read-only roles × permissions matrix in plain words, and each mapped LDAP group with its members resolved to login names. Role mappings stay in the config file for now. *Open question:* make them editable in the UI (stored in `lux_webui`, audited, with the config file as a fallback)?
 
 **Machine clients** (Checkmk) don't go through LDAP. They use the separate Keycloak client-credentials client with a `monitoring` permission only (section 7.4).
 
@@ -223,9 +223,9 @@ This needs a jobstats collector on or near the Lustre servers. It is Phase 3, an
 - Directory tree browser, cheap through `parent_id` and `NAMES`, showing size and count per subtree from the rollups.
 - Lookup by path, or by owner within a subtree. Bounded queries only, with pagination and time limits.
 
-## 6. Collector design (`rbh-webui-collector`)
+## 6. Collector design (`lux-collector`)
 
-Status: **v1 implemented** (`webui/backend/src/rbh_webui/collector.py`), covering the age histogram and the `ACCT_STAT` history. Directory rollups are still to be designed (6.3).
+Status: **v1 implemented** (`webui/backend/src/lux_webui/collector.py`), covering the age histogram and the `ACCT_STAT` history. Directory rollups are still to be designed (6.3).
 
 ### 6.1 How a run works
 - The collector runs from a timer (nightly), never from a web request. Only one collector runs at a time (MariaDB `GET_LOCK`), and each run is recorded in `collector_runs`.
@@ -235,15 +235,15 @@ Status: **v1 implemented** (`webui/backend/src/rbh_webui/collector.py`), coverin
 - **Retention:** the newest `keep_runs` runs are kept, and their rows are deleted with them (`ON DELETE CASCADE`).
 - **Where it runs:** point `database` at a **read replica**. A long consistent read on the primary holds InnoDB's undo history while Robinhood writes changelog updates.
 
-### 6.2 Schema (`rbh_webui`, managed by numbered migrations in `rbh_webui/migrations/`)
+### 6.2 Schema (`lux_webui`, managed by numbered migrations in `lux_webui/migrations/`)
 - `collector_runs`: start and finish times, status, file count, error.
 - `age_hist`: run × uid × gid × access band × modify band → files, bytes, for regular files. Bands: < 7 d, 7–30 d, 30–90 d, 90 d–1 y, 1–3 y, > 3 y. Storing the joint distribution means "written long ago but still read" can also be answered.
 - `acct_history`: run × uid × gid × type → entries, bytes, blocks.
 
-The web UI's database user has `SELECT` on Robinhood's schema and full rights on `rbh_webui` only. Robinhood's own tables are never written.
+The web UI's database user has `SELECT` on Robinhood's schema and full rights on `lux_webui` only. Robinhood's own tables are never written.
 
 ### 6.3 Per-directory rollups (built, Phase 3)
-Implemented in `rbh_webui/rollup.py`, run by the collector on its source connection:
+Implemented in `lux_webui/rollup.py`, run by the collector on its source connection:
 1. A **recursive query** (`WITH RECURSIVE`, MariaDB 10.2+) walks only *directories*, through the `NAMES.parent_id` index, from the root down. The root is found as the parent that is nobody's child. Each directory is mapped to its ancestor at `collector.rollup_depth` (default 4), or to itself when shallower. The result goes into a **TEMPORARY table**, which works on a read-only replica.
 2. **One `GROUP BY` over the files** gives totals per tracked directory: files, bytes, newest and oldest access, and bytes not read for 1 and 3 years. A second `GROUP BY` per (directory, owner) gives the top owner.
 3. Python adds the totals up the tracked tree. Only directories at depth ≤ `rollup_depth` reach Python. Results go in `dir_rollup` (migration 003).
@@ -285,7 +285,7 @@ Checkmk's predictive levels can be applied to rate metrics to catch "unusual com
 **Design principle: Checkmk polls Robinhood's API.** Nothing is installed on the Robinhood host for monitoring (no Checkmk agent plugin), and Robinhood never pushes to Checkmk.
 
 - **API:** `GET /api/v1/monitoring` on the UI back end. It is read-only and returns JSON of all services and metrics.
-- **Machine authentication through Keycloak:** a second Keycloak client, `rbh-checkmk`, uses the **client-credentials** grant (a service account) and carries only a `monitoring` role. The Checkmk special agent fetches a short-lived access token and sends it as a Bearer token. The API checks the token's signature against the realm's JWKS, plus its issuer, audience and role. No long-lived static tokens; the client secret is stored in Checkmk's password store. This is independent of how people log in to Checkmk itself (Checkmk's own SSO with Keycloak uses SAML). The special agent is our own code making a standard OAuth 2.0 token request, so the Robinhood side stays entirely OIDC/OAuth 2.0. It must be cheap to call every minute: it reads only live sources and the collector's stored results, and never scans `ENTRIES`.
+- **Machine authentication through Keycloak:** a second Keycloak client, `lux-checkmk`, uses the **client-credentials** grant (a service account) and carries only a `monitoring` role. The Checkmk special agent fetches a short-lived access token and sends it as a Bearer token. The API checks the token's signature against the realm's JWKS, plus its issuer, audience and role. No long-lived static tokens; the client secret is stored in Checkmk's password store. This is independent of how people log in to Checkmk itself (Checkmk's own SSO with Keycloak uses SAML). The special agent is our own code making a standard OAuth 2.0 token request, so the Robinhood side stays entirely OIDC/OAuth 2.0. It must be cheap to call every minute: it reads only live sources and the collector's stored results, and never scans `ENTRIES`.
 - **Checkmk plugin (MKP)**, targeting **Checkmk Pro 2.5** (in use: 2.5.0p21):
   - a **special agent**, running on the Checkmk server and configured through `cmk.server_side_calls.v1`, that polls the endpoint;
   - **check plugins** using `cmk.agent_based.v2`, with services discovered per policy, fileclass, OST, pool and user;
@@ -297,10 +297,10 @@ Checkmk's predictive levels can be applied to rate metrics to catch "unusual com
 
 ```
 webui/
-  backend/        # FastAPI app (rbh_webui package): api/, auth/, db/, collector/
+  backend/        # FastAPI app (lux_webui package): api/, auth/, db/, collector/
   frontend/       # React + TS (Vite); `npm run build` → static dist/
   checkmk/        # Checkmk MKP: special agent, check plugins, rulesets
-  packaging/      # rbh-webui.spec, systemd units, nginx example config
+  packaging/      # lamplighter-webui.spec, systemd units, nginx example config
   docs/
 web_gui/          # legacy PHP GUI, removed once the new UI covers its features
 ```
@@ -309,12 +309,12 @@ web_gui/          # legacy PHP GUI, removed once the new UI covers its features
 
 | Phase | Delivers |
 |---|---|
-| 0. Skeleton | Repo layout, FastAPI app, OIDC login against a local Keycloak container (a test realm with the `rbh-webui` and `rbh-checkmk` clients), an OpenLDAP test container (RFC 2307bis), LDAP directory lookups and the ACL model, nginx config, read-only DB user, dev environment (Linux container with MariaDB and a sample Robinhood DB). |
+| 0. Skeleton | Repo layout, FastAPI app, OIDC login against a local Keycloak container (a test realm with the `lux-webui` and `lux-checkmk` clients), an OpenLDAP test container (RFC 2307bis), LDAP directory lookups and the ACL model, nginx config, read-only DB user, dev environment (Linux container with MariaDB and a sample Robinhood DB). |
 | 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. *Done: Overview, collector v1, a first Cold data page (owners with the most cold data, LDAP contact details, audited CSV export), and Users & groups (sortable tables with LDAP names, small-file share and change since the last snapshot, plus a per-user page with age, sizes, history and groups; viewers see only themselves). Still open: the scale test.* |
 | 2. Checkmk | *Done: admin pages (Directory, Access control (read-only), Audit log) and the Checkmk 2.5 plugin (`webui/checkmk`: special agent, 3 services, rulesets, MKP), tested against Checkmk's real APIs. Still to do: install on an x86-64 Checkmk 2.5 site; per-policy services need per-policy counts from the collector.* Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
 | 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. *Done: directory rollups, Browse (paths.view_all), coldest directories. Still open: own-files browsing (paths.view_own), scale measurement.* |
 | 4. Triage | Jobstats collector, Slurm integration, triage dashboard. Rate metrics also feed Checkmk. |
-| 5. Retire PHP | Feature parity check against `gui_v3`, remove `web_gui/` from the build and RPM, RPM packaging for the new UI. *Done: `robinhood-webgui` (PHP) removed from the build and spec; `robinhood-webui` RPM (`webui/packaging`) with venv, systemd units, collector timer and nginx example, tested by installing it in a fresh Rocky 9.7 container behind nginx. Still open: deleting `web_gui/` itself, and an x86_64 build host/CI.* |
+| 5. Retire PHP | Feature parity check against `gui_v3`, remove `web_gui/` from the build and RPM, RPM packaging for the new UI. *Done: `robinhood-webgui` (PHP) removed from the build and spec; `lamplighter-webui` RPM (`webui/packaging`) with venv, systemd units, collector timer and nginx example, tested by installing it in a fresh Rocky 9.7 container behind nginx. Still open: deleting `web_gui/` itself, and an x86_64 build host/CI.* |
 
 ## 10. Licensing
 
@@ -335,7 +335,7 @@ Rules:
 
 ## 11. Open questions
 
-1. **Keycloak clients**: can the Keycloak admins create the `rbh-webui` (authorization code) and `rbh-checkmk` (client-credentials) clients? Does `preferred_username` in tokens always equal the LDAP `uid`?
+1. **Keycloak clients**: can the Keycloak admins create the `lux-webui` (authorization code) and `lux-checkmk` (client-credentials) clients? Does `preferred_username` in tokens always equal the LDAP `uid`?
 2. **Replica**: can the collector read from a MariaDB replica of the Robinhood database?
 3. **Scale**: roughly how many entries are in `ENTRIES` now, and how fast does it change? This sets the collector's design budget.
 4. **JavaScript tooling policy**: is building a React front end with npm on a build host acceptable, or do we need the no-build htmx option?

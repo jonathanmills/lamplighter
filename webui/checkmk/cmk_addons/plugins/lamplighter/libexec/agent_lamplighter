@@ -1,0 +1,4 @@
+#!/bin/sh
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+exec python3 -m cmk_addons.plugins.lamplighter.special_agent.agent_lamplighter "$@"

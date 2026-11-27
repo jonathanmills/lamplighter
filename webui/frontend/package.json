@@ -1,9 +1,9 @@
 {
-  "name": "rbh-webui-frontend",
+  "name": "lux-webui-frontend",
   "private": true,
   "version": "0.1.0-dev",
   "license": "GPL-2.0-or-later",
-  "description": "Robinhood web UI front end. Dependencies must be GPLv3-compatible (doc/webui-design.md, section 10).",
+  "description": "Lamplighter web UI front end. Dependencies must be GPLv3-compatible (doc/webui-design.md, section 10).",
   "type": "module",
   "scripts": {
     "build": "tsc --noEmit && vite build",

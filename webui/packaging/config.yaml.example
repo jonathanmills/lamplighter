@@ -1,25 +1,25 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
 #
-# Robinhood web UI configuration: /etc/rbh-webui/config.yaml
+# Lamplighter web UI configuration: /etc/lux-webui/config.yaml
 #
 # Secrets never go in this file. Each one lives in its own file, readable
-# only by root and the rbh-webui group (chmod 0640, chgrp rbh-webui), e.g.
-#   install -m 0640 -g rbh-webui /dev/null /etc/rbh-webui/ldap-bind.secret
+# only by root and the lux-webui group (chmod 0640, chgrp lux-webui), e.g.
+#   install -m 0640 -g lux-webui /dev/null /etc/lux-webui/ldap-bind.secret
 # Replace every example.org value below.
 
 server:
   base_url: https://robinhood.example.org          # the URL people type; must match nginx
-  session_secret_file: /etc/rbh-webui/session.secret   # long random string: openssl rand -hex 32
+  session_secret_file: /etc/lux-webui/session.secret   # long random string: openssl rand -hex 32
   session_ttl_seconds: 28800
-  frontend_dir: /usr/share/rbh-webui/frontend      # installed by the RPM
+  frontend_dir: /usr/share/lux-webui/frontend      # installed by the RPM
 
 # Single sign-on through Keycloak (OpenID Connect).
 oidc:
   enabled: true
   issuer: https://keycloak.example.org/realms/REALM
-  client_id: rbh-webui
-  client_secret_file: /etc/rbh-webui/oidc-client.secret
+  client_id: lux-webui
+  client_secret_file: /etc/lux-webui/oidc-client.secret
   # ca_file: /etc/pki/tls/certs/site-ca.pem       # unset = system trust store
   username_claim: preferred_username              # must equal the LDAP uid
 
@@ -27,8 +27,8 @@ oidc:
 ldap:
   servers: [ldaps://ldap1.example.org, ldaps://ldap2.example.org]
   # ca_file: /etc/pki/tls/certs/site-ca.pem
-  bind_dn: cn=rbh-webui,ou=services,dc=example,dc=org
-  bind_password_file: /etc/rbh-webui/ldap-bind.secret
+  bind_dn: cn=lux-webui,ou=services,dc=example,dc=org
+  bind_password_file: /etc/lux-webui/ldap-bind.secret
   directory_type: rfc2307bis                      # or rfc2307, active_directory
   users:
     base_dn: ou=people,dc=example,dc=org
@@ -42,11 +42,11 @@ login:
 access:
   # Members of these groups are admins: needed for the first sign-in.
   bootstrap_admin_groups:
-    - cn=rbh-admins,ou=groups,dc=example,dc=org
+    - cn=lux-admins,ou=groups,dc=example,dc=org
   role_mappings:
-    - group: cn=rbh-data-managers,ou=groups,dc=example,dc=org
+    - group: cn=lux-data-managers,ou=groups,dc=example,dc=org
       roles: [data-manager]
-    - group: cn=rbh-viewers,ou=groups,dc=example,dc=org
+    - group: cn=lux-viewers,ou=groups,dc=example,dc=org
       roles: [viewer]
 
 # Robinhood's own database: read only. Ideally a replica.
@@ -54,16 +54,16 @@ access:
 database:
   host: db-replica.example.org
   name: robinhood_lustre
-  user: rbh_webui
-  password_file: /etc/rbh-webui/db.secret
+  user: lux_webui
+  password_file: /etc/lux-webui/db.secret
 
 # The web UI's own schema (collector results, audit copy): read-write.
-# Grants: ALL on rbh_webui.*
+# Grants: ALL on lux_webui.*
 store:
   host: db.example.org
-  name: rbh_webui
-  user: rbh_webui
-  password_file: /etc/rbh-webui/store.secret
+  name: lux_webui
+  user: lux_webui
+  password_file: /etc/lux-webui/store.secret
 
 collector:
   keep_runs: 90
@@ -74,5 +74,5 @@ collector:
 # Checkmk polls /api/v1/monitoring with a Keycloak client-credentials token.
 monitoring:
   enabled: true
-  audience: rbh-webui
+  audience: lux-webui
   required_role: monitoring

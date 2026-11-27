@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
 #
-# Robinhood web UI development environment. Run from macOS (Podman or
+# Lamplighter web UI development environment. Run from macOS (Podman or
 # Docker) or Linux. See README.md.
 
 set -euo pipefail
@@ -21,7 +21,7 @@ wb() { compose exec -T -e PYTHONDONTWRITEBYTECODE=1 workbench "$@"; }
 wait_keycloak() {
     for _ in $(seq 90); do
         if wb curl -sf --cacert /certs/ca.pem \
-               https://keycloak.test:9443/realms/rbh >/dev/null 2>&1; then
+               https://keycloak.test:9443/realms/lamplighter >/dev/null 2>&1; then
             return 0
         fi
         sleep 2
@@ -75,7 +75,7 @@ case $cmd in
         mkdir -p ../frontend/dist
         compose up -d --build
         # the web UI's own schema and user (idempotent; also run on fresh volumes)
-        compose exec -T mariadb mariadb -uroot -pdevroot < mariadb/rbh_webui.sql
+        compose exec -T mariadb mariadb -uroot -pdevroot < mariadb/lux_webui.sql
         wait_keycloak
         compose ps
         ;;
@@ -93,7 +93,7 @@ case $cmd in
             "SELECT COUNT(*) AS entries FROM ENTRIES; SELECT uid, type, count, size FROM ACCT_STAT ORDER BY size DESC;"
         ;;
     collect)
-        compose exec -T webui rbh-webui-collector run
+        compose exec -T webui lux-collector run
         ;;
     test)
         wait_keycloak
@@ -106,7 +106,7 @@ case $cmd in
     checkmk-test|mkp)
         cmk_api
         run_py313() {
-            docker run --rm --network rbh-dev_default -v "$PWD/.cmk-api:/cmkapi:ro" \
+            docker run --rm --network lux-dev_default -v "$PWD/.cmk-api:/cmkapi:ro" \
                 -v "$PWD/../checkmk:/plugin" -v "$PWD/.certs:/certs:ro" \
                 -e PYTHONPATH=/cmkapi:/plugin -e PYTHONDONTWRITEBYTECODE=1 \
                 docker.io/library/python:3.13-slim sh -c "pip install -q pytest pydantic cryptography 2>/dev/null; $1"
@@ -121,7 +121,7 @@ case $cmd in
     shots)
         # Hard time limit and one retry: headless Chromium can stall at start-up.
         for attempt in 1 2; do
-            if docker run --rm --network rbh-dev_default --ipc=host -v "$PWD:/devenv" \
+            if docker run --rm --network lux-dev_default --ipc=host -v "$PWD:/devenv" \
                    mcr.microsoft.com/playwright/python:v1.48.0-noble \
                    sh -c "pip install -q playwright==1.48.0 && timeout 240 python /devenv/tools/screenshot.py"; then
                 break

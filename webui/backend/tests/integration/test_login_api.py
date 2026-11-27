@@ -38,7 +38,7 @@ def test_oidc_wrong_password_stays_at_keycloak(client):
 
 def test_session_cookie_is_secure_httponly_lax(client):
     oidc_login(client, "alice", "password")
-    raw = [h for h in client.cookies.jar if h.name == "rbh_session"]
+    raw = [h for h in client.cookies.jar if h.name == "lux_session"]
     assert raw and raw[0].secure
     rest = {k.lower(): v for k, v in raw[0]._rest.items()}
     assert "httponly" in rest and rest.get("samesite") == "lax"
@@ -46,7 +46,7 @@ def test_session_cookie_is_secure_httponly_lax(client):
 
 def test_no_tokens_in_cookie(client):
     oidc_login(client, "alice", "password")
-    cookie = client.cookies.get("rbh_session")
+    cookie = client.cookies.get("lux_session")
     import base64, json
     payload = json.loads(base64.b64decode(cookie.split(".")[0] + "=="))
     assert set(payload) == {"sid"}, payload
@@ -112,8 +112,8 @@ def test_monitoring_with_checkmk_token():
     assert r.status_code == 200, r.text
     body = r.json()
     assert body["database"]["reachable"] is True
-    assert body["robinhood"]["last_scan"]["status"] == "done"
-    assert body["robinhood"]["last_scan"]["entries"] > 1000
+    assert body["lamplighter"]["last_scan"]["status"] == "done"
+    assert body["lamplighter"]["last_scan"]["entries"] > 1000
     assert "file" in body["usage"]["by_type"]
 
 

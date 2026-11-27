@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Copyright (C) 2026 Jonathan Mills
-// Users & groups: who uses the filesystem, from Robinhood's accounting
+// Users & groups: who uses the filesystem, from Lamplighter's accounting
 // (ACCT_STAT, live) with names from LDAP and change since the collector's
 // last snapshot. Viewers see their own row; the API enforces it.
 import { useEffect, useMemo, useState } from "react";
@@ -87,7 +87,7 @@ export default function Users() {
       <div className="page-head">
         <div>
           <h1>Users & groups</h1>
-          <p>Who uses the filesystem, from Robinhood's accounting. Change is {since || "shown once the collector has run"}.</p>
+          <p>Who uses the filesystem, from Lamplighter's accounting. Change is {since || "shown once the collector has run"}.</p>
         </div>
         <div className="toolbar">
           <div className="segmented" role="group" aria-label="Show">
@@ -104,7 +104,7 @@ export default function Users() {
       )}
 
       <section className="stats stats-4" aria-label="At a glance">
-        <div className="stat"><span className="stat-label">Users with data</span><span className="stat-value">{int(users.users.length)}</span><span className="stat-sub">{users.scope === "self" ? "you" : "owners in Robinhood"}</span></div>
+        <div className="stat"><span className="stat-label">Users with data</span><span className="stat-value">{int(users.users.length)}</span><span className="stat-sub">{users.scope === "self" ? "you" : "owners in Lamplighter"}</span></div>
         <div className="stat"><span className="stat-label">Groups with data</span><span className="stat-value">{int(groups.groups.length)}</span><span className="stat-sub">Unix groups</span></div>
         {users.scope === "all" ? <>
           <div className="stat"><span className="stat-label">Largest user</span><span className="stat-value">{top ? bytes(top.bytes) : "—"}</span><span className="stat-sub">{top ? top.user : "—"}</span></div>

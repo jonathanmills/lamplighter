@@ -7,7 +7,7 @@
 set -euo pipefail
 
 if [[ -f /certs/ca.pem ]]; then
-    cp /certs/ca.pem /etc/pki/ca-trust/source/anchors/rbh-dev-ca.pem
+    cp /certs/ca.pem /etc/pki/ca-trust/source/anchors/lux-dev-ca.pem
     update-ca-trust
 fi
 

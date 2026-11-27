@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
 #
-# Build the robinhood-webui RPM for Rocky Linux / RHEL 9 without installing
+# Build the lamplighter-webui RPM for Rocky Linux / RHEL 9 without installing
 # anything on this machine: the front end is built in a Node container and
 # the RPM in a throwaway Rocky Linux 9.7 container. Output: packaging/dist/
 #
@@ -12,13 +12,13 @@ set -euo pipefail
 cd "$(dirname "$0")"
 here=$PWD
 webui=$(cd .. && pwd)
-version=$(sed -n 's/^Version: *//p' robinhood-webui.spec)
-name=robinhood-webui-$version
+version=$(sed -n 's/^Version: *//p' lamplighter-webui.spec)
+name=lamplighter-webui-$version
 export DOCKER_CONFIG=$webui/devenv/.docker-config   # ignore desktop credential helpers
 mkdir -p "$DOCKER_CONFIG"; [[ -f $DOCKER_CONFIG/config.json ]] || echo '{}' > "$DOCKER_CONFIG/config.json"
 
 echo "== front end"
-docker run --rm -v "$webui/frontend:/app" -v rbh-dev_rbh-node-modules:/app/node_modules -w /app \
+docker run --rm -v "$webui/frontend:/app" -v lux-dev_lux-node-modules:/app/node_modules -w /app \
     docker.io/library/node:22-alpine sh -c "npm ci --no-audit --no-fund >/dev/null && npm run build >/dev/null"
 
 echo "== source tarball"
@@ -28,9 +28,9 @@ rm -rf ".build/$name/backend/tests" ".build/$name/backend/.pytest_cache"
 find ".build/$name/backend" -name __pycache__ -prune -exec rm -rf {} +
 cp -a "$webui/frontend/dist" ".build/$name/frontend-dist"
 mkdir -p ".build/$name/packaging"
-cp README.md config.yaml.example nginx-rbh-webui.conf rbh-webui*.service rbh-webui-collector.timer \
-   rbh-webui.sysusers ".build/$name/packaging/"
-cp robinhood-webui.spec "$webui/LICENSE" ".build/$name/"
+cp README.md config.yaml.example nginx-lux-webui.conf lux-webui*.service lux-collector.timer \
+   lux-webui.sysusers ".build/$name/packaging/"
+cp lamplighter-webui.spec "$webui/LICENSE" ".build/$name/"
 # no macOS metadata ("._*" files): rpmbuild would see two spec files
 COPYFILE_DISABLE=1 tar --no-mac-metadata -C .build -czf ".build/$name.tar.gz" "$name" 2>/dev/null \
     || tar -C .build -czf ".build/$name.tar.gz" "$name"

@@ -1,11 +1,11 @@
-# Robinhood web UI: development environment
+# Lamplighter web UI: development environment
 
 A self-contained test environment that runs on a laptop with Podman or Docker. Everything uses real TLS, signed by a throwaway test CA, and **no external systems are contacted**.
 
 | Service | What it is | Reachable as |
 |---|---|---|
 | `ldap` | OpenLDAP with an RFC 2307bis schema (`groupOfNames` groups, users with `uid` and `memberOf`). It serves LDAPS and StartTLS only: plain-text LDAP is refused. | `ldaps://ldap.test:636` (host: `127.0.0.1:6636`) |
-| `keycloak` | Keycloak 26.0.8 with the `rbh` realm. Users are federated read-only from the LDAP server over LDAPS. | `https://keycloak.test:9443` (host: `127.0.0.1:9443`) |
+| `keycloak` | Keycloak 26.0.8 with the `lamplighter` realm. Users are federated read-only from the LDAP server over LDAPS. | `https://keycloak.test:9443` (host: `127.0.0.1:9443`) |
 | `mariadb` | MariaDB 10.5 holding the Robinhood database `robinhood_dev` | `mariadb:3306` (host: `127.0.0.1:13306`) |
 | `workbench` | Rocky Linux 9.7: builds and runs Robinhood (POSIX mode), and runs the tests | `./devenv.sh shell` |
 | `webui` | The web UI back end (FastAPI on Rocky 9.7, Python 3.12). It reloads live when you edit `webui/backend/src`, and serves the built front end. | `https://webui.test:8443` (host: `127.0.0.1:8443`) |
@@ -21,7 +21,7 @@ cd webui/devenv
 The first run downloads images and takes a few minutes. Later runs take seconds. Run `./devenv.sh` with no arguments to list all commands. The main ones:
 
 - `./devenv.sh scan` re-scans the sample tree into MariaDB.
-- `./devenv.sh collect` runs the web UI collector once: the age histogram and usage snapshot, written to the `rbh_webui` schema. The Overview's age chart and the Cold data page need at least one run.
+- `./devenv.sh collect` runs the web UI collector once: the age histogram and usage snapshot, written to the `lux_webui` schema. The Overview's age chart and the Cold data page need at least one run.
 - `./devenv.sh data --scale 4` generates four times as many files (about 100k).
 - `./devenv.sh sql` opens a SQL shell on the Robinhood database.
 - `./devenv.sh test` runs the smoke test (19 checks covering LDAP, Keycloak and Robinhood/MariaDB).
@@ -33,18 +33,18 @@ The first run downloads images and takes a few minutes. Later runs take seconds.
 
 | User | Unix group | Web UI role group | Story in the sample data |
 |---|---|---|---|
-| `alice` | proj-astro | rbh-viewers | Active analysis: mostly hot data |
+| `alice` | proj-astro | lux-viewers | Active analysis: mostly hot data |
 | `bob` | proj-astro, proj-climate | — | Small-file storm in `/data/scratch` in the last 2 hours |
-| `carol` | hpc-staff | rbh-data-managers | Staff |
-| `dave` | hpc-staff | rbh-admins | Staff |
-| `erin` | proj-climate | rbh-viewers | Large climate output, 1 month to 1 year old |
+| `carol` | hpc-staff | lux-data-managers | Staff |
+| `dave` | hpc-staff | lux-admins | Staff |
+| `erin` | proj-climate | lux-viewers | Large climate output, 1 month to 1 year old |
 | `frank` | proj-genomics | — | Cold genomics data, untouched for 2 to 6 years |
 
 - Every user's password is `password`.
-- The LDAP service bind for the web UI is `cn=rbh-webui,ou=services,dc=rbh,dc=test` with password `webui-bind-secret`.
+- The LDAP service bind for the web UI is `cn=lux-webui,ou=services,dc=lamplighter,dc=test` with password `webui-bind-secret`.
 - Keycloak clients:
-  - `rbh-webui` (secret `dev-webui-client-secret`): authorization code with PKCE. Direct password grants are also enabled, for automated tests only.
-  - `rbh-checkmk` (secret `dev-checkmk-client-secret`): client credentials, with the `monitoring` role.
+  - `lux-webui` (secret `dev-webui-client-secret`): authorization code with PKCE. Direct password grants are also enabled, for automated tests only.
+  - `lux-checkmk` (secret `dev-checkmk-client-secret`): client credentials, with the `monitoring` role.
 - The Keycloak admin console login is `admin` / `admin`.
 
 `ldap/data.ldif` is the single source of truth: the workbench's Unix accounts and the owners of the generated files are derived from it.

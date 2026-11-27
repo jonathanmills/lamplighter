@@ -127,7 +127,7 @@ def main() -> None:
                 uniform_days(0, 900))
 
     fix_dir_times(args.root)
-    print(f"rbh-dev: generated {count} files under {args.root} "
+    print(f"lux-dev: generated {count} files under {args.root} "
           f"for {len(people)} users in {len(gname)} Unix groups")
 
 

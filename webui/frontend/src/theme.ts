@@ -15,8 +15,8 @@ export function token(name: string): string {
 
 export function setTheme(t: Theme): void {
   document.documentElement.setAttribute("data-theme", t);
-  try { localStorage.setItem("rbh-theme", t); } catch { /* storage blocked: still switch */ }
-  window.dispatchEvent(new CustomEvent("rbh-theme", { detail: t }));
+  try { localStorage.setItem("lux-theme", t); } catch { /* storage blocked: still switch */ }
+  window.dispatchEvent(new CustomEvent("lux-theme", { detail: t }));
 }
 
 /** Re-render on theme change (charts read tokens at draw time). */
@@ -24,8 +24,8 @@ export function useTheme(): Theme {
   const [t, setT] = useState<Theme>(currentTheme());
   useEffect(() => {
     const on = () => setT(currentTheme());
-    window.addEventListener("rbh-theme", on);
-    return () => window.removeEventListener("rbh-theme", on);
+    window.addEventListener("lux-theme", on);
+    return () => window.removeEventListener("lux-theme", on);
   }, []);
   return t;
 }

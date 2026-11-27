@@ -27,8 +27,8 @@ expect_fail() {
 }
 
 export LDAPTLS_CACERT=/certs/ca.pem
-BIND=(-D cn=rbh-webui,ou=services,dc=rbh,dc=test -w webui-bind-secret)
-KC=https://keycloak.test:9443/realms/rbh
+BIND=(-D cn=lux-webui,ou=services,dc=lamplighter,dc=test -w webui-bind-secret)
+KC=https://keycloak.test:9443/realms/lamplighter
 CA=(--cacert /certs/ca.pem)
 
 # jwt_true TOKEN EXPR: succeed if the Python EXPR is true for the JWT's
@@ -48,10 +48,10 @@ check "LDAPS bind as service account" \
     ldapwhoami -H ldaps://ldap.test "${BIND[@]}"
 check "StartTLS bind as service account" \
     ldapwhoami -ZZ -H ldap://ldap.test "${BIND[@]}"
-check "alice has memberOf cn=rbh-viewers" bash -c \
-    "ldapsearch -LLL -H ldaps://ldap.test ${BIND[*]} -b ou=people,dc=rbh,dc=test '(uid=alice)' memberOf | grep -q 'memberOf: cn=rbh-viewers,'"
+check "alice has memberOf cn=lux-viewers" bash -c \
+    "ldapsearch -LLL -H ldaps://ldap.test ${BIND[*]} -b ou=people,dc=lamplighter,dc=test '(uid=alice)' memberOf | grep -q 'memberOf: cn=lux-viewers,'"
 check "groupOfNames search by member" bash -c \
-    "ldapsearch -LLL -H ldaps://ldap.test ${BIND[*]} -b ou=groups,dc=rbh,dc=test '(&(objectClass=groupOfNames)(member=uid=carol,ou=people,dc=rbh,dc=test))' cn | grep -q 'cn: rbh-data-managers'"
+    "ldapsearch -LLL -H ldaps://ldap.test ${BIND[*]} -b ou=groups,dc=lamplighter,dc=test '(&(objectClass=groupOfNames)(member=uid=carol,ou=people,dc=lamplighter,dc=test))' cn | grep -q 'cn: lux-data-managers'"
 expect_fail "plain LDAP without TLS is refused" \
     ldapwhoami -H ldap://ldap.test "${BIND[@]}"
 # A freshly made CA that never signed anything here: must not be trusted.
@@ -61,7 +61,7 @@ openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=Unrelated CA" \
 expect_fail "server cert from another CA is rejected" \
     env LDAPTLS_CACERT="$other_ca/ca.pem" ldapwhoami -H ldaps://ldap.test "${BIND[@]}"
 expect_fail "wrong user password is rejected" \
-    ldapwhoami -H ldaps://ldap.test -D uid=carol,ou=people,dc=rbh,dc=test -w wrong
+    ldapwhoami -H ldaps://ldap.test -D uid=carol,ou=people,dc=lamplighter,dc=test -w wrong
 
 echo "Keycloak (keycloak.test)"
 expect_fail "Keycloak cert from another CA is rejected" \
@@ -69,15 +69,15 @@ expect_fail "Keycloak cert from another CA is rejected" \
 check "OIDC discovery over TLS" bash -c \
     "curl -sf ${CA[*]} $KC/.well-known/openid-configuration | jq -e '.issuer == \"$KC\"'"
 tok=$(curl -sf "${CA[@]}" "$KC/protocol/openid-connect/token" \
-      -d grant_type=client_credentials -d client_id=rbh-checkmk \
+      -d grant_type=client_credentials -d client_id=lux-checkmk \
       -d client_secret=dev-checkmk-client-secret | jq -r .access_token)
 check "Checkmk client-credentials token" test -n "$tok" -a "$tok" != null
-check "token audience includes rbh-webui" \
-    jwt_true "$tok" '"rbh-webui" in ([c["aud"]] if isinstance(c["aud"], str) else c["aud"])'
-check "token carries rbh-webui role 'monitoring'" \
-    jwt_true "$tok" '"monitoring" in c["resource_access"]["rbh-webui"]["roles"]'
+check "token audience includes lux-webui" \
+    jwt_true "$tok" '"lux-webui" in ([c["aud"]] if isinstance(c["aud"], str) else c["aud"])'
+check "token carries lux-webui role 'monitoring'" \
+    jwt_true "$tok" '"monitoring" in c["resource_access"]["lux-webui"]["roles"]'
 utok=$(curl -sf "${CA[@]}" "$KC/protocol/openid-connect/token" \
-       -d grant_type=password -d client_id=rbh-webui \
+       -d grant_type=password -d client_id=lux-webui \
        -d client_secret=dev-webui-client-secret -d scope=openid \
        -d username=carol -d password=password | jq -r .access_token)
 check "LDAP user carol logs in through Keycloak" test -n "$utok" -a "$utok" != null
@@ -85,7 +85,7 @@ check "carol's preferred_username equals LDAP uid" \
     jwt_true "$utok" 'c.get("preferred_username") == "carol"'
 expect_fail "wrong password via Keycloak is rejected" \
     curl -sf "${CA[@]}" "$KC/protocol/openid-connect/token" \
-         -d grant_type=password -d client_id=rbh-webui \
+         -d grant_type=password -d client_id=lux-webui \
          -d client_secret=dev-webui-client-secret -d username=carol -d password=wrong
 
 echo "MariaDB + Robinhood (robinhood_dev)"

@@ -4,12 +4,12 @@
 
 import pytest
 
-from rbh_webui.acl import BUILTIN_ROLES, AccessPolicy, Perm
-from rbh_webui.config import AccessConfig, LDAPConfig, RoleMapping
+from lux_webui.acl import BUILTIN_ROLES, AccessPolicy, Perm
+from lux_webui.config import AccessConfig, LDAPConfig, RoleMapping
 
-ADMINS = "cn=rbh-admins,ou=groups,dc=rbh,dc=test"
-DM = "cn=rbh-data-managers,ou=groups,dc=rbh,dc=test"
-VIEW = "cn=rbh-viewers,ou=groups,dc=rbh,dc=test"
+ADMINS = "cn=lux-admins,ou=groups,dc=lamplighter,dc=test"
+DM = "cn=lux-data-managers,ou=groups,dc=lamplighter,dc=test"
+VIEW = "cn=lux-viewers,ou=groups,dc=lamplighter,dc=test"
 
 
 def policy():
@@ -25,7 +25,7 @@ def test_no_groups_means_no_access():
 
 
 def test_unmapped_group_means_no_access():
-    assert not policy().grants_for(["cn=proj-astro,ou=groups,dc=rbh,dc=test"]).has_access
+    assert not policy().grants_for(["cn=proj-astro,ou=groups,dc=lamplighter,dc=test"]).has_access
 
 
 def test_bootstrap_group_is_admin_with_every_permission():
@@ -46,7 +46,7 @@ def test_viewer_cannot_export_or_see_all_paths():
 
 
 def test_dn_matching_ignores_case_and_spacing():
-    g = policy().grants_for(["CN=RBH-Viewers, OU=Groups, DC=rbh, DC=test"])
+    g = policy().grants_for(["CN=LUX-Viewers, OU=Groups, DC=lamplighter, DC=test"])
     assert g.roles == {"viewer"}
 
 

@@ -6,8 +6,8 @@ import pytest
 from sqlalchemy import text
 
 from conftest import oidc_login
-from rbh_webui.collector import run_once
-from rbh_webui.db import make_engine
+from lux_webui.collector import run_once
+from lux_webui.db import make_engine
 
 pytestmark = pytest.mark.integration
 
@@ -23,7 +23,7 @@ def fresh_snapshot(settings):
 def test_all_people_from_one_paged_search(directory):
     people = directory.all_people()
     assert set(people) == {"alice", "bob", "carol", "dave", "erin", "frank"}
-    assert people["frank"].mail == "frank@rbh.test" and people["frank"].uid_number == 20006
+    assert people["frank"].mail == "frank@lamplighter.test" and people["frank"].uid_number == 20006
 
 
 def test_all_unix_groups_only_those_with_gid(directory):
@@ -48,7 +48,7 @@ def test_data_manager_sees_every_user_with_ldap_names(client, settings, fresh_sn
     assert body["scope"] == "all"
     users = {u["user"]: u for u in body["users"]}
     assert {"alice", "bob", "carol", "dave", "erin", "frank"} <= set(users)
-    assert users["frank"]["name"] == "Frank Genome" and users["frank"]["mail"] == "frank@rbh.test"
+    assert users["frank"]["name"] == "Frank Genome" and users["frank"]["mail"] == "frank@lamplighter.test"
     assert users["bob"]["small_files"] / users["bob"]["files"] > 0.9   # the small-file storm
     with make_engine(settings.database).connect() as c:
         files = c.execute(text("SELECT SUM(count) FROM ACCT_STAT WHERE type = 'file'")).scalar()

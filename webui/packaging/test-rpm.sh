@@ -10,9 +10,9 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 export DOCKER_CONFIG=$PWD/../devenv/.docker-config
-rpm=$(ls dist/robinhood-webui-*.el9.$(uname -m | sed 's/arm64/aarch64/').rpm | head -1)
+rpm=$(ls dist/lamplighter-webui-*.el9.$(uname -m | sed 's/arm64/aarch64/').rpm | head -1)
 
-docker run --rm --network rbh-dev_default \
+docker run --rm --network lux-dev_default \
     -v "$PWD/dist:/dist:ro" -v "$PWD/../devenv:/devenv:ro" -v "$PWD/../devenv/.certs:/certs:ro" \
     -e RPM="/dist/$(basename "$rpm")" docker.io/rockylinux/rockylinux:9.7 bash -c '
 set -euo pipefail
@@ -21,27 +21,27 @@ dnf -y -q install "$RPM" nginx systemd >/dev/null 2>&1
 cp /certs/ca.pem /etc/pki/ca-trust/source/anchors/ && update-ca-trust
 
 echo "Package"
-rpm -q robinhood-webui >/dev/null && ok "installed: $(rpm -q robinhood-webui)"
-! rpm -qR robinhood-webui | grep -qi php && ok "no PHP requirement"
+rpm -q lamplighter-webui >/dev/null && ok "installed: $(rpm -q lamplighter-webui)"
+! rpm -qR lamplighter-webui | grep -qi php && ok "no PHP requirement"
 ! rpm -qa | grep -qiE "^php|nodejs" && ok "no PHP or Node.js installed on the server"
-id rbh-webui >/dev/null && ok "system user rbh-webui exists"
-[[ $(stat -c "%a %U:%G" /etc/rbh-webui) == "750 root:rbh-webui" ]] && ok "/etc/rbh-webui is 750 root:rbh-webui"
-[[ $(stat -c "%a" /etc/rbh-webui/config.yaml) == "640" ]] && ok "config.yaml is 640"
-/opt/rbh-webui/bin/python -c "import rbh_webui, ldap, authlib" && ok "venv imports work (python-ldap compiled)"
-for u in rbh-webui.service rbh-webui-collector.service rbh-webui-collector.timer; do
+id lux-webui >/dev/null && ok "system user lux-webui exists"
+[[ $(stat -c "%a %U:%G" /etc/lux-webui) == "750 root:lux-webui" ]] && ok "/etc/lux-webui is 750 root:lux-webui"
+[[ $(stat -c "%a" /etc/lux-webui/config.yaml) == "640" ]] && ok "config.yaml is 640"
+/opt/lux-webui/bin/python -c "import lux_webui, ldap, authlib" && ok "venv imports work (python-ldap compiled)"
+for u in lux-webui.service lux-collector.service lux-collector.timer; do
     systemd-analyze verify /usr/lib/systemd/system/$u 2>&1 | grep -v "^$" | grep -vi "unknown lvalue\|Failed to load\|bpf" | head -3 || true
 done; ok "systemd units verified"
 
 echo "Run as packaged"
 # The dev config, adapted to the packaged paths; secrets stay in /devenv/webui.
 sed -e "s#base_url: https://webui.test:8443#base_url: https://localhost#" \
-    -e "s#frontend_dir: /srv/frontend#frontend_dir: /usr/share/rbh-webui/frontend#" \
-    /devenv/webui/config.yaml > /etc/rbh-webui/config.yaml
-chgrp rbh-webui /etc/rbh-webui/config.yaml
-ExecStart=$(sed -n "/^ExecStart=/,/[^\\\\]$/p" /usr/lib/systemd/system/rbh-webui.service | sed "s/^ExecStart=//; s/\\\\$//" | tr "\n" " ")
-su -s /bin/bash rbh-webui -c "RBH_WEBUI_CONFIG=/etc/rbh-webui/config.yaml $ExecStart" >/tmp/app.log 2>&1 &
+    -e "s#frontend_dir: /srv/frontend#frontend_dir: /usr/share/lux-webui/frontend#" \
+    /devenv/webui/config.yaml > /etc/lux-webui/config.yaml
+chgrp lux-webui /etc/lux-webui/config.yaml
+ExecStart=$(sed -n "/^ExecStart=/,/[^\\\\]$/p" /usr/lib/systemd/system/lux-webui.service | sed "s/^ExecStart=//; s/\\\\$//" | tr "\n" " ")
+su -s /bin/bash lux-webui -c "LUX_WEBUI_CONFIG=/etc/lux-webui/config.yaml $ExecStart" >/tmp/app.log 2>&1 &
 sed -e "s#robinhood.example.org.pem#robinhood.pem#; s#robinhood.example.org.key#robinhood.key#" \
-    /usr/share/rbh-webui/nginx-rbh-webui.conf.example > /etc/nginx/conf.d/rbh-webui.conf
+    /usr/share/lux-webui/nginx-lux-webui.conf.example > /etc/nginx/conf.d/lux-webui.conf
 cp /certs/webui.test.pem /etc/pki/tls/certs/robinhood.pem; cp /certs/webui.test.key /etc/pki/tls/private/robinhood.key
 nginx -t 2>/dev/null && nginx && ok "nginx config from the package is valid and running"
 for i in $(seq 30); do curl -sf https://localhost/healthz >/dev/null 2>&1 && break; sleep 1; done
@@ -54,8 +54,8 @@ J=/tmp/jar
 curl -s -c $J -b $J -o /dev/null -H "Origin: https://localhost" -H "X-Forwarded-For: 203.0.113.9" \
      -d "username=dave&password=password" https://localhost/auth/ldap
 curl -s -b $J https://localhost/api/v1/me | grep -q "\"roles\":\[\"admin\"\]" && ok "LDAP sign-in through nginx; dave is admin"
-curl -s -b $J https://localhost/ | grep -q "id=\"root\"" && ok "front end served from /usr/share/rbh-webui"
-su -s /bin/bash rbh-webui -c "RBH_WEBUI_CONFIG=/etc/rbh-webui/config.yaml /opt/rbh-webui/bin/rbh-webui-collector run" 2>&1 | grep -q "ok:" && ok "collector runs as rbh-webui"
+curl -s -b $J https://localhost/ | grep -q "id=\"root\"" && ok "front end served from /usr/share/lux-webui"
+su -s /bin/bash lux-webui -c "LUX_WEBUI_CONFIG=/etc/lux-webui/config.yaml /opt/lux-webui/bin/lux-collector run" 2>&1 | grep -q "ok:" && ok "collector runs as lux-webui"
 sleep 1
 last=$(curl -s -b $J "https://localhost/api/v1/admin/audit?event=login&user=dave&since_hours=1&limit=1")
 echo "$last" | grep -qE "\"client\":\"(::1|127\.0\.0\.1)\"" && ok "real client address recorded through the proxy"

@@ -4,23 +4,23 @@
 
 import pytest
 
-from rbh_webui.ldapdir import Directory, DirectoryError
+from lux_webui.ldapdir import Directory, DirectoryError
 
 pytestmark = pytest.mark.integration
 
 
 def test_find_user_with_memberof_groups(directory):
     u = directory.find_user("alice")
-    assert (u.uid, u.uid_number, u.gid_number, u.mail) == ("alice", 20001, 30001, "alice@rbh.test")
-    assert set(u.groups) == {"cn=proj-astro,ou=groups,dc=rbh,dc=test",
-                             "cn=rbh-viewers,ou=groups,dc=rbh,dc=test"}
+    assert (u.uid, u.uid_number, u.gid_number, u.mail) == ("alice", 20001, 30001, "alice@lamplighter.test")
+    assert set(u.groups) == {"cn=proj-astro,ou=groups,dc=lamplighter,dc=test",
+                             "cn=lux-viewers,ou=groups,dc=lamplighter,dc=test"}
 
 
 def test_member_search_gives_the_same_groups(settings):
     cfg = settings.ldap.model_copy(deep=True)
     cfg.groups.membership = "member_search"
     assert set(Directory(cfg).find_user("bob").groups) == {
-        "cn=proj-astro,ou=groups,dc=rbh,dc=test", "cn=proj-climate,ou=groups,dc=rbh,dc=test"}
+        "cn=proj-astro,ou=groups,dc=lamplighter,dc=test", "cn=proj-climate,ou=groups,dc=lamplighter,dc=test"}
 
 
 def test_unknown_user(directory):
@@ -63,4 +63,4 @@ def test_wrong_service_password_is_reported(settings, tmp_path):
 
 def test_connection_diagnostics(directory):
     r = directory.test_connection("dave")
-    assert r["bind"] == "ok" and "cn=rbh-admins,ou=groups,dc=rbh,dc=test" in r["sample_user"]["groups"]
+    assert r["bind"] == "ok" and "cn=lux-admins,ou=groups,dc=lamplighter,dc=test" in r["sample_user"]["groups"]

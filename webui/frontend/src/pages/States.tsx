@@ -25,7 +25,7 @@ export function Forbidden({ perm }: { perm: string }) {
     <section className="panel">
       <div className="empty">
         <h2>You don't have access to this page</h2>
-        <p className="muted">It needs the <code>{perm}</code> permission. Ask a Robinhood administrator to add you to a group that grants it.</p>
+        <p className="muted">It needs the <code>{perm}</code> permission. Ask a Lamplighter administrator to add you to a group that grants it.</p>
         <Link to="/">Back to the overview</Link>
       </div>
     </section>

@@ -23,7 +23,7 @@ export default function Browse() {
 
   useEffect(() => {
     setErr(null);
-    api.browse(dir).then((x) => { setR(x); document.title = `${x.dir.path} · Browse · Robinhood`; })
+    api.browse(dir).then((x) => { setR(x); document.title = `${x.dir.path} · Browse · Lamplighter`; })
       .catch((e) => setErr({ status: e instanceof ApiError ? e.status : 0, msg: String(e.message ?? e) }));
   }, [dir]);
 
