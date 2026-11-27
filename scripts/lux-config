@@ -2,13 +2,13 @@
 # -*- mode: c; c-basic-offset: 4; indent-tabs-mode: nil; -*-
 # vim:expandtab:shiftwidth=4:tabstop=4:
 #
-# Robinhood configuration helper
+# Lamplighter configuration helper (Robinhood's rbh-config, renamed)
 #
 
 # check caller
 who=`whoami`
 
-if [[ $who != root ]]; then
+if [[ $who != root && "$1" != check ]]; then
     echo
     echo "WARNING: this script should be executed by root" >&2
     echo "         else, it could not work correctly." >&2
@@ -678,6 +678,116 @@ EOF
 }
 
 
+# Robinhood helper commands that Lamplighter renamed. Keep in sync with
+# renamed_cmds[] in src/policies/policy_loader.c (doc/COMPATIBILITY.md).
+RENAMED_CMDS="robinhood:lamplighter rbh-report:lux-report rbh-find:lux-find
+rbh-du:lux-du rbh-diff:lux-diff rbh-undelete:lux-undelete
+rbh-rebind:lux-rebind rbh-config:lux-config rbh_cksum.sh:lux_cksum.sh
+rbhext_tool:luxext_tool rbhext_tool_svr:luxext_tool_svr
+rbhext_tool_clnt:luxext_tool_clnt"
+
+# Report cmd("...") actions whose program has a Robinhood name. Only the
+# program at the start of the command line is considered. With fix=1,
+# write <file>.lamplighter with those program names updated.
+# Prints file:line findings; returns 1 if any were found.
+function check_one_config
+{
+    local file="$1" fix="$2"
+    local out="$file.lamplighter"
+
+    awk -v F="$file" -v FIX="$fix" -v OUT="$out" -v MAP="$RENAMED_CMDS" '
+    BEGIN {
+        n = split(MAP, pairs, /[ \n]+/)
+        for (i = 1; i <= n; i++) {
+            split(pairs[i], kv, ":")
+            map[kv[1]] = kv[2]
+        }
+        found = 0
+    }
+    {
+        line = $0
+        newline = ""
+        rest = line
+        if (line ~ /^[ \t]*#/) {
+            if (FIX) print line > OUT
+            next
+        }
+        while (match(rest, /cmd[ \t]*\([ \t]*"[^"]*"/)) {
+            pre = substr(rest, 1, RSTART - 1)
+            seg = substr(rest, RSTART, RLENGTH)
+            rest = substr(rest, RSTART + RLENGTH)
+            q = index(seg, "\"")
+            body = substr(seg, q + 1, length(seg) - q - 1)
+            lead = body
+            sub(/[^ \t].*$/, "", lead)
+            prog = substr(body, length(lead) + 1)
+            sub(/[ \t].*$/, "", prog)
+            base = prog
+            sub(/.*\//, "", base)
+            if (base in map) {
+                found++
+                newprog = substr(prog, 1, length(prog) - length(base)) map[base]
+                printf "%s:%d: cmd(\"%s\"): %s is Robinhood'"'"'s name for %s\n", \
+                       F, NR, body, base, map[base]
+                body = lead newprog substr(body, length(lead) + length(prog) + 1)
+                seg = substr(seg, 1, q) body "\""
+            }
+            newline = newline pre seg
+        }
+        if (FIX) print newline rest > OUT
+    }
+    END { exit (found > 0) }
+    ' "$file"
+}
+
+function check_config
+{
+    local fix=0 rc=0 file dir inc
+    local -a files
+
+    if [[ "$1" = "--fix" ]]; then
+        fix=1
+        shift
+    fi
+    if [[ $# -eq 0 ]]; then
+        echo "Usage: $0 check [--fix] <config_file>..." >&2
+        return 2
+    fi
+
+    files=("$@")
+    # also check the files they include (relative to the including file)
+    for file in "$@"; do
+        dir=$(dirname "$file")
+        while read -r inc; do
+            [[ "$inc" = /* ]] || inc="$dir/$inc"
+            [[ -f "$inc" ]] && files+=("$inc")
+        done < <(sed -n 's/^[ \t]*%include[ \t]*"\([^"]*\)".*/\1/p' "$file")
+    done
+
+    for file in "${files[@]}"; do
+        if [[ ! -r "$file" ]]; then
+            echo "$file: cannot read" >&2
+            rc=2
+            continue
+        fi
+        if ! check_one_config "$file" "$fix"; then
+            [[ $rc -eq 0 ]] && rc=1
+            if [[ $fix -eq 1 ]]; then
+                echo "  -> wrote $file.lamplighter; review it, then replace $file with it"
+            fi
+        else
+            rm -f "$file.lamplighter"
+        fi
+    done
+
+    if [[ $rc -eq 0 ]]; then
+        echo "No Robinhood command names found in cmd() actions."
+    elif [[ $rc -eq 1 && $fix -eq 0 ]]; then
+        echo "Run '$0 check --fix <file>' to write updated copies for review."
+    fi
+    return $rc
+}
+
 if [[ "$1" = precheck_db ]]; then
     shift 1
     db_check $*
@@ -708,6 +818,10 @@ elif [[ "$1" = optimize_db ]]; then
 elif [[ "$1" = test_db ]]; then
     shift 1
     test_connect $*
+elif [[ "$1" = check ]]; then
+    shift 1
+    check_config "$@"
+    exit $?
 else
     echo "Usage: $0 <action> [options]"
     echo "Actions:"
@@ -729,6 +843,9 @@ else
     echo "        backup the Lamplighter (Robinhood-format) database to dest dir"
     echo "    repair_db [<db_name> [<db_admin_passwd>]]:"
     echo "        check tables and fix them after a mysql server crash"
+    echo "    check [--fix] <config_file>...:"
+    echo "        report cmd() actions that run a Robinhood command name renamed by"
+    echo "        Lamplighter (with --fix: write <file>.lamplighter copies to review)"
     echo "    optimize_db [<db_name> [<db_admin_passwd>]]:"
     echo "        defragments the database for better performance and using less disk space"
 fi

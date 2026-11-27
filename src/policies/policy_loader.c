@@ -27,6 +27,7 @@
 #include "status_manager.h"
 #include <errno.h>
 #include <fnmatch.h>
+#include <unistd.h>
 
 #define FILESETS_SECTION      "Filesets"
 #define FILESET_BLOCK         "FileClass"
@@ -138,6 +139,110 @@ static void free_whitelist(whitelist_item_t *p_items, unsigned int count)
         free(p_items);
 }
 
+/*
+ * Lamplighter: helper commands that Robinhood shipped under other names.
+ * A cmd() action whose program is one of these old names is handled as
+ * described in doc/COMPATIBILITY.md: only this exact list, and only the
+ * program at the start of the command line, are considered.
+ */
+static const struct {
+    const char *old_name;
+    const char *new_name;
+} renamed_cmds[] = {
+    {"robinhood", "lamplighter"},
+    {"rbh-report", "lux-report"},
+    {"rbh-find", "lux-find"},
+    {"rbh-du", "lux-du"},
+    {"rbh-diff", "lux-diff"},
+    {"rbh-undelete", "lux-undelete"},
+    {"rbh-rebind", "lux-rebind"},
+    {"rbh-config", "lux-config"},
+    {"rbh_cksum.sh", "lux_cksum.sh"},
+    {"rbhext_tool", "luxext_tool"},
+    {"rbhext_tool_svr", "luxext_tool_svr"},
+    {"rbhext_tool_clnt", "luxext_tool_clnt"},
+    {NULL, NULL}
+};
+
+/** Is this program installed? A path is checked as is, a name in $PATH. */
+static bool cmd_installed(const char *prog)
+{
+    char full[RBH_PATH_MAX];
+    const char *path;
+    char *dirs, *dir, *saveptr = NULL;
+    bool found = false;
+
+    if (strchr(prog, '/'))
+        return access(prog, X_OK) == 0;
+
+    path = getenv("PATH");
+    if (path == NULL)
+        return false;
+    dirs = strdup(path);
+    if (dirs == NULL)
+        return false;
+
+    for (dir = strtok_r(dirs, ":", &saveptr); dir != NULL;
+         dir = strtok_r(NULL, ":", &saveptr)) {
+        snprintf(full, sizeof(full), "%s/%s", *dir ? dir : ".", prog);
+        if (access(full, X_OK) == 0) {
+            found = true;
+            break;
+        }
+    }
+    free(dirs);
+    return found;
+}
+
+/**
+ * If the program of a cmd() action has a Robinhood name that Lamplighter
+ * renamed, log a warning and, unless the old name is installed (by
+ * lamplighter-compat), run the new name instead.
+ * @param[in,out] argv   the parsed command line (from g_shell_parse_argv)
+ * @param[in]     param  the configuration parameter, for the warning
+ * @param[in]     cmd    the command line as written, for the warning
+ */
+static void translate_renamed_cmd(char **argv, const char *param,
+                                  const char *cmd)
+{
+    const char *base;
+    char *new_prog;
+    int i;
+
+    if (argv == NULL || argv[0] == NULL)
+        return;
+
+    base = strrchr(argv[0], '/');
+    base = (base != NULL) ? base + 1 : argv[0];
+
+    for (i = 0; renamed_cmds[i].old_name != NULL; i++)
+        if (!strcmp(base, renamed_cmds[i].old_name))
+            break;
+    if (renamed_cmds[i].old_name == NULL)
+        return;
+
+    if (cmd_installed(argv[0])) {
+        DisplayLog(LVL_MAJOR, LOADER_TAG,
+                   "WARNING: %s = cmd(\"%s\"): '%s' is Robinhood's name "
+                   "for Lamplighter's '%s'. It runs as written, because "
+                   "the old name is installed (lamplighter-compat). Please "
+                   "update the configuration: see 'lux-config check'.",
+                   param, cmd, base, renamed_cmds[i].new_name);
+        return;
+    }
+
+    new_prog = g_strdup_printf("%.*s%s", (int)(base - argv[0]), argv[0],
+                               renamed_cmds[i].new_name);
+    DisplayLog(LVL_MAJOR, LOADER_TAG,
+               "WARNING: %s = cmd(\"%s\"): '%s' is Robinhood's name for "
+               "Lamplighter's '%s' and is not installed, so '%s' runs "
+               "instead. Please update the configuration: see "
+               "'lux-config check'.",
+               param, cmd, argv[0], renamed_cmds[i].new_name, new_prog);
+    g_free(argv[0]);
+    argv[0] = new_prog;
+}
+
 /**
  * Analyze a policy action parameter and set policy_action_t accordingly.
  * @param[in]     name         parameter name.
@@ -184,6 +289,7 @@ int parse_policy_action(const char *name, const char *value,
             g_error_free(err_desc);
             return EINVAL;
         }
+        translate_renamed_cmd(action->action_u.command, name, extra[0]);
 
         /* Get attribute mask for this command, in case it contains attribute
          * placeholder */

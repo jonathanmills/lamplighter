@@ -25,9 +25,9 @@ Policy actions can run external programs, for example `cmd("/usr/sbin/rbh_cksum.
 
 1. **Only an exact list of names Lamplighter itself renamed** is recognised: the `rbh-*` commands, `rbh_cksum.sh`, `rbhext_tool` and similar shipped helpers. There is no pattern matching.
 2. **Only the program at the start of a `cmd(...)` command line** is considered. Nothing else is ever rewritten: not other text in the command, not file paths, database names or `$VARIABLES`, and nothing outside `cmd(...)`.
-3. **If the old name is not installed,** the program name is translated to the new one, and a **warning** is logged at start-up, once per occurrence, giving the file, the line, the old and new names, and how to update the file.
+3. **If the old name is not installed,** the program name is translated to the new one, and a **warning** is logged whenever the configuration is loaded, quoting the parameter and the command, the old and new names, and how to update the file.
 4. **If `lamplighter-compat` is installed** (which provides the old names), nothing is translated. The warning is still logged, so admins see exactly what runs.
-5. **`lux-config check FILE`** reports every occurrence and can write an updated copy for review, so a site can clean its configuration once.
+5. **`lux-config check FILE`** reports every occurrence with its file and line (including files the configuration `%include`s), and `lux-config check --fix FILE` writes `FILE.lamplighter` copies to review. It never edits a configuration in place.
 
 These strings are commands that run on production data, sometimes deleting it, so the rules are deliberately narrow and always visible.
 
