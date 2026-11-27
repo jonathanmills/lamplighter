@@ -242,12 +242,17 @@ Status: **v1 implemented** (`webui/backend/src/rbh_webui/collector.py`), coverin
 
 The web UI's database user has `SELECT` on Robinhood's schema and full rights on `rbh_webui` only. Robinhood's own tables are never written.
 
-### 6.3 Still to design: per-directory rollups (Phase 3)
-The cold-*directory* views need totals per subtree, which `ENTRIES` cannot give cheaply: only `parent_id` is indexed, and no path is stored. Options to evaluate against a real-scale copy:
-1. Compute each directory's direct totals with one `GROUP BY parent_id`, then roll them up the tree in a recursive CTE (MariaDB supports `WITH RECURSIVE`), limited to a configurable depth.
-2. Walk the top levels of the tree through the `parent_id` index, and run one aggregate per tracked subtree.
+### 6.3 Per-directory rollups (built, Phase 3)
+Implemented in `rbh_webui/rollup.py`, run by the collector on its source connection:
+1. A **recursive query** (`WITH RECURSIVE`, MariaDB 10.2+) walks only *directories*, through the `NAMES.parent_id` index, from the root down. The root is found as the parent that is nobody's child. Each directory is mapped to its ancestor at `collector.rollup_depth` (default 4), or to itself when shallower. The result goes into a **TEMPORARY table**, which works on a read-only replica.
+2. **One `GROUP BY` over the files** gives totals per tracked directory: files, bytes, newest and oldest access, and bytes not read for 1 and 3 years. A second `GROUP BY` per (directory, owner) gives the top owner.
+3. Python adds the totals up the tracked tree. Only directories at depth ≤ `rollup_depth` reach Python. Results go in `dir_rollup` (migration 003).
 
-The deciding factor is the number of directories (likely hundreds of millions at full scale). That needs a measurement on a copy of the production database before choosing.
+**Database privilege:** the collector's database user needs `CREATE TEMPORARY TABLES` on Robinhood's schema, in addition to `SELECT`.
+
+**Scale:** cost grows with the number of *directories* (the recursion), plus one more pass over the files. Measure it on a production-size replica (6.4), and lower `rollup_depth` if needed.
+
+**Browse** uses these totals down to `rollup_depth`. Below that it lists entries live through the `parent_id` index (bounded: 500 sub-directories, the 200 largest files, a 10 s statement limit), with no subtree totals. Browsing requires `paths.view_all`; browsing only one's own files (`paths.view_own`) is not built yet. The **coldest-directories** view ranks the leaves of the rollup tree by cold bytes. Hard-linked files are counted once per name.
 
 ### 6.4 Scale test (open)
 The one-scan approach needs timing on a production-size copy: the expected cost is one full table scan of `ENTRIES`. Run it on the replica once and record the duration here.
@@ -307,7 +312,7 @@ web_gui/          # legacy PHP GUI, removed once the new UI covers its features
 | 0. Skeleton | Repo layout, FastAPI app, OIDC login against a local Keycloak container (a test realm with the `rbh-webui` and `rbh-checkmk` clients), an OpenLDAP test container (RFC 2307bis), LDAP directory lookups and the ACL model, nginx config, read-only DB user, dev environment (Linux container with MariaDB and a sample Robinhood DB). |
 | 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. *Done: Overview, collector v1, a first Cold data page (owners with the most cold data, LDAP contact details, audited CSV export), and Users & groups (sortable tables with LDAP names, small-file share and change since the last snapshot, plus a per-user page with age, sizes, history and groups; viewers see only themselves). Still open: the scale test.* |
 | 2. Checkmk | *Done: admin pages (Directory, Access control (read-only), Audit log) and the Checkmk 2.5 plugin (`webui/checkmk`: special agent, 3 services, rulesets, MKP), tested against Checkmk's real APIs. Still to do: install on an x86-64 Checkmk 2.5 site; per-policy services need per-policy counts from the collector.* Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
-| 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. |
+| 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. *Done: directory rollups, Browse (paths.view_all), coldest directories. Still open: own-files browsing (paths.view_own), scale measurement.* |
 | 4. Triage | Jobstats collector, Slurm integration, triage dashboard. Rate metrics also feed Checkmk. |
 | 5. Retire PHP | Feature parity check against `gui_v3`, remove `web_gui/` from the build and RPM, RPM packaging for the new UI. |
 

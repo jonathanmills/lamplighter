@@ -134,6 +134,10 @@ class CollectorConfig(BaseModel):
     keep_runs: int = 90                # older runs (and their rows) are deleted
     # Abort the scan if it runs longer than this (MariaDB max_statement_time).
     max_scan_seconds: int = 6 * 3600
+    # Per-directory subtree totals are kept down to this depth below the
+    # filesystem root (Browse, coldest directories). Deeper levels roll up
+    # into their ancestor at this depth.
+    rollup_depth: int = 4
     # Audit events older than this are deleted from the database copy
     # (journald keeps its own retention).
     audit_retention_days: int = 400

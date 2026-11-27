@@ -84,6 +84,20 @@ export interface AccessInfo {
   groups: { group: string; roles: string[]; via: string; members: string[] | null }[];
 }
 
+export interface DirTotals {
+  id: string; name: string; path: string; depth: number; owner: string | null; top_owner: string | null;
+  top_owner_bytes: number; subdirs: number; files: number; bytes: number;
+  newest_access: number | null; oldest_access: number | null; cold_1y_bytes: number; cold_3y_bytes: number;
+}
+export interface LiveDir { id: string; name: string; owner: string | null; newest_access: number | null; live: true }
+export interface BrowseResult {
+  as_of: number; depth_limit: number;
+  dir: { id: string; path: string; depth: number; totals: DirTotals | null };
+  ancestors: { id: string; name: string; depth: number }[];
+  subdirs: (DirTotals | LiveDir)[];
+  files: { count: number; shown: number; items: { name: string; owner: string | null; size: number; last_access: number | null; last_mod: number | null }[] };
+}
+
 export class ApiError extends Error {
   constructor(public status: number, message: string) { super(message); }
 }
@@ -116,6 +130,8 @@ export const api = {
   dirMappings: () => get<{ mappings: DirMapping[] }>("/admin/directory/mappings"),
   audit: (q: Record<string, string>) => get<AuditPage>("/admin/audit?" + new URLSearchParams(q).toString()),
   access: () => get<AccessInfo>("/admin/access"),
+  browse: (dir?: string) => get<BrowseResult>("/browse" + (dir ? `?dir=${encodeURIComponent(dir)}` : "")),
+  coldDirs: (olderThan: "1y" | "3y") => get<{ as_of: number; directories: DirTotals[] }>(`/cold/directories?older_than=${olderThan}`),
   coldOwners: (olderThan: ColdAge) => get<ColdOwners>(`/cold/owners?older_than=${olderThan}`),
   coldCsvUrl: (olderThan: ColdAge) => `/api/v1/cold/owners.csv?older_than=${olderThan}`,
 };

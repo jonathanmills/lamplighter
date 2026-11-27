@@ -3,8 +3,8 @@
 // Cold data, for data managers: who holds the most data nobody has read
 // for a while, and how to reach them. Reads only the collector's output.
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
-import { api, ApiError, toDisplayBands, type AgeBands, type ColdAge, type ColdOwners } from "../api";
+import { Link, useSearchParams } from "react-router-dom";
+import { api, ApiError, toDisplayBands, type AgeBands, type ColdAge, type ColdOwners, type DirTotals } from "../api";
 import { can, useMe } from "../App";
 import { ago, bytes, int } from "../format";
 import BarChart from "../components/BarChart";
@@ -22,6 +22,9 @@ export default function ColdData() {
   const [params, setParams] = useSearchParams();
   const olderThan = (AGES.find((a) => a.key === params.get("older_than"))?.key ?? "1y") as ColdAge;
   const [data, setData] = useState<ColdOwners | null>(null);
+  const [dirs, setDirs] = useState<DirTotals[] | null>(null);
+  // Directory rollups track 1 and 3 years; the 90-day view shows the 1-year figures.
+  const dirAge = olderThan === "3y" ? "3y" : "1y";
   const [age, setAge] = useState<AgeBands | null>(null);
   const [state, setState] = useState<"loading" | "ok" | "none" | "error">("loading");
   const [error, setError] = useState("");
@@ -30,6 +33,7 @@ export default function ColdData() {
     setState("loading");
     Promise.all([api.coldOwners(olderThan), api.age()])
       .then(([o, a]) => { setData(o); setAge(a); setState("ok"); })
+      .then(() => api.coldDirs(dirAge).then((d) => setDirs(d.directories)).catch(() => setDirs([])))
       .catch((e) => {
         if (e instanceof ApiError && e.status === 404) { setState("none"); return; }
         setError(String(e.message ?? e)); setState("error");
@@ -89,6 +93,33 @@ export default function ColdData() {
             <BarChart binary categories={bandLabels} values={bandBytes} colorTokens={RAMP} format={bytes}
                       ariaLabel={"Volume by time since last access: " + bands.map((b) => `${b.label} ${bytes(b.bytes)}`).join(", ")} />
           </Panel>
+          <section className="panel span-12" aria-label="Coldest directories">
+            <div className="panel-head"><h2>Coldest directories</h2>
+              <span className="meta">datasets not read in over {dirAge === "3y" ? "3 years" : "1 year"}{olderThan === "90d" ? " (directory figures start at 1 year)" : ""}</span></div>
+            <div className="panel-body" style={{ overflowX: "auto" }}>
+              {!dirs ? <p className="muted">Loading…</p> : !dirs.length ? <p className="muted">No directory is that cold.</p> : (
+                <table className="data-table">
+                  <thead><tr><th style={{ textAlign: "left" }}>Directory</th><th style={{ textAlign: "left" }}>Mostly owned by</th>
+                    <th>Not read</th><th>Share of the directory</th><th>Files</th><th>Last read</th></tr></thead>
+                  <tbody>{dirs.slice(0, 10).map((d) => {
+                    const cold = dirAge === "3y" ? d.cold_3y_bytes : d.cold_1y_bytes;
+                    const share = d.bytes ? cold / d.bytes : 0;
+                    return (
+                      <tr key={d.id}>
+                        <td style={{ textAlign: "left" }}>{can(me, "paths.view_all")
+                          ? <Link to={`/browse?dir=${encodeURIComponent(d.id)}`}><code>{d.path}</code></Link> : <code>{d.path}</code>}</td>
+                        <td style={{ textAlign: "left" }}><code>{d.top_owner ?? "—"}</code></td>
+                        <td>{bytes(cold)}</td>
+                        <td><span className="bar-cell">{Math.round(share * 100)}%<span className="share" aria-hidden="true"><span style={{ width: `${share * 100}%` }} /></span></span></td>
+                        <td>{int(d.files)}</td>
+                        <td>{d.newest_access ? ago(Math.floor(Date.now() / 1000) - d.newest_access) : "—"}</td>
+                      </tr>
+                    );
+                  })}</tbody>
+                </table>
+              )}
+            </div>
+          </section>
           <section className="panel span-12" aria-label="Owners to contact">
             <div className="panel-head"><h2>Owners to contact</h2><span className="meta">{data.owners.length} {data.owners.length === 1 ? "owner" : "owners"}</span></div>
             <div className="panel-body" style={{ overflowX: "auto" }}>

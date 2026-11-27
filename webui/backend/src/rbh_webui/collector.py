@@ -28,6 +28,7 @@ from sqlalchemy.engine import Connection, Engine
 
 from .config import Settings, load_settings
 from .db import make_engine
+from .rollup import compute as compute_rollups
 from .store import migrate
 
 log = logging.getLogger("rbh_webui.collector")
@@ -108,6 +109,8 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
         with source.connect() as src:
             hist = _age_histogram(src, now, settings.collector.max_scan_seconds)
             acct = _acct_snapshot(src)
+            fs_path = src.execute(text("SELECT value FROM VARS WHERE varname = 'FS_Path'")).scalar()
+            dirs = compute_rollups(src, now, settings.collector.rollup_depth, _s(fs_path or "/"))
         files = sum(r["files"] for r in hist)
         with store.begin() as c:
             if hist:
@@ -118,10 +121,17 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
                 c.execute(text(
                     "INSERT INTO acct_history (run_id, uid, gid, type, entries, bytes, blocks) "
                     f"VALUES ({run_id}, :uid, :gid, :type, :n, :b, :bl)"), acct)
+            if dirs:
+                c.execute(text(
+                    "INSERT INTO dir_rollup (run_id, dir_id, parent_dir, depth, path, owner, top_owner, "
+                    "top_owner_bytes, subdirs, files, bytes, newest_access, oldest_access, cold_1y_bytes, "
+                    f"cold_3y_bytes) VALUES ({run_id}, :dir_id, :parent_dir, :depth, :path, :owner, "
+                    ":top_owner, :top_owner_bytes, :subdirs, :files, :bytes, :newest_access, "
+                    ":oldest_access, :cold_1y_bytes, :cold_3y_bytes)"), dirs)
             c.execute(text("UPDATE collector_runs SET status = 'ok', finished_at = NOW(3), "
                            "entries = :n WHERE id = :id"), {"n": files, "id": run_id})
-        log.info("run %d ok: %d files in %d age rows, %d acct rows, %.1fs",
-                 run_id, files, len(hist), len(acct), time.monotonic() - t0)
+        log.info("run %d ok: %d files in %d age rows, %d acct rows, %d directories, %.1fs",
+                 run_id, files, len(hist), len(acct), len(dirs), time.monotonic() - t0)
     except Exception as exc:
         with store.begin() as c:
             c.execute(text("UPDATE collector_runs SET status = 'failed', finished_at = NOW(3), "

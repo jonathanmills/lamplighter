@@ -20,7 +20,9 @@ export function ago(seconds: number | undefined): string {
   const m = seconds / 60, h = m / 60, d = h / 24;
   if (m < 90) return `${Math.round(m)} min ago`;
   if (h < 36) return `${Math.round(h)} h ago`;
-  return `${Math.round(d)} days ago`;
+  if (d < 60) return `${Math.round(d)} days ago`;
+  if (d < 730) return `${Math.round(d / 30.4)} months ago`;
+  return `${(d / 365).toFixed(1)} years ago`;
 }
 
 export function duration(seconds: number | undefined): string {
