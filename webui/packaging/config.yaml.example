@@ -70,6 +70,11 @@ collector:
   max_scan_seconds: 21600
   rollup_depth: 4
   audit_retention_days: 400
+  # Parallel connections for the plain scans of Robinhood's ENTRIES table
+  # (about as many as the database server has cores to spare), and memory
+  # per query for in-memory grouping (MariaDB tmp_table_size).
+  workers: 4
+  work_mem: 2147483648
 
 # Lustre jobstats for the triage view (optional; without this section,
 # triage shows Robinhood's side only). No job scheduler is needed.

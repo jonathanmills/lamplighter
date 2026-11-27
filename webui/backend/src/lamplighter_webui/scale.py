@@ -177,7 +177,7 @@ def _median_time(fn, runs: int = 3):
     return sorted(times)[len(times) // 2], out
 
 
-def bench(url: str, db: str, store_db: str, rollup_depth: int, json_path: str | None) -> None:
+def bench(url: str, db: str, store_db: str, rollup_depth: int, json_path: str | None, workers: int = 4) -> None:
     import json
     import types
 
@@ -196,13 +196,14 @@ def bench(url: str, db: str, store_db: str, rollup_depth: int, json_path: str | 
             "AND TABLE_NAME IN ('ENTRIES', 'NAMES', 'ACCT_STAT')"), {"d": db})}
         gib = float(c.execute(text("SELECT SUM(DATA_LENGTH + INDEX_LENGTH) FROM information_schema.TABLES "
                                    "WHERE TABLE_SCHEMA = :d"), {"d": db}).scalar() or 0) / 2**30
-    source = create_engine(f"{base}/{db}", pool_pre_ping=True)
+    source = create_engine(f"{base}/{db}", pool_pre_ping=True, pool_size=workers + 1)
     store = create_engine(f"{base}/{store_db}", pool_pre_ping=True)
-    results: dict = {"database": db, "entries_estimate": rows.get("ENTRIES", 0), "size_gib": round(gib, 1),
+    results: dict = {"workers": workers, "database": db, "entries_estimate": rows.get("ENTRIES", 0), "size_gib": round(gib, 1),
                      "collector": {}, "queries": {}}
     log(f"{db}: about {rows.get('ENTRIES', 0):,} entries, {gib:.1f} GiB; running the collector")
 
-    settings = types.SimpleNamespace(collector=CollectorConfig(rollup_depth=rollup_depth, max_scan_seconds=86400))
+    settings = types.SimpleNamespace(collector=CollectorConfig(rollup_depth=rollup_depth, max_scan_seconds=86400,
+                                                                workers=workers))
     run_once(settings, source, store)
     results["collector"] = dict(LAST_TIMINGS)
     log("collector: " + ", ".join(f"{k} {v}s" for k, v in LAST_TIMINGS.items()))
@@ -266,11 +267,12 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--store-db", default="lamplighter_webui_scale", help="scratch database for collector output")
     b.add_argument("--rollup-depth", type=int, default=4)
     b.add_argument("--json", help="also write the results to this file")
+    b.add_argument("--workers", type=int, default=4, help="parallel scan connections (collector.workers)")
     a = ap.parse_args(argv)
     if a.cmd == "gen":
         generate(a.url, a.template, a.target, a.entries, a.files_per_dir, a.users, a.groups, a.now)
     else:
-        bench(a.url, a.db, a.store_db, a.rollup_depth, a.json)
+        bench(a.url, a.db, a.store_db, a.rollup_depth, a.json, a.workers)
     return 0
 
 

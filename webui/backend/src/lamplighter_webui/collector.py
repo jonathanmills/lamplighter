@@ -28,7 +28,7 @@ from sqlalchemy.engine import Connection, Engine
 
 from .config import Settings, load_settings
 from .db import make_engine
-from .policies import collect_counts
+from .policies import collect_counts_parallel
 from .rollup import compute as compute_rollups
 from .store import migrate
 
@@ -60,7 +60,7 @@ def _band_sql(column: str) -> str:
 AGE_QUERY = (
     "SELECT uid, gid, {a} AS access_band, {m} AS modify_band, "
     "COUNT(*) AS files, COALESCE(SUM(size), 0) AS bytes "
-    "FROM ENTRIES WHERE type = 'file' "
+    "FROM ENTRIES WHERE type = 'file' AND {{range}} "
     "GROUP BY uid, gid, access_band, modify_band"
 ).format(a=_band_sql("last_access"), m=_band_sql("last_mod"))
 
@@ -69,13 +69,42 @@ def _s(v) -> str:
     return v.decode("utf-8", "replace") if isinstance(v, (bytes, bytearray)) else str(v)
 
 
-def _age_histogram(src: Connection, now: int, max_seconds: int) -> list[dict]:
-    # Abort a runaway scan rather than load the server indefinitely.
-    src.execute(text(f"SET SESSION max_statement_time = {int(max_seconds)}"))
+def _age_histogram(source: Engine, now: int, workers: int, setup) -> list[dict]:
+    """One scan of ENTRIES, split by primary-key range across workers
+    (parallel.py); partial counts and sums add up exactly."""
+    from .parallel import map_ranges, where
     params = {f"t{n}": now - lim for n, _, lim in AGE_BANDS if lim}
-    rows = src.execute(text(AGE_QUERY), params).all()
-    return [{"uid": _s(u), "gid": _s(g), "ab": int(a), "mb": int(m),
-             "files": int(f), "bytes": int(b)} for u, g, a, m, f, b in rows]
+    tmp = "lamplighter_age_acc"
+
+    def start(c):
+        # Each connection folds its chunks into this table on the server and
+        # returns it once (see parallel.map_ranges).
+        if setup:
+            setup(c)
+        c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {tmp}"))
+        c.execute(text(f"CREATE TEMPORARY TABLE {tmp} (uid VARBINARY(127), gid VARBINARY(127), ab TINYINT, "
+                       "mb TINYINT, files BIGINT UNSIGNED, bytes BIGINT UNSIGNED, UNIQUE KEY (uid, gid, ab, mb)) "
+                       "ENGINE=MEMORY"))
+
+    def scan(c, r):
+        cond, rp = where(r)
+        c.execute(text(f"INSERT INTO {tmp} (uid, gid, ab, mb, files, bytes) " + AGE_QUERY.format(range=cond)
+                       + " ON DUPLICATE KEY UPDATE files = files + VALUES(files), bytes = bytes + VALUES(bytes)"),
+                  {**params, **rp})
+
+    def finish(c):
+        rows = c.execute(text(f"SELECT uid, gid, ab, mb, files, bytes FROM {tmp}")).all()
+        c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {tmp}"))
+        return rows
+
+    acc: dict[tuple, list[int]] = {}
+    for part in map_ranges(source, workers, scan, start, finish):
+        for u, g, a, m, f, b in part:
+            cell = acc.setdefault((_s(u), _s(g), int(a), int(m)), [0, 0])
+            cell[0] += int(f)
+            cell[1] += int(b)
+    return [{"uid": u, "gid": g, "ab": a, "mb": m, "files": f, "bytes": b}
+            for (u, g, a, m), (f, b) in acc.items()]
 
 
 def _acct_snapshot(src: Connection) -> list[dict]:
@@ -90,8 +119,11 @@ def _acct_snapshot(src: Connection) -> list[dict]:
 
 def run_once(settings: Settings, source: Engine | None = None, store: Engine | None = None) -> int:
     """One collector run. Returns the run id. Raises on failure."""
-    source = source or make_engine(settings.database)
-    store = store or make_engine(settings.store)
+    # No client read timeout: scans run for minutes or hours at scale
+    # (max_scan_seconds bounds them on the server). One connection per worker.
+    workers = max(1, settings.collector.workers)
+    source = source or make_engine(settings.database, read_timeout=None, pool_size=workers + 1)
+    store = store or make_engine(settings.store, read_timeout=None)
     migrate(store)
 
     with store.connect() as lock_conn:
@@ -121,13 +153,22 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
             timings[name] = round(time.monotonic() - t, 2)
             return out
 
+        cfg = settings.collector
+
+        def setup(c: Connection) -> None:
+            # Abort a runaway scan rather than load the server indefinitely,
+            # and group in memory (the 16 MB default spills to disk).
+            c.execute(text(f"SET SESSION max_statement_time = {int(cfg.max_scan_seconds)}, "
+                           f"tmp_table_size = {int(cfg.work_mem)}, max_heap_table_size = {int(cfg.work_mem)}"))
+
+        workers = max(1, cfg.workers)
+        hist = timed("age", _age_histogram, source, now, workers, setup)
+        classes = (timed("classes", collect_counts_parallel, source, workers, setup) if cfg.policy_counts else [])
         with source.connect() as src:
-            hist = timed("age", _age_histogram, src, now, settings.collector.max_scan_seconds)
+            setup(src)
             acct = timed("acct", _acct_snapshot, src)
             fs_path = src.execute(text("SELECT value FROM VARS WHERE varname = 'FS_Path'")).scalar()
-            dirs = timed("rollup", compute_rollups, src, now, settings.collector.rollup_depth, _s(fs_path or "/"),
-                         settings.collector.work_mem)
-            classes = (timed("classes", collect_counts, src) if settings.collector.policy_counts else [])
+            dirs = timed("rollup", compute_rollups, src, now, cfg.rollup_depth, _s(fs_path or "/"), cfg.work_mem)
         t_store = time.monotonic()
         files = sum(r["files"] for r in hist)
         with store.begin() as c:

@@ -21,7 +21,7 @@ from __future__ import annotations
 import re
 
 from sqlalchemy import text
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, Engine
 
 _STATUS_COLUMN = re.compile(r"^[A-Za-z][A-Za-z0-9_]{0,59}_status$")
 ALL = "*"            # fileclass value for "every entry"
@@ -48,6 +48,12 @@ def split_classes(value) -> list[str]:
     return names or [UNCLASSIFIED]
 
 
+def _query(cols: list[str], where: str = "TRUE") -> str:
+    keys = ", ".join(["fileclass"] + cols)
+    return (f"SELECT {keys}, COUNT(*), COALESCE(SUM(CASE WHEN type = 'file' THEN size ELSE 0 END), 0) "
+            f"FROM ENTRIES WHERE {where} GROUP BY {keys}")
+
+
 def collect_counts(src: Connection) -> list[dict]:
     """Entries and file bytes per fileclass, per status and per both.
 
@@ -57,10 +63,67 @@ def collect_counts(src: Connection) -> list[dict]:
       fileclass=<name>, field=<column>    per fileclass and status value
     """
     cols = status_columns(src)
+    return fold(src.execute(text(_query(cols))).all(), cols)
+
+
+NARROW = 255   # group by LEFT(fileclass, NARROW): the column is VARBINARY(1023),
+               # and MariaDB puts GROUP BYs on columns that wide in on-disk
+               # temporary tables (3.5x slower, and contended in parallel)
+
+
+def collect_counts_parallel(source: Engine, workers: int, setup=None) -> list[dict]:
+    """collect_counts, with the scan split by primary-key range across
+    ``workers`` connections (parallel.py). Each connection folds its chunks
+    into a server-side table and returns it once. Fileclass lists are
+    grouped on their first NARROW bytes; if any list is longer (rare), the
+    counts are recomputed exactly with the wide grouping."""
+    from .parallel import map_ranges, where
+    with source.connect() as c:
+        cols = status_columns(c)
     keys = ", ".join(["fileclass"] + cols)
-    rows = src.execute(text(
-        f"SELECT {keys}, COUNT(*), COALESCE(SUM(CASE WHEN type = 'file' THEN size ELSE 0 END), 0) "
-        f"FROM ENTRIES GROUP BY {keys}")).all()
+    group = ", ".join(str(i) for i in range(1, len(cols) + 2))
+    narrow = f"LEFT(fileclass, {NARROW})"
+    select = ", ".join([narrow] + cols)
+    select_as = ", ".join([narrow + " AS fileclass"] + cols)
+    tmp = "lamplighter_class_acc"
+
+    def start(c):
+        if setup:
+            setup(c)
+        c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {tmp}"))
+        # key columns typed as in ENTRIES (status enums vary by site), counters explicit
+        c.execute(text(f"CREATE TEMPORARY TABLE {tmp} ENGINE=MEMORY SELECT {select_as} FROM ENTRIES LIMIT 0"))
+        c.execute(text(f"ALTER TABLE {tmp} ADD COLUMN n BIGINT UNSIGNED NOT NULL DEFAULT 0, "
+                       "ADD COLUMN b BIGINT UNSIGNED NOT NULL DEFAULT 0, "
+                       f"ADD COLUMN ov BIGINT UNSIGNED NOT NULL DEFAULT 0, ADD UNIQUE KEY ({keys})"))
+
+    def scan(c, r):
+        cond, params = where(r)
+        c.execute(text(
+            f"INSERT INTO {tmp} ({keys}, n, b, ov) SELECT {select}, COUNT(*), "
+            "COALESCE(SUM(CASE WHEN type = 'file' THEN size ELSE 0 END), 0), "
+            f"COALESCE(SUM(LENGTH(fileclass) > {NARROW}), 0) FROM ENTRIES WHERE {cond} GROUP BY {group} "
+            "ON DUPLICATE KEY UPDATE n = n + VALUES(n), b = b + VALUES(b), ov = ov + VALUES(ov)"), params)
+
+    def finish(c):
+        rows = c.execute(text(f"SELECT {keys}, n, b, ov FROM {tmp}")).all()
+        c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {tmp}"))
+        return rows
+
+    rows = [row for part in map_ranges(source, workers, scan, start, finish) for row in part]
+    if any(int(r[-1]) for r in rows):
+        import logging
+        logging.getLogger(__name__).info(
+            "fileclass lists longer than %d bytes: counting with the exact (slower) grouping", NARROW)
+        with source.connect() as c:
+            if setup:
+                setup(c)
+            return collect_counts(c)
+    return fold([r[:-1] for r in rows], cols)
+
+
+def fold(rows, cols: list[str]) -> list[dict]:
+    """Per-(fileclass list, statuses) rows -> per-class/status totals."""
     acc: dict[tuple[str, str, str], list[int]] = {}
 
     def add(fc: str, field: str, value: str, n: int, b: int) -> None:

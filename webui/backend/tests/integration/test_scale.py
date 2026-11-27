@@ -88,3 +88,53 @@ def test_rollup_same_with_and_without_covering_index(db):
     root = next(r for r in plain if r["depth"] == 0)
     [(files, size)] = q(db, "SELECT COUNT(*), SUM(size) FROM ENTRIES WHERE type = 'file'")
     assert (root["files"], root["bytes"]) == (files, size)
+
+
+def test_split_covers_every_row_once(db):
+    from lamplighter_webui.parallel import split, where
+    with db.connect() as c:
+        ranges = split(c, 8)
+        assert ranges[0][0] is None and ranges[-1][1] is None and len(ranges) > 1
+        assert all(ranges[i][1] == ranges[i + 1][0] for i in range(len(ranges) - 1))
+        counts = []
+        for r in ranges:
+            cond, params = where(r)
+            counts.append(c.execute(text(f"SELECT COUNT(*) FROM ENTRIES WHERE {cond}"), params).scalar())
+        assert sum(counts) == c.execute(text("SELECT COUNT(*) FROM ENTRIES")).scalar()
+
+
+def test_parallel_scans_match_serial(db):
+    from lamplighter_webui.collector import _age_histogram
+    from lamplighter_webui.policies import collect_counts_parallel
+
+    def key(rows):
+        return sorted(tuple(sorted(r.items())) for r in rows)
+
+    assert key(_age_histogram(db, 1_795_000_000, 1, None)) == key(_age_histogram(db, 1_795_000_000, 4, None))
+    assert key(collect_counts_parallel(db, 1)) == key(collect_counts_parallel(db, 4))
+
+
+def test_long_fileclass_lists_fall_back_to_exact_counts(db):
+    """Fileclasses are grouped on their first 255 bytes for speed; a longer
+    list must still be counted exactly (the slower grouping takes over)."""
+    from lamplighter_webui.policies import collect_counts, collect_counts_parallel
+
+    def key(rows):
+        return sorted(tuple(sorted(r.items())) for r in rows)
+
+    long_list = "+" + "+".join(f"class{i:03d}" for i in range(30)) + "+"      # about 270 bytes
+    assert len(long_list) > 255
+    with db.connect() as c:
+        victim = c.execute(text("SELECT id FROM ENTRIES WHERE type = 'file' LIMIT 1")).scalar()
+        old = c.execute(text("SELECT fileclass FROM ENTRIES WHERE id = :i"), {"i": victim}).scalar()
+        c.execute(text("UPDATE ENTRIES SET fileclass = :f WHERE id = :i"), {"f": long_list, "i": victim})
+        c.commit()
+    try:
+        parallel = collect_counts_parallel(db, 4)
+        with db.connect() as c:
+            assert key(parallel) == key(collect_counts(c))
+        assert any(r["fileclass"] == "class029" for r in parallel)
+    finally:
+        with db.connect() as c:
+            c.execute(text("UPDATE ENTRIES SET fileclass = :f WHERE id = :i"), {"f": old, "i": victim})
+            c.commit()

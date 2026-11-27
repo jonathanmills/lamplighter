@@ -142,6 +142,10 @@ class CollectorConfig(BaseModel):
     # tables (MariaDB session tmp_table_size / max_heap_table_size; the
     # server's 16 MB default makes large GROUP BYs spill to disk).
     work_mem: int = 2 * 1024**3
+    # Parallel connections for the plain scans of ENTRIES (age histogram,
+    # fileclass and status counts), each scanning a range of the primary
+    # key. Use about as many as the database server has cores to spare.
+    workers: int = 4
     # Audit events older than this are deleted from the database copy
     # (journald keeps its own retention).
     audit_retention_days: int = 400

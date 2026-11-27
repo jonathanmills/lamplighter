@@ -141,3 +141,14 @@ def test_lock_is_released_after_a_run(settings):
     first = run_once(settings, make_engine(settings.database), make_engine(settings.store))
     second = run_once(settings, make_engine(settings.database), make_engine(settings.store))
     assert second > first
+
+
+def test_batch_engines_have_no_read_timeout(settings):
+    """Web requests time out after 10 s; collector and jobstats queries run
+    for minutes or hours at scale and must not."""
+    import sqlalchemy.exc
+    with pytest.raises(sqlalchemy.exc.OperationalError):
+        with make_engine(settings.database).connect() as c:          # web: 10 s
+            c.execute(text("SELECT SLEEP(12)")).scalar()
+    with make_engine(settings.database, read_timeout=None).connect() as c:
+        assert c.execute(text("SELECT SLEEP(12)")).scalar() == 0

@@ -32,11 +32,18 @@ def _s(value) -> str:
     return value.decode("utf-8") if isinstance(value, (bytes, bytearray)) else str(value)
 
 
-def make_engine(cfg: DatabaseConfig) -> Engine:
+def make_engine(cfg: DatabaseConfig, read_timeout: int | None = 10, pool_size: int = 5) -> Engine:
+    """An engine for one database.
+
+    Web requests keep the default 10 s read timeout: no page may wait
+    longer. Batch jobs (collector, jobstats) pass read_timeout=None: their
+    queries run for minutes or hours at scale and are bounded by MariaDB's
+    max_statement_time instead.
+    """
     url = (f"mysql+pymysql://{quote_plus(cfg.user)}:{quote_plus(read_secret(cfg.password_file))}"
            f"@{cfg.host}:{cfg.port}/{cfg.name}?charset=utf8mb4")
-    return create_engine(url, pool_pre_ping=True, pool_recycle=3600,
-                         connect_args={"read_timeout": 10, "write_timeout": 10})
+    args = {"write_timeout": 60} if read_timeout is None else {"read_timeout": read_timeout, "write_timeout": 10}
+    return create_engine(url, pool_pre_ping=True, pool_recycle=3600, pool_size=pool_size, connect_args=args)
 
 
 def robinhood_status(engine: Engine) -> dict:

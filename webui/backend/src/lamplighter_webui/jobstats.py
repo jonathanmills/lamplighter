@@ -412,7 +412,7 @@ def run_once(settings: Settings) -> int:
     if settings.jobstats is None:
         log.info("jobstats are not configured (config.yaml: jobstats); nothing to do")
         return 0
-    store = make_engine(settings.store)
+    store = make_engine(settings.store, read_timeout=None)
     migrate(store)
     with store.connect() as lock:
         # one run at a time; released explicitly (pooled connections outlive us)
