@@ -16,7 +16,7 @@ A self-contained test environment that runs on a laptop with Podman or Docker. E
 | Service | What it is | Start with | Address |
 |---|---|---|---|
 | `prometheus` + `jobstats-exporter` | Prometheus 2.55 scraping a simulated Lustre jobstats exporter (`tools/fake_jobstats_exporter.py`), whose counters grow in real time. Used to try the Prometheus jobstats source; `tests/integration/test_prometheus_live.py` runs only while it is up. | `./devenv.sh prometheus` (stop: `prometheus-down`) | `http://127.0.0.1:9090` |
-| `checkmk` | Checkmk Community 2.5 for installing the plugin in a real site. The image is x86-64 only: on Apple Silicon it needs Rosetta in the Podman VM (QEMU emulation crashes it). | `docker compose --profile checkmk up -d checkmk` | `http://127.0.0.1:5000/cmk/` |
+| `checkmk` | Checkmk Community 2.5 for installing the plugin in a real site. **x86-64 hosts only**: Checkmk publishes no ARM image, and a site does not run under emulation on Apple Silicon. On a Mac, `./devenv.sh checkmk-test` tests the plugin against Checkmk's real Python APIs instead; the end-to-end test belongs on a real Checkmk server. | `docker compose --profile checkmk up -d checkmk` | `http://127.0.0.1:5000/cmk/` |
 
 ## Quick start
 
