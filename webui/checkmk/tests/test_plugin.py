@@ -24,6 +24,9 @@ from cmk_addons.plugins.lamplighter.special_agent import agent_lamplighter as ag
 STATUS = ab.check_plugin_lamplighter_status.check_default_parameters
 COLLECTOR = ab.check_plugin_lamplighter_collector.check_default_parameters
 USAGE = ab.check_plugin_lamplighter_usage.check_default_parameters
+FILECLASS = ab.check_plugin_lamplighter_fileclass.check_default_parameters
+POLICY = ab.check_plugin_lamplighter_policy.check_default_parameters
+JOBSTATS = ab.check_plugin_lamplighter_jobstats.check_default_parameters
 
 
 def worst(results) -> State:
@@ -52,8 +55,9 @@ def agent_output(capfd_module=None):
     return buf.getvalue()
 
 
-def test_agent_prints_three_json_sections(agent_output):
-    for name in ("lamplighter_status", "lamplighter_collector", "lamplighter_usage"):
+def test_agent_prints_its_json_sections(agent_output):
+    for name in ("lamplighter_status", "lamplighter_collector", "lamplighter_usage",
+                 "lamplighter_policies", "lamplighter_jobstats"):
         data = json.loads(section_lines(agent_output, name)[0][0])
         assert isinstance(data, dict)
 
@@ -147,9 +151,78 @@ def test_secret_is_passed_by_reference_only():
 
 def test_rulesets_build():
     for spec in (rs.rule_spec_special_agent_lamplighter, rs.rule_spec_lamplighter_status,
-                 rs.rule_spec_lamplighter_collector, rs.rule_spec_lamplighter_usage):
+                 rs.rule_spec_lamplighter_collector, rs.rule_spec_lamplighter_usage,
+                 rs.rule_spec_lamplighter_fileclass, rs.rule_spec_lamplighter_policy,
+                 rs.rule_spec_lamplighter_jobstats):
         form = spec.parameter_form()
         assert form.elements
     assert set(rs._status_form().elements) == set(STATUS)
     assert set(rs._collector_form().elements) == set(COLLECTOR)
     assert set(rs._usage_form().elements) == set(USAGE)
+    assert set(rs._fileclass_form().elements) == set(FILECLASS)
+    assert set(rs._policy_form().elements) == set(POLICY)
+    assert set(rs._jobstats_form().elements) == set(JOBSTATS)
+
+
+# --- fileclasses, policies and jobstats -------------------------------------------
+
+POLICIES = {"as_of": 1795000000, "fileclasses": {
+    "": {"entries": 7168, "bytes": 10, "statuses": {"alert": {"": 7168}}},
+    "outsized": {"entries": 39, "bytes": 1429365116108, "statuses": {"alert": {"alert": 39}}},
+    "scratch": {"entries": 9063, "bytes": 43830000, "statuses": {"alert": {"": 9063}}}},
+    "policies": {"alert": {"field": "alert_status", "statuses": {
+        "": {"entries": 24474, "bytes": 1}, "alert": {"entries": 39, "bytes": 2}}},
+        "checksum": {"field": "checksum_status", "statuses": {"ok": {"entries": 900, "bytes": 3}}}}}
+
+
+def test_live_policy_and_jobstats_services(agent_output):
+    pol = ab.parse_json(section_lines(agent_output, "lamplighter_policies"))
+    items = {s.item for s in ab.discover_lamplighter_fileclass(pol)}
+    assert "outsized" in items and "" not in items
+    assert worst(ab.check_lamplighter_fileclass("outsized", FILECLASS, pol)) == State.OK
+    assert {s.item for s in ab.discover_lamplighter_policy(pol)} >= {"alert"}
+    js = ab.parse_json(section_lines(agent_output, "lamplighter_jobstats"))
+    assert list(ab.discover_lamplighter_jobstats(js)) == [Service()]
+
+
+def test_fileclass_discovery_skips_unclassified():
+    assert [s.item for s in ab.discover_lamplighter_fileclass(POLICIES)] == ["outsized", "scratch"]
+
+
+def test_fileclass_alerts_ok_by_default_and_levels_when_set():
+    results = list(ab.check_lamplighter_fileclass("outsized", FILECLASS, POLICIES))
+    assert worst(results) == State.OK
+    assert any(isinstance(r, Metric) and r.name == "lamplighter_class_alerts" and r.value == 39 for r in results)
+    params = {**FILECLASS, "alerts": ("fixed", (1, 100))}
+    assert worst(ab.check_lamplighter_fileclass("outsized", params, POLICIES)) == State.WARN
+    params = {**FILECLASS, "bytes": ("fixed", (100 * 1024**3, 1024**4))}
+    assert worst(ab.check_lamplighter_fileclass("outsized", params, POLICIES)) == State.CRIT
+
+
+def test_fileclass_that_vanished_yields_nothing():
+    assert list(ab.check_lamplighter_fileclass("gone", FILECLASS, POLICIES)) == []
+
+
+def test_policy_status_levels_including_absent_status():
+    assert worst(ab.check_lamplighter_policy("checksum", POLICY, POLICIES)) == State.OK
+    params = {"status_levels": [{"status": "failed", "levels": ("fixed", (1, 10))}]}
+    results = list(ab.check_lamplighter_policy("checksum", params, POLICIES))
+    assert worst(results) == State.OK                            # no "failed" entries: 0
+    assert any(isinstance(r, Metric) and r.name == "lamplighter_status_failed" and r.value == 0 for r in results)
+    params = {"status_levels": [{"status": "alert", "levels": ("fixed", (10, 30))}]}
+    assert worst(ab.check_lamplighter_policy("alert", params, POLICIES)) == State.CRIT
+    names = {r.name for r in ab.check_lamplighter_policy("alert", POLICY, POLICIES) if isinstance(r, Metric)}
+    assert names == {"lamplighter_status_alert", "lamplighter_status_not_set"}
+
+
+def test_jobstats_service():
+    off = {"configured": False}
+    assert list(ab.discover_lamplighter_jobstats(off)) == []
+    js = {"configured": True, "window_seconds": 300, "md_ops_per_second": 850.0, "read_bytes_per_second": 1e7,
+          "write_bytes_per_second": 3e7, "sources": 3, "sources_not_reporting": 0,
+          "top_md_job": {"job_id": "find.20003", "md_ops_per_second": 840.0}}
+    assert worst(ab.check_lamplighter_jobstats(JOBSTATS, js)) == State.OK
+    assert worst(ab.check_lamplighter_jobstats(JOBSTATS, {**js, "sources_not_reporting": 1})) == State.WARN
+    params = {**JOBSTATS, "md_ops_per_second": ("fixed", (500.0, 1000.0))}
+    assert worst(ab.check_lamplighter_jobstats(params, js)) == State.WARN
+    assert worst(ab.check_lamplighter_jobstats(JOBSTATS, {"configured": True, "error": "OperationalError"})) == State.UNKNOWN

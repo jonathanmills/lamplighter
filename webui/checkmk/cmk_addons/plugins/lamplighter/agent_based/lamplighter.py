@@ -11,11 +11,19 @@ Services:
                          changelog backlog (Lustre with changelogs only)
   Lamplighter collector  time since the last successful collector run
   Lamplighter usage      volume, files, and data not read for 1 / 3 years
+  Lamplighter fileclass <name>
+                         entries and volume of one Robinhood fileclass, and
+                         how many of them a classifier alert policy marked
+  Lamplighter policy <name>
+                         entries per status of one Robinhood policy
+  Lamplighter jobstats   metadata requests and bytes per second (Lustre
+                         jobstats), and sources not reporting
 """
 
 from __future__ import annotations
 
 import json
+import re
 import time
 from collections.abc import Mapping
 from typing import Any
@@ -51,6 +59,8 @@ def parse_json(string_table: StringTable) -> Section | None:
 agent_section_lamplighter_status = AgentSection(name="lamplighter_status", parse_function=parse_json)
 agent_section_lamplighter_collector = AgentSection(name="lamplighter_collector", parse_function=parse_json)
 agent_section_lamplighter_usage = AgentSection(name="lamplighter_usage", parse_function=parse_json)
+agent_section_lamplighter_policies = AgentSection(name="lamplighter_policies", parse_function=parse_json)
+agent_section_lamplighter_jobstats = AgentSection(name="lamplighter_jobstats", parse_function=parse_json)
 
 
 def discover_single(section: Section) -> DiscoveryResult:
@@ -181,4 +191,131 @@ check_plugin_lamplighter_usage = CheckPlugin(
     check_function=check_lamplighter_usage,
     check_ruleset_name="lamplighter_usage",
     check_default_parameters={"cold_1y_bytes": ("no_levels", None), "cold_3y_bytes": ("no_levels", None)},
+)
+
+
+# --- Lamplighter fileclass <name> ----------------------------------------------------
+# Robinhood alert policies are used only as classifiers: they mark entries
+# "alert" or "clear". The thresholds on those counts live here.
+
+def discover_lamplighter_fileclass(section: Section) -> DiscoveryResult:
+    for name in sorted(section.get("fileclasses") or {}):
+        if name:                                  # "" = entries in no fileclass
+            yield Service(item=name)
+
+
+def _alert_entries(cls: Mapping[str, Any]) -> int:
+    return sum(int(per_status.get("alert", 0)) for per_status in (cls.get("statuses") or {}).values())
+
+
+def check_lamplighter_fileclass(item: str, params: Mapping[str, Any], section: Section) -> CheckResult:
+    cls = (section.get("fileclasses") or {}).get(item)
+    if cls is None:
+        return                                    # Checkmk reports the item as missing
+    yield from check_levels(int(cls.get("entries", 0)), levels_upper=params.get("entries"),
+                            metric_name="lamplighter_class_entries", render_func=str, label="Entries")
+    yield from check_levels(int(cls.get("bytes", 0)), levels_upper=params.get("bytes"),
+                            metric_name="lamplighter_class_bytes", render_func=render.bytes, label="Volume")
+    statuses = cls.get("statuses") or {}
+    if statuses:
+        yield from check_levels(_alert_entries(cls), levels_upper=params.get("alerts"),
+                                metric_name="lamplighter_class_alerts", render_func=str,
+                                label="Marked 'alert' by a classifier policy")
+    for policy, per_status in sorted(statuses.items()):
+        shown = ", ".join(f"{st}: {n}" for st, n in sorted(per_status.items()) if st)
+        if shown:
+            yield Result(state=State.OK, notice=f"Policy {policy}: {shown}")
+    if section.get("as_of"):
+        yield Result(state=State.OK, notice=f"As of the collector run at {render.datetime(section['as_of'])}")
+
+
+check_plugin_lamplighter_fileclass = CheckPlugin(
+    name="lamplighter_fileclass",
+    sections=["lamplighter_policies"],
+    service_name="Lamplighter fileclass %s",
+    discovery_function=discover_lamplighter_fileclass,
+    check_function=check_lamplighter_fileclass,
+    check_ruleset_name="lamplighter_fileclass",
+    check_default_parameters={"entries": ("no_levels", None), "bytes": ("no_levels", None),
+                              "alerts": ("no_levels", None)},
+)
+
+
+# --- Lamplighter policy <name> -------------------------------------------------------
+
+def _metric_safe(status: str) -> str:
+    return re.sub(r"[^A-Za-z0-9_]", "_", status) or "not_set"
+
+
+def discover_lamplighter_policy(section: Section) -> DiscoveryResult:
+    for name in sorted(section.get("policies") or {}):
+        yield Service(item=name)
+
+
+def check_lamplighter_policy(item: str, params: Mapping[str, Any], section: Section) -> CheckResult:
+    policy = (section.get("policies") or {}).get(item)
+    if policy is None:
+        return
+    entries = {st: int(v.get("entries", 0)) for st, v in (policy.get("statuses") or {}).items()}
+    shown = ", ".join(f"{st or 'not set'}: {n}" for st, n in sorted(entries.items(), key=lambda kv: (kv[0] == "", kv[0])))
+    yield Result(state=State.OK, summary=f"Entries per status: {shown or 'none'}")
+    levels = {str(rule.get("status", "")): rule.get("levels") for rule in params.get("status_levels") or []}
+    for status, n in sorted(entries.items()):
+        if status not in levels:
+            yield Metric(f"lamplighter_status_{_metric_safe(status)}", n)
+    # Statuses with levels are checked even when no entry has them (count 0).
+    for status, lv in sorted(levels.items()):
+        yield from check_levels(entries.get(status, 0), levels_upper=lv,
+                                metric_name=f"lamplighter_status_{_metric_safe(status)}", render_func=str,
+                                label=f"Status '{status or 'not set'}'")
+
+
+check_plugin_lamplighter_policy = CheckPlugin(
+    name="lamplighter_policy",
+    sections=["lamplighter_policies"],
+    service_name="Lamplighter policy %s",
+    discovery_function=discover_lamplighter_policy,
+    check_function=check_lamplighter_policy,
+    check_ruleset_name="lamplighter_policy",
+    check_default_parameters={"status_levels": []},
+)
+
+
+# --- Lamplighter jobstats ------------------------------------------------------------
+
+def discover_lamplighter_jobstats(section: Section) -> DiscoveryResult:
+    if section.get("configured"):
+        yield Service()
+
+
+def check_lamplighter_jobstats(params: Mapping[str, Any], section: Section) -> CheckResult:
+    if "error" in section:
+        yield Result(state=State.UNKNOWN, summary=f"Jobstats unavailable ({section['error']})")
+        return
+    window = section.get("window_seconds", 300)
+    yield from check_levels(float(section.get("md_ops_per_second", 0.0)), levels_upper=params.get("md_ops_per_second"),
+                            metric_name="lamplighter_md_ops_rate", render_func=lambda v: f"{v:.1f}/s",
+                            label=f"Metadata requests (last {window // 60} min)")
+    yield from check_levels(float(section.get("read_bytes_per_second", 0.0)), levels_upper=params.get("read_bytes_per_second"),
+                            metric_name="lamplighter_read_rate", render_func=render.iobandwidth, label="Read")
+    yield from check_levels(float(section.get("write_bytes_per_second", 0.0)), levels_upper=params.get("write_bytes_per_second"),
+                            metric_name="lamplighter_write_rate", render_func=render.iobandwidth, label="Written")
+    yield from check_levels(int(section.get("sources_not_reporting", 0)), levels_upper=params.get("sources_not_reporting"),
+                            metric_name="lamplighter_jobstats_stale_sources", render_func=str,
+                            label=f"Sources not reporting (of {section.get('sources', 0)})")
+    top = section.get("top_md_job")
+    if top:
+        yield Result(state=State.OK, notice=f"Busiest job by metadata: {top['job_id']} ({top['md_ops_per_second']:.1f}/s)")
+
+
+check_plugin_lamplighter_jobstats = CheckPlugin(
+    name="lamplighter_jobstats",
+    sections=["lamplighter_jobstats"],
+    service_name="Lamplighter jobstats",
+    discovery_function=discover_lamplighter_jobstats,
+    check_function=check_lamplighter_jobstats,
+    check_ruleset_name="lamplighter_jobstats",
+    check_default_parameters={"md_ops_per_second": ("no_levels", None), "read_bytes_per_second": ("no_levels", None),
+                              "write_bytes_per_second": ("no_levels", None),
+                              "sources_not_reporting": ("fixed", (1, 3))},
 )

@@ -2,7 +2,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
 """Rulesets (Checkmk rulesets API v1): the special agent connection, and
-the thresholds for the three Lamplighter services."""
+the thresholds for the Lamplighter services. Lamplighter reports facts
+only; every threshold is set here."""
 
 from __future__ import annotations
 
@@ -13,9 +14,11 @@ from cmk.rulesets.v1.form_specs import (
     DefaultValue,
     DictElement,
     Dictionary,
+    Float,
     IECMagnitude,
     Integer,
     LevelDirection,
+    List,
     Password,
     SimpleLevels,
     String,
@@ -23,7 +26,7 @@ from cmk.rulesets.v1.form_specs import (
     TimeSpan,
 )
 from cmk.rulesets.v1.form_specs.validators import LengthInRange, Url, UrlProtocol
-from cmk.rulesets.v1.rule_specs import CheckParameters, HostCondition, SpecialAgent, Topic
+from cmk.rulesets.v1.rule_specs import CheckParameters, HostAndItemCondition, HostCondition, SpecialAgent, Topic
 
 _HTTPS = Url(protocols=[UrlProtocol.HTTPS])
 
@@ -102,6 +105,13 @@ def _size_levels(title: str) -> SimpleLevels[int]:
     )
 
 
+def _optional_levels(title: str, template, warn, crit) -> SimpleLevels:
+    """Levels a site may set; the check's default is no levels. warn/crit
+    only prefill the form when an admin switches levels on."""
+    return SimpleLevels(title=Title(title), form_spec_template=template,
+                        level_direction=LevelDirection.UPPER, prefill_fixed_levels=DefaultValue((warn, crit)))
+
+
 def _status_form() -> Dictionary:
     return Dictionary(elements={
         "scan_age": DictElement(parameter_form=_time_levels("Time since the last scan", 5 * 86400.0, 8 * 86400.0)),
@@ -136,3 +146,63 @@ rule_spec_lamplighter_collector = CheckParameters(
 rule_spec_lamplighter_usage = CheckParameters(
     name="lamplighter_usage", title=Title("Lamplighter usage"), topic=Topic.STORAGE,
     parameter_form=_usage_form, condition=HostCondition())
+
+
+def _fileclass_form() -> Dictionary:
+    return Dictionary(
+        help_text=Help("Thresholds for one Robinhood fileclass. Use the rule's service condition "
+                       "to choose fileclasses. Robinhood alert policies only classify entries; "
+                       "decide here how many marked entries matter."),
+        elements={
+            "entries": DictElement(parameter_form=_optional_levels("Entries in the fileclass", Integer(), 1_000_000, 10_000_000)),
+            "bytes": DictElement(parameter_form=_optional_levels(
+                "Volume of the fileclass", DataSize(displayed_magnitudes=[IECMagnitude.GIBI, IECMagnitude.TEBI,
+                                                                          IECMagnitude.PEBI]),
+                100 * 1024**4, 500 * 1024**4)),
+            "alerts": DictElement(parameter_form=_optional_levels(
+                "Entries marked 'alert' by a classifier alert policy", Integer(), 1, 100)),
+        })
+
+
+def _policy_form() -> Dictionary:
+    return Dictionary(
+        help_text=Help("Thresholds on the number of entries in a given status of one Robinhood "
+                       "policy, for example 'failed' for a checksum policy or 'alert' for an "
+                       "alert policy used as a classifier."),
+        elements={
+            "status_levels": DictElement(parameter_form=List(
+                title=Title("Levels per status"),
+                element_template=Dictionary(elements={
+                    "status": DictElement(required=True, parameter_form=String(
+                        title=Title("Status value (as stored by Robinhood, e.g. failed, alert, new)"),
+                        custom_validate=(LengthInRange(min_value=1),))),
+                    "levels": DictElement(required=True, parameter_form=_count_levels(
+                        "Entries in this status", 1, 100)),
+                }))),
+        })
+
+
+def _jobstats_form() -> Dictionary:
+    return Dictionary(elements={
+        "md_ops_per_second": DictElement(parameter_form=_optional_levels(
+            "Metadata requests per second (all jobs)", Float(), 20_000.0, 50_000.0)),
+        "read_bytes_per_second": DictElement(parameter_form=_optional_levels(
+            "Data read per second, in bytes (all jobs)", Float(), 10.0 * 1024**3, 20.0 * 1024**3)),
+        "write_bytes_per_second": DictElement(parameter_form=_optional_levels(
+            "Data written per second, in bytes (all jobs)", Float(), 10.0 * 1024**3, 20.0 * 1024**3)),
+        "sources_not_reporting": DictElement(parameter_form=_count_levels(
+            "Jobstats sources (servers) not reporting", 1, 3)),
+    })
+
+
+rule_spec_lamplighter_fileclass = CheckParameters(
+    name="lamplighter_fileclass", title=Title("Lamplighter fileclass"), topic=Topic.STORAGE,
+    parameter_form=_fileclass_form, condition=HostAndItemCondition(item_title=Title("Fileclass")))
+
+rule_spec_lamplighter_policy = CheckParameters(
+    name="lamplighter_policy", title=Title("Lamplighter policy"), topic=Topic.STORAGE,
+    parameter_form=_policy_form, condition=HostAndItemCondition(item_title=Title("Policy")))
+
+rule_spec_lamplighter_jobstats = CheckParameters(
+    name="lamplighter_jobstats", title=Title("Lamplighter jobstats"), topic=Topic.STORAGE,
+    parameter_form=_jobstats_form, condition=HostCondition())

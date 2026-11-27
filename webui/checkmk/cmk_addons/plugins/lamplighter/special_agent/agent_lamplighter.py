@@ -10,7 +10,7 @@ installed on the Lamplighter host):
    client-credentials grant. The client secret comes from Checkmk's
    password store and never appears on the command line.
 2. GET /api/v1/monitoring with that token.
-3. Print three agent sections of JSON for the check plugins.
+3. Print the agent sections (JSON, one per line) for the check plugins.
 
 Only the Python standard library is used, plus Checkmk's password
 store API.
@@ -90,6 +90,11 @@ def sections(body: dict) -> str:
     out.append("<<<lamplighter_usage:sep(0)>>>")
     out.append(json.dumps({"usage": body.get("usage") or {},
                            "age": (body.get("collector") or {}).get("age_by_access")}, sort_keys=True))
+    # Entries per fileclass and policy status (null before the first collector run).
+    out.append("<<<lamplighter_policies:sep(0)>>>")
+    out.append(json.dumps(body.get("policies") or {}, sort_keys=True))
+    out.append("<<<lamplighter_jobstats:sep(0)>>>")
+    out.append(json.dumps(body.get("jobstats") or {"configured": False}, sort_keys=True))
     return "\n".join(out) + "\n"
 
 
