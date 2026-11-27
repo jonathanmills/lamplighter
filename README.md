@@ -13,7 +13,7 @@ Lamplighter is a policy engine and metadata mirror for large Lustre and POSIX fi
 
 **Lamplighter is a fork of the [Robinhood Policy Engine](https://github.com/cea-hpc/robinhood)**, created by CEA in France. The engine at its heart is Robinhood's, and we intend to keep it that way.
 
-> **Status: early work in progress.** The rename has only just begun. The code, commands and packages still use Robinhood's names (`robinhood`, `rbh-find`, `rbh-report`…). The new web UI and Checkmk plugin work in the development environment, but nothing here is released yet. See [Status](#status).
+> **Status: early work in progress.** The rename is done: the daemon is `lamplighter`, the commands are `lux-find`, `lux-report` and so on, and the packages are `lamplighter-*`. The new web UI and Checkmk plugin work in the development environment, but nothing here is released yet. See [Status](#status).
 
 ## Standing on the shoulders of Robinhood
 
@@ -109,25 +109,25 @@ Perl build helpers are being replaced with Python, and the kernel's `checkpatch.
 
 | Area | Where it stands |
 |---|---|
-| Policy engine, scanner, changelog reader, `find`/`du`/`report` tools | Robinhood 3, working, unchanged. Still under Robinhood's names. |
-| Rename to Lamplighter (`lux-*`, `lamplighter`, `/etc/lamplighter.d`, packages) | Designed ([doc/COMPATIBILITY.md](doc/COMPATIBILITY.md)), not yet done |
+| Policy engine, scanner, changelog reader, `find`/`du`/`report` tools | Robinhood 3's engine, working, now under Lamplighter's names. |
+| Rename to Lamplighter (`lux-*`, `lamplighter`, `/etc/lamplighter.d`, packages, `lamplighter-compat`) | Done, following [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md). Upgrading over installed Robinhood RPMs and the full integration suite still need testing on a Linux host. |
 | Web UI: sign-in (OIDC and LDAP), LDAP groups and ACLs, audit log | Working in the development environment |
 | Web UI: overview, users and groups, cold data, directory browsing | Working in the development environment |
 | Web UI: slowdown triage with Slurm and jobstats | Planned |
 | Checkmk 2.5 plugin | Built and tested against Checkmk's APIs, not yet run on a live site |
-| RPM packaging for Rocky Linux / RHEL 9 | On the `feature/packaging` branch |
+| RPM packaging for Rocky Linux / RHEL 9 | Engine and web UI packages build and install in a clean Rocky 9.7 container |
 | PHP web GUI | Removed. The last copy is kept at the git tag `robinhood-php-gui-final`. |
 
 The design for everything web-related is in [doc/webui-design.md](doc/webui-design.md).
 
 ## Getting started
 
-Lamplighter has no release yet. To build it today, the Robinhood instructions apply unchanged, with Robinhood's names: see [doc/ROBINHOOD-README.md](doc/ROBINHOOD-README.md). In short, on Rocky Linux / RHEL 9:
+Lamplighter has no release yet. Robinhood's installation guide ([doc/ROBINHOOD-README.md](doc/ROBINHOOD-README.md)) still applies, with Lamplighter's names: `lamplighter` for `robinhood`, `lux-*` for `rbh-*`, `/etc/lamplighter.d` for `/etc/robinhood.d`. To build, on Rocky Linux / RHEL 9:
 
 ```sh
 sh autogen.sh
 ./configure            # --disable-lustre for a POSIX-only build
-make rpm               # RPMs in rpms/RPMS/<arch>
+make rpm               # RPMs in rpms/RPMS/<arch>: lamplighter-posix (or -lustre), -adm, -tests, -compat
 ```
 
 To work on the web UI, the Checkmk plugin or the packaging, use the container development environment (it also runs on macOS with Podman):

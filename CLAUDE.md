@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-Robinhood Policy Engine (v3): a C daemon plus CLI tools that mirror filesystem metadata into a database (MySQL/MariaDB by default, SQLite optional) and run attribute-based policies (purge, migration/archive, rmdir, alerts, checksums...) over it. It works on any POSIX filesystem and has extra features for Lustre (MDT changelogs, OSTs/pools, HSM). It targets Linux (RHEL-like): it does not build natively on macOS, so build and test on a Linux host or VM.
+Lamplighter, a fork of the Robinhood Policy Engine (v3) by CEA: a C daemon plus CLI tools that mirror filesystem metadata into a database (MySQL/MariaDB by default, SQLite optional) and run attribute-based policies (purge, migration/archive, rmdir, alerts, checksums...) over it. It works on any POSIX filesystem and has extra features for Lustre (MDT changelogs, OSTs/pools, HSM). It targets Linux (RHEL-like): it does not build natively on macOS, so build and test on a Linux host or VM.
 
 ## Fork goals
 
@@ -82,7 +82,7 @@ Packaging: `webui/packaging/` builds the `lamplighter-webui` RPM (`build-rpm.sh`
 
 ## Architecture
 
-`src/` is split into static libtool libraries that are linked into every executable in `src/robinhood/` (`robinhood` daemon, `rbh-report`, `rbh-find`, `rbh-du`, `rbh-diff`, `rbh-undelete`, `rbh-rebind`):
+`src/` is split into static libtool libraries that are linked into every executable in `src/robinhood/` (the `lamplighter` daemon, `lux-report`, `lux-find`, `lux-du`, `lux-diff`, `lux-undelete`, `lux-rebind`; sources keep Robinhood's names, e.g. `rbh_find.c`):
 
 - `include/`: shared headers. `db_schema.def` is processed by `scripts/type_gen.pl` into `db_schema.h` (the entry attribute set and DB fields), so edit the `.def` file and never the generated header.
 - `cfg_parsing/`: bison/flex config grammar (`conf_yacc.y`, `conf_lex.l`), boolean expressions for policy rules, and config helpers. Each module registers its config block through `rbh_cfg`.
@@ -97,10 +97,15 @@ Packaging: `webui/packaging/` builds the `lamplighter-webui` RPM (`build-rpm.sh`
 
 Policies themselves are mostly declared in config: `doc/templates/includes/*.inc` define the standard policies (tmpfs, lhsm, backup, rmdir...), which the user's config includes. When run from the source tree, the test suite points `LD_LIBRARY_PATH` at `src/modules/.libs`.
 
-Other top-level dirs: `scripts/` (`rbh-config` DB/changelog setup helper, systemd units, code-style scripts), `man/`, `doc/`.
+Other top-level dirs: `scripts/` (`lux-config` DB/changelog setup and `check` helper, `lux_cksum.sh`, systemd units, code-style scripts), `man/`, `doc/`.
 
 ## Conventions
 
+- **Naming and compatibility** (the contract is `doc/COMPATIBILITY.md`; never break it):
+  - User-visible names are Lamplighter's: the `lamplighter` daemon, `lux-*` commands, `lux-config`, `lux_cksum.sh`, `luxext_tool*`, `lamplighter@<fs>.service`, `/etc/lamplighter.d`, `LUX_CFG_DEFAULT`, `lamplighter-*` RPMs (old names only in `lamplighter-compat`).
+  - Internal identifiers keep Robinhood's names (`src/robinhood/`, `rbh_*.c`, `rbh_*` functions, `RBH_*` macros, `librbh_mod_*`), to keep merging CEA's fixes easy.
+  - Never change Robinhood's database schema, the configuration syntax, module names, database names or the default database user (`robinhood`).
+  - The list of renamed helpers exists twice and must stay in sync: `renamed_cmds[]` in `src/policies/policy_loader.c` and `RENAMED_CMDS` in `scripts/lux-config`.
 - **Licensing:**
   - New code under `webui/` is **GPL-2.0-or-later**: each file carries `SPDX-License-Identifier: GPL-2.0-or-later`, and the license text is in `webui/LICENSE`.
   - Changes to Robinhood's own files stay **CeCILL-C**.

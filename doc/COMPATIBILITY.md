@@ -1,6 +1,6 @@
 # Lamplighter's compatibility promise with Robinhood
 
-*Status: agreed design, November 2026. The rename has not happened yet, so the code still uses the Robinhood names. This document is the contract the rename and all later work must keep.*
+*Status: agreed design, November 2026, implemented by the rename (commits 0555c0a9, 41ddfa5a and 8914f537). This document is the contract all later work must keep.*
 
 Lamplighter is a fork of the [Robinhood Policy Engine](https://github.com/cea-hpc/robinhood) by CEA. As a firm project goal, out of respect for Robinhood and to make trying Lamplighter safe, **a site running Robinhood can move to Lamplighter, or back, without converting anything.**
 
