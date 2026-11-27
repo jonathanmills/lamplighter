@@ -1,6 +1,6 @@
 # Robinhood Web UI: Design Plan
 
-Status: **draft for discussion**. It replaces `web_gui/gui_v3` (PHP).
+Status: **draft for discussion**. It replaces Robinhood's PHP GUI (`gui_v3`, removed from this repository; tag `robinhood-php-gui-final` keeps the last copy).
 
 ## 1. Goals
 
@@ -302,7 +302,6 @@ webui/
   checkmk/        # Checkmk MKP: special agent, check plugins, rulesets
   packaging/      # lamplighter-webui.spec, systemd units, nginx example config
   docs/
-web_gui/          # legacy PHP GUI, removed once the new UI covers its features
 ```
 
 ## 9. Phases
@@ -314,7 +313,7 @@ web_gui/          # legacy PHP GUI, removed once the new UI covers its features
 | 2. Checkmk | *Done: admin pages (Directory, Access control (read-only), Audit log) and the Checkmk 2.5 plugin (`webui/checkmk`: special agent, 3 services, rulesets, MKP), tested against Checkmk's real APIs. Still to do: install on an x86-64 Checkmk 2.5 site; per-policy services need per-policy counts from the collector.* Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
 | 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. *Done: directory rollups, Browse (paths.view_all), coldest directories. Still open: own-files browsing (paths.view_own), scale measurement.* |
 | 4. Triage | Jobstats collector, Slurm integration, triage dashboard. Rate metrics also feed Checkmk. |
-| 5. Retire PHP | Feature parity check against `gui_v3`, remove `web_gui/` from the build and RPM, RPM packaging for the new UI. *Done: `robinhood-webgui` (PHP) removed from the build and spec; `lamplighter-webui` RPM (`webui/packaging`) with venv, systemd units, collector timer and nginx example, tested by installing it in a fresh Rocky 9.7 container behind nginx. Still open: deleting `web_gui/` itself, and an x86_64 build host/CI.* |
+| 5. Retire PHP | Feature parity check against `gui_v3`, remove `web_gui/` from the build and RPM, RPM packaging for the new UI. *Done: `robinhood-webgui` (PHP) removed from the build and spec; `lamplighter-webui` RPM (`webui/packaging`) with venv, systemd units, collector timer and nginx example, tested by installing it in a fresh Rocky 9.7 container behind nginx. `web_gui/` deleted (last copy: tag `robinhood-php-gui-final`). Still open: an x86_64 build host/CI, and these `gui_v3` features the new UI does not have yet: **file search** (by owner, size, age or path), **per-fileclass and policy-status counts** (the same per-policy counts Phase 2 needs), **a general data export** (CSV/JSON beyond the cold-data export), and **scheduled report tasks and custom/stacked graphs** (decide whether they are wanted). Dropped on purpose: access control by client IP address (a job for the firewall or nginx).* |
 
 ## 10. Licensing
 

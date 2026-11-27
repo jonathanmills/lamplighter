@@ -18,11 +18,16 @@ rsync -a --delete \
       --filter 'P aclocal.m4' --filter 'P autom4te.cache/' --filter 'P config.*' \
       --filter 'P *.o' --filter 'P *.lo' --filter 'P *.la' --filter 'P .libs/' \
       --filter 'P .deps/' --filter 'P libtool' --filter 'P stamp-h1' \
+      --filter 'P autotools/' \
       "$src/" "$dst/"
 cd "$dst"
 
-if [[ ! -x configure ]]; then
+# Generate the build system if it is missing. When configure.ac or a
+# Makefile.am changes later, make regenerates it with autotools/missing,
+# which the rsync filter above keeps.
+if [[ ! -x configure || ! -x autotools/missing ]]; then
     sh autogen.sh
+    rm -f Makefile
 fi
 if [[ ! -f Makefile ]]; then
     ./configure --disable-lustre

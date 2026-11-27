@@ -11,7 +11,7 @@ Robinhood Policy Engine (v3): a C daemon plus CLI tools that mirror filesystem m
 This fork keeps the Robinhood v3 engine and its MariaDB backend, and modernizes everything around them:
 
 - **Leave the C engine alone.** The scanner, changelog reader, pipeline, policy engine and modules in `src/` are trusted as they are. Make changes outside `src/` where possible. If a C change seems unavoidable, raise it before making it.
-- **Replace the PHP web GUI** (`web_gui/gui_v3`: PHP + Bootstrap 3/jQuery/DataTables). It must not use PHP in any form, because PHP must not need to be installed on the servers. The new GUI reads the existing v3 MariaDB schema directly (the old GUI does the same) instead of requiring engine changes.
+- **Replace the PHP web GUI** (Robinhood's `gui_v3`: PHP + Bootstrap 3/jQuery/DataTables; deleted from this repository, last copy at tag `robinhood-php-gui-final`). It must not use PHP in any form, because PHP must not need to be installed on the servers. The new GUI reads the existing v3 MariaDB schema directly (the old GUI does the same) instead of requiring engine changes.
   - **UX:** modern and information-dense with drill-down, modelled on the *visual appearance* of the Checkmk Pro GUI. Only the look is borrowed: no Checkmk/Nagios monitoring concepts such as OK/WARN/CRIT states or service checks.
   - **Auth and ACLs (core goal):** multi-user from the start. Login is OpenID Connect against **Keycloak** (preferred) or an optional direct LDAP bind. User identity and groups always come from **LDAP**, with TLS required, configurable base DNs and filters, and RFC 2307 or RFC 2307bis support. ACLs map permissions to roles to LDAP groups, and are enforced in the API. Checkmk authenticates to the API with a Keycloak client-credentials token. See `doc/webui-design.md` section 4.
   - **Layout:**
@@ -55,7 +55,6 @@ Other top-level targets: `make cppcheck`, `make lcov`, `make check-valgrind` (un
   WITH_VALGRIND=1 ./2-run-tests.sh 301
   ```
   `PURPOSE` selects the test profile: `TMP_FS_MGR` (default), `LUSTRE_HSM`, `BACKUP`, `SHOOK`. Tests are registered at the bottom of `2-run-tests.sh` as `run_test <id> <function> <cfg> ... "<title>"`, and their configs live in `tests/test_suite/cfg/`.
-- `web_gui/tests/nonreg.bash` covers the PHP web GUI (`scripts/pre-commit` runs it when `web_gui/` changes).
 
 ## Web UI development environment
 
@@ -79,7 +78,7 @@ Web UI front end: `webui/frontend/` (React + TypeScript + Vite, ECharts; no comp
 
 Checkmk plugin: `webui/checkmk/` (Checkmk 2.5 plug-in family `cmk_addons/plugins/lamplighter`: special agent, agent-based checks, rulesets, server-side calls; see its README). Test with `webui/devenv/devenv.sh checkmk-test` (Python 3.13 + Checkmk's real APIs copied out of the image into `webui/devenv/.cmk-api/`, never committed) and build the MKP with `devenv.sh mkp`. Checkmk images are x86-64 only and a site does not run under emulation on Apple Silicon. Secrets go to the agent by password-store reference only (`--client-secret-id`).
 
-Packaging: `webui/packaging/` builds the `lamplighter-webui` RPM (`build-rpm.sh`: front end in a Node container, rpmbuild in a throwaway Rocky 9.7 container; the venv is built at its real path `/opt/lux-webui`) and `test-rpm.sh` installs it in a fresh Rocky 9.7 container behind nginx against the dev environment. The RPM's architecture is the build host's: x86_64 production packages need an x86_64 build host. The PHP GUI is no longer built or packaged (the `web_gui/` sources remain for now). Rocky 9 ships nginx 1.20 (no `http2 on;`).
+Packaging: `webui/packaging/` builds the `lamplighter-webui` RPM (`build-rpm.sh`: front end in a Node container, rpmbuild in a throwaway Rocky 9.7 container; the venv is built at its real path `/opt/lux-webui`) and `test-rpm.sh` installs it in a fresh Rocky 9.7 container behind nginx against the dev environment. The RPM's architecture is the build host's: x86_64 production packages need an x86_64 build host. The PHP GUI has been removed entirely (last copy at tag `robinhood-php-gui-final`). Rocky 9 ships nginx 1.20 (no `http2 on;`).
 
 ## Architecture
 
@@ -98,7 +97,7 @@ Packaging: `webui/packaging/` builds the `lamplighter-webui` RPM (`build-rpm.sh`
 
 Policies themselves are mostly declared in config: `doc/templates/includes/*.inc` define the standard policies (tmpfs, lhsm, backup, rmdir...), which the user's config includes. When run from the source tree, the test suite points `LD_LIBRARY_PATH` at `src/modules/.libs`.
 
-Other top-level dirs: `scripts/` (`rbh-config` DB/changelog setup helper, systemd units, code-style scripts), `web_gui/` (PHP GUI), `man/`, `doc/`.
+Other top-level dirs: `scripts/` (`rbh-config` DB/changelog setup helper, systemd units, code-style scripts), `man/`, `doc/`.
 
 ## Conventions
 

@@ -116,7 +116,7 @@ Perl build helpers are being replaced with Python, and the kernel's `checkpatch.
 | Web UI: slowdown triage with Slurm and jobstats | Planned |
 | Checkmk 2.5 plugin | Built and tested against Checkmk's APIs, not yet run on a live site |
 | RPM packaging for Rocky Linux / RHEL 9 | On the `feature/packaging` branch |
-| PHP web GUI | Removed from the build. Its sources are still in the tree, to be deleted later. |
+| PHP web GUI | Removed. The last copy is kept at the git tag `robinhood-php-gui-final`. |
 
 The design for everything web-related is in [doc/webui-design.md](doc/webui-design.md).
 

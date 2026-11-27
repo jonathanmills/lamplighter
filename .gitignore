@@ -81,7 +81,6 @@ cscope.*
 /src/tests/test_forcestripe
 /src/backend_ext/Makefile
 /tests/Makefile
-/web_gui/Makefile
 /src/tools/Makefile
 /src/tools/gen_lov_objid
 /src/tools/read_lovea
@@ -101,7 +100,6 @@ cscope.*
 /TODO
 /src/include/db_schema.h
 /scripts/make_mans.sh
-/web_gui/gui_v3/config_local.php
 
 # web UI dev environment (generated)
 webui/devenv/.certs/

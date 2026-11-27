@@ -18,7 +18,6 @@ function install_hook
 
 wdir=$(dirname $(readlink -m "$0"))
 install_hook git_prepare_hook prepare-commit-msg
-install_hook pre-commit pre-commit
 install_hook commit-msg commit-msg
 
 autoreconf --install
