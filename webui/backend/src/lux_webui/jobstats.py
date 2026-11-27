@@ -396,10 +396,13 @@ def job_details_provider(name: str) -> JobDetails:
 
 # --- lux-jobstats ------------------------------------------------------------------
 
-def collect(cfg: JobstatsConfig) -> tuple[list[Interval], list[SourceStatus]]:
+def collect(cfg: JobstatsConfig, store: Engine) -> tuple[list[Interval], list[SourceStatus]]:
     if cfg.source == "prometheus":
         from .prometheus import PrometheusSource
-        return PrometheusSource(cfg.prometheus).collect()
+        with store.connect() as c:
+            last = c.execute(text("SELECT last_snapshot FROM jobstats_sources WHERE source = :s"),
+                             {"s": PrometheusSource.STATE}).scalar()
+        return PrometheusSource(cfg.prometheus).collect(int(last) if last is not None else None)
     sp = cfg.spool
     return SpoolSource(sp.directory, sp.max_file_bytes, sp.max_interval_seconds).collect()
 
@@ -417,7 +420,7 @@ def run_once(settings: Settings) -> int:
             log.info("another lux-jobstats run is in progress; skipping")
             return 0
         try:
-            intervals, statuses = collect(settings.jobstats)
+            intervals, statuses = collect(settings.jobstats, store)
             n = store_intervals(store, intervals, statuses, settings.jobstats.retention_hours)
             log.info("stored %d intervals from %d sources", n, len(statuses))
             return n

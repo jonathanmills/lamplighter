@@ -165,8 +165,15 @@ class JobstatsPrometheus(BaseModel):
     job_label: str = "jobid"
     target_label: str = "target"
     source_label: str = "instance"
+    # Optional: the label naming the operation (open, getattr...) on the
+    # md_ops counter, to show which requests dominate.
+    op_label: str | None = None
+    # Each value is a counter selector, e.g. lustre_job_stats_total{target=~".*MDT.*"}.
+    # At least md_ops or read_bytes/write_bytes should be mapped.
     metrics: dict[Literal["md_ops", "read_bytes", "write_bytes", "read_ops", "write_ops",
                           "other_ops"], str] = {}
+    # A gap longer than this (Prometheus unreachable) is not filled in.
+    max_interval_seconds: int = 900
 
 
 class JobstatsConfig(BaseModel):
@@ -188,8 +195,8 @@ class JobstatsConfig(BaseModel):
     def _check(self) -> "JobstatsConfig":
         import re
         re.compile(self.jobid_pattern)
-        if self.source == "prometheus" and self.prometheus is None:
-            raise ValueError("jobstats.source is prometheus: configure jobstats.prometheus")
+        if self.source == "prometheus" and (self.prometheus is None or not self.prometheus.metrics):
+            raise ValueError("jobstats.source is prometheus: configure jobstats.prometheus with metrics")
         return self
 
 
