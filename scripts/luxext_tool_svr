@@ -19,9 +19,9 @@ HINTS=$4
 ###############################
 ###### EDIT if necessary ######
 
-LOG_FILE="/var/log/rbhext_tool.log"
+LOG_FILE="/var/log/luxext_tool.log"
 
-# must be >= robinhood's copy_timeout value
+# must be >= lamplighter's copy_timeout value
 TIMEOUT=15000
 
 # General copy command

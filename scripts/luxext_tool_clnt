@@ -15,10 +15,10 @@
 #SERVERS=$(nodeset -e @<group>)
 SERVERS=(server1 server2)
 SERV_PORT=49999
-# must be < robinhood's copy_timeout
+# must be < lamplighter's copy_timeout
 TIMEOUT=15000
 
-LOG_FILE="/var/log/robinhood/rbhext_tool_clnt.log"
+LOG_FILE="/var/log/lamplighter/luxext_tool_clnt.log"
 
 #Should be 'y' if you want to debug
 DEBUG="n"

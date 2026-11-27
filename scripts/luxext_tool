@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Simple cp command wrapper for robinhood
+# Simple cp command wrapper for Lamplighter
 #
 
 VERB=$1

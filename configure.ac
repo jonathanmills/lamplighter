@@ -4,7 +4,7 @@
 
 AC_PREREQ(2.59)
 
-AC_INIT( [robinhood], [3.2.0], [robinhood-support@lists.sourceforge.net])
+AC_INIT( [lamplighter], [3.2.0], [https://github.com/jonathanmills/lamplighter/issues])
 RELEASE="3"
 
 AC_DEFINE_UNQUOTED(RELEASE, "$RELEASE", [release info])
@@ -39,17 +39,15 @@ AC_CONFIG_FILES([Makefile
          doc/Makefile
          doc/templates/Makefile
          scripts/Makefile
-         scripts/robinhood.init
-         scripts/robinhood.init.sles
-         scripts/robinhood.service
-         scripts/robinhood@.service
-         scripts/sysconfig_robinhood
-         scripts/ld.so.robinhood.conf
-         scripts/rbh_cksum.sh
+         scripts/lamplighter.service
+         scripts/lamplighter@.service
+         scripts/sysconfig_lamplighter
+         scripts/ld.so.lamplighter.conf
+         scripts/lux_cksum.sh
          tests/Makefile
          tests/test_suite/Makefile
          man/Makefile
-         robinhood.spec
+         lamplighter.spec
          doc/doxygen/doxygen.cfg])
 
 AC_ARG_ENABLE([dist],

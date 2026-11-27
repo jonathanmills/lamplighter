@@ -80,15 +80,15 @@ case $cmd in
         compose ps
         ;;
     build)
-        wb /devenv/robinhood/build.sh
+        wb /devenv/engine/build.sh
         ;;
     data)
         wb python3.12 /devenv/testdata/generate.py /data /devenv/ldap/data.ldif "$@"
         ;;
     scan)
-        wb env LD_LIBRARY_PATH=/build/robinhood/src/modules/.libs \
-            /build/robinhood/src/robinhood/robinhood --scan --once \
-            -f /devenv/robinhood/robinhood.conf
+        wb env LD_LIBRARY_PATH=/build/lamplighter/src/modules/.libs \
+            /build/lamplighter/src/robinhood/lamplighter --scan --once \
+            -f /devenv/engine/lamplighter.conf
         wb mysql -h mariadb -u robinhood -probinhood robinhood_dev -e \
             "SELECT COUNT(*) AS entries FROM ENTRIES; SELECT uid, type, count, size FROM ACCT_STAT ORDER BY size DESC;"
         ;;

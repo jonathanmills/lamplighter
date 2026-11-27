@@ -1,4 +1,4 @@
-dist_man_MANS=robinhood.1 rbh-report.1 rbh-find.1 rbh-du.1 rbh-diff.1
+dist_man_MANS=lamplighter.1 lux-report.1 lux-find.1 lux-du.1 lux-diff.1
 
 if LUSTRE_HSM
 dist_man_MANS+=lhsmtool_cmd.1

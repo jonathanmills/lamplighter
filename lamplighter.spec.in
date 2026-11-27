@@ -1,0 +1,437 @@
+#default ON
+%bcond_without mysql
+%bcond_without common_rpms
+%bcond_without jemalloc
+
+#default OFF
+%bcond_with lustre
+
+%if %{with lustre}
+	%global lswitch --enable-lustre
+	# default ON
+	%bcond_without lhsm
+	%bcond_without backup
+%else
+	%global lswitch --disable-lustre
+	# default OFF
+	%bcond_with lhsm
+	%bcond_with backup
+%endif
+
+# default OFF
+%bcond_with shook
+%bcond_with recovtools
+
+%if %{with lustre}
+# default value for lustre package and version, if not defined in rpmbuild options
+%{!?lpackage: %global lpackage lustre-client}
+%if %{undefined lversion}
+%{warn:WARNING: No target lustre version specified. You should --define "lversion x.y"
+         to prevent incompatibility issues.
+}
+%endif
+%endif
+
+%if %{with jemalloc}
+	%global jemalloc_switch	--enable-jemalloc
+%else
+	%global jemalloc_switch	--disable-jemalloc
+%endif
+
+%if %{with lustre}
+	%global flavor lustre
+%else
+	%global flavor posix
+%endif
+
+###### end of macro definitions #####
+
+Name: @PACKAGE@
+Version: @VERSION@
+
+Vendor: Lamplighter, a fork of the Robinhood Policy Engine by CEA
+Prefix: %{_prefix}
+
+%if %{with lustre}
+%if %{defined lversion}
+%define config_dependant .lustre%{lversion}
+%else
+%define config_dependant .lustre
+%endif
+%endif
+
+Release: @RELEASE@%{?config_dependant}%{?dist}
+
+Summary: Lamplighter - policy engine and reporting tool for large filesystems
+License: CeCILL-C
+Url: https://github.com/jonathanmills/lamplighter
+Source0: @PACKAGE@-%{version}.tar.gz
+BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRequires: glib2-devel >= 2.16
+BuildRequires: libattr-devel
+BuildRequires: systemd
+%systemd_requires
+%if %{with lustre}
+%if %{defined lversion}
+BuildRequires: %{lpackage} >= %{lversion}
+%else
+BuildRequires: %{lpackage}
+%endif
+%endif
+%if %{with mysql}
+BuildRequires: /usr/include/mysql/mysql.h
+%endif
+%if %{with jemalloc}
+BuildRequires: jemalloc
+BuildRequires: jemalloc-devel
+%endif
+
+%description
+Lamplighter is a fork of the Robinhood Policy Engine, created by CEA. It
+mirrors filesystem metadata into a database and applies policies to
+filesystem entries. It processes all its tasks in parallel, so it suits
+large filesystems with millions of entries and petabytes of data.
+
+Lamplighter uses Robinhood 3's database schema unchanged, and Robinhood
+configuration files work unchanged when copied to /etc/lamplighter.d.
+
+With support for: %{?with_lustre:Lustre} %{?with_backup:Backup} %{?with_shook:shook}
+
+%{?configure_flags:Generated using options: }%{?configure_flags}
+
+%if %{with lustre}
+# lamplighter-lustre is for Lustre filesystems, and conflicts with
+# lamplighter-posix.
+%package lustre
+
+Summary: Lamplighter policy engine for Lustre filesystems
+Group: Applications/System
+%if %{defined lversion}
+Requires: %{lpackage} >= %{lversion}
+%else
+Requires: %{lpackage}
+%endif
+Conflicts: lamplighter-posix
+Provides: lamplighter = %{version}-%{release}
+# Replaces Robinhood 3 on upgrade (same database and configuration format).
+Obsoletes: robinhood-lustre < 4
+Obsoletes: robinhood-tmpfs < 3.0, robinhood-tmpfs-lustre < 3.0
+Obsoletes: robinhood-backup < 3.0, robinhood-lhsm < 3.0
+Requires: /usr/bin/mailx
+%if %{with jemalloc}
+Requires: jemalloc
+%endif
+
+%description lustre
+Lamplighter policy engine for Lustre filesystems.
+
+%{?configure_flags:Generated using options: }%{?configure_flags}
+
+%else
+
+# lamplighter-posix is for other POSIX filesystems, and conflicts with
+# lamplighter-lustre.
+%package posix
+
+Summary: Lamplighter policy engine for POSIX filesystems
+Group: Applications/System
+Conflicts: lamplighter-lustre
+Provides: lamplighter = %{version}-%{release}
+# Replaces Robinhood 3 on upgrade (same database and configuration format).
+Obsoletes: robinhood-posix < 4
+Obsoletes: robinhood-tmpfs < 3.0, robinhood-tmpfs-posix < 3.0
+Requires: /usr/bin/mailx
+%if %{with jemalloc}
+Requires: jemalloc
+%endif
+
+%description posix
+Lamplighter policy engine for POSIX filesystems.
+
+%{?configure_flags:Generated using options: }%{?configure_flags}
+
+%endif
+
+%package compat
+Summary: Robinhood command names for Lamplighter
+Group: Applications/System
+Requires: lamplighter = %{version}-%{release}
+%if %{with common_rpms}
+Requires: lamplighter-adm = %{version}-%{release}
+%endif
+Conflicts: robinhood-lustre, robinhood-posix, robinhood-adm
+
+%description compat
+Links with Robinhood's command names (robinhood, rbh-find, rbh-du,
+rbh-report, rbh-diff, rbh-undelete, rbh-rebind, rbh-config, rbh_cksum.sh)
+to the Lamplighter commands, for sites with existing scripts and cron
+jobs. Install it only if you need the old names.
+
+%if %{with common_rpms}
+%package adm
+Summary: admin/config helper for Lamplighter
+Group: Applications/System
+Obsoletes: robinhood-adm < 4
+
+%description adm
+This RPM provides an admin/config helper for Lamplighter (command lux-config).
+
+
+
+%if %{with recovtools}
+%package recov-tools
+Summary: Tools for MDS recovery.
+Group: Applications/System
+Obsoletes: robinhood-recov-tools < 4
+
+%description recov-tools
+Tools for MDS recovery.
+%endif
+
+%package tests
+Summary: Test suite for Lamplighter
+Group: Applications/System
+Requires: lamplighter lamplighter-adm bc strace
+Obsoletes: robinhood-tests < 4
+# mariadb or mysql
+Requires: /usr/bin/mysql
+
+%description tests
+Lustre and Posix tests for Lamplighter.
+
+%endif
+
+%if %{with lhsm} || %{with shook}
+%package tools
+Summary: Annex tools for Lamplighter.
+Group: Applications/System
+Obsoletes: robinhood-tools < 4
+
+%description tools
+Annex tools for Lamplighter.
+%endif
+
+%if %{with shook}
+%package mod-shook
+Summary: Shook module for Lamplighter
+Group: Applications/System
+Requires: lamplighter-lustre = %{version}
+Requires: shook-server
+BuildRequires: shook-devel
+BuildRequires: shook-server
+Obsoletes: robinhood-mod-shook < 4
+
+%description mod-shook
+Shook module for Lamplighter
+%endif
+
+%prep
+%setup -q -n @PACKAGE@-%{version}
+
+%build
+./configure %{lswitch} %{jemalloc_switch} %{?configure_flags} \
+	--mandir=%{_mandir} --libdir=%{_libdir}
+make %{?_smp_mflags}
+
+%install
+rm -rf $RPM_BUILD_ROOT
+mkdir -p $RPM_BUILD_ROOT
+make install DESTDIR=$RPM_BUILD_ROOT
+
+
+mkdir -p $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig
+install -m 644 scripts/sysconfig_lamplighter $RPM_BUILD_ROOT/%{_sysconfdir}/sysconfig/lamplighter
+
+
+rm -f $RPM_BUILD_ROOT/%{_libdir}/lamplighter/librbh_mod_*.a
+rm -f $RPM_BUILD_ROOT/%{_libdir}/lamplighter/librbh_mod_*.la
+
+# Add an unmutable copy of the templates for the tests
+%if %{with common_rpms}
+mkdir -p $RPM_BUILD_ROOT/%{_datadir}/lamplighter/doc
+cp -a doc/templates $RPM_BUILD_ROOT/%{_datadir}/lamplighter/doc
+%endif
+
+mkdir -p  $RPM_BUILD_ROOT/%{_unitdir}
+install -m 444 scripts/lamplighter.service $RPM_BUILD_ROOT/%{_unitdir}/lamplighter.service
+install -m 444 scripts/lamplighter@.service $RPM_BUILD_ROOT/%{_unitdir}/lamplighter@.service
+
+# lamplighter-compat: Robinhood's command names as links
+ln -s lamplighter $RPM_BUILD_ROOT/%{_sbindir}/robinhood
+for c in report diff undelete rebind; do
+	ln -s lux-$c $RPM_BUILD_ROOT/%{_sbindir}/rbh-$c
+done
+for c in find du; do
+	ln -s lux-$c $RPM_BUILD_ROOT/%{_bindir}/rbh-$c
+done
+ln -s lux_cksum.sh $RPM_BUILD_ROOT/%{_sbindir}/rbh_cksum.sh
+%if %{with common_rpms}
+ln -s lux-config $RPM_BUILD_ROOT/%{_sbindir}/rbh-config
+%endif
+%if %{with backup}
+for t in luxext_tool luxext_tool_svr luxext_tool_clnt; do
+	ln -s $t $RPM_BUILD_ROOT/%{_sbindir}/rbh${t#lux}
+done
+%endif
+
+%post %{flavor}
+/sbin/ldconfig
+%systemd_post lamplighter.service
+%systemd_post lamplighter@.service
+
+%preun %{flavor}
+%systemd_preun lamplighter.service
+%systemd_preun lamplighter@.service
+
+%postun %{flavor}
+/sbin/ldconfig
+
+%clean
+rm -rf $RPM_BUILD_ROOT
+
+%files compat
+%{_sbindir}/robinhood
+%{_sbindir}/rbh-report
+%{_sbindir}/rbh-diff
+%{_sbindir}/rbh-undelete
+%{_sbindir}/rbh-rebind
+%{_sbindir}/rbh_cksum.sh
+%{_bindir}/rbh-find
+%{_bindir}/rbh-du
+%if %{with common_rpms}
+%{_sbindir}/rbh-config
+%endif
+%if %{with backup}
+%{_sbindir}/rbhext_tool*
+%endif
+
+%if %{with common_rpms}
+
+%files adm
+%{_sbindir}/lux-config
+
+%if %{with recovtools}
+%files recov-tools
+%{_sbindir}/*lovea
+%{_sbindir}/gen_lov_objid
+%{_sbindir}/ost_fids_remap
+%endif
+
+%files tests
+%defattr(-,root,root,-)
+%dir %{_datadir}/lamplighter/
+%{_datadir}/lamplighter/tests/
+%{_datadir}/lamplighter/doc/
+
+%endif
+
+%if %{with shook}
+%files mod-shook
+%{_libdir}/lamplighter/librbh_mod_shook*.so*
+%{_sysconfdir}/lamplighter.d/includes/shook.inc
+%{_sysconfdir}/lamplighter.d/templates/example_shook.conf
+%endif
+
+%files %{flavor}
+
+%defattr(-,root,root,-)
+%doc README.md
+%doc COPYING
+%doc ChangeLog
+
+%if %{with backup}
+%{_sbindir}/luxext_*
+%endif
+
+%{_sbindir}/lamplighter
+%{_sbindir}/lux-report
+%{_sbindir}/lux-diff
+%{_sbindir}/lux-undelete
+%{_sbindir}/lux-rebind
+%{_sbindir}/lux_cksum.sh
+%{_bindir}/lux-du
+%{_bindir}/lux-find
+
+%if %{with shook}
+%exclude %{_libdir}/lamplighter/librbh_mod_shook*.so*
+%endif
+%{_libdir}/lamplighter/librbh_mod_*.so*
+
+# All man pages but the lhsmtool_cmd one
+%{_mandir}/man1/lamplighter*
+%{_mandir}/man1/lux-*
+
+%config(noreplace) %{_sysconfdir}/sysconfig/lamplighter
+
+%dir %{_sysconfdir}/lamplighter.d
+%dir %{_sysconfdir}/lamplighter.d/includes
+%dir %{_sysconfdir}/lamplighter.d/templates
+
+%{_sysconfdir}/ld.so.conf.d/lamplighter.conf
+
+%exclude %{_sysconfdir}/lamplighter.d/includes/shook.inc
+%exclude %{_sysconfdir}/lamplighter.d/templates/example_shook.conf
+%config %{_sysconfdir}/lamplighter.d/includes/*.inc
+%config %{_sysconfdir}/lamplighter.d/templates/*.conf
+
+%{_unitdir}/lamplighter.service
+%{_unitdir}/lamplighter@.service
+
+%if %{with lhsm} || %{with shook}
+%files tools
+%if %{with lhsm}
+%{_sbindir}/lhsmtool_cmd
+%{_mandir}/man1/lhsmtool*
+%endif
+%endif
+
+%changelog
+* Fri Nov 27 2026 Jonathan Mills 3.2.0-3
+- Lamplighter: a fork of Robinhood 3.2.0 under a new name. Packages,
+  commands (lamplighter, lux-*), units and /etc/lamplighter.d renamed;
+  the database schema and configuration format are unchanged.
+- New lamplighter-compat package with Robinhood's command names.
+- SysV init scripts and the PHP web GUI removed.
+
+* Mon Nov 24 2025 Sebastien Gougeaud <sebastien.gougeaud@cea.fr> 3.2.0-3
+- Fix report issue when using `-S` with group report
+- Make also install configuration and template files
+
+* Wed Nov 20 2024 Thomas Leibovici <thomas.leibovici@cea.fr> 3.2.0-2
+- Fix packaging error for WebUI on EL7
+
+* Wed Nov 20 2024 Thomas Leibovici <thomas.leibovici@cea.fr> 3.2.0-1
+- Robinhood 3.2.0
+
+* Mon Sep 05 2022 Thomas Leibovici <thomas.leibovici@cea.fr> 3.1.8-1
+- Robinhood 3.1.8
+
+* Tue Mar 09 2021 Thomas Leibovici <thomas.leibovici@cea.fr> 3.1.7-1
+- Robinhood 3.1.7
+
+* Fri Apr 03 2020 Thomas Leibovici <thomas.leibovici@cea.fr> 3.1.6-1
+- Robinhood 3.1.6
+
+* Wed Mar 20 2019 Thomas Leibovici <thomas.leibovici@cea.fr> 3.1.5-1
+- Robinhood 3.1.5
+
+* Fri Sep 21 2018 Thomas Leibovici <thomas.leibovici@cea.fr> 3.1.4-1
+- Robinhood 3.1.4
+
+* Tue Sep 26 2017 Thomas Leibovici <thomas.leibovici@cea.fr> 3.1-1
+- Robinhood 3.1
+
+* Tue Sep 12 2017 Thomas Leibovici <thomas.leibovici@cea.fr> 3.1-0.beta1
+- Robinhood 3.1 beta
+
+* Fri Sep 16 2016 Thomas Leibovici <thomas.leibovici@cea.fr> 3.0-1
+- Final Robinhood 3.0 release
+
+* Thu Jul 07 2016 Thomas Leibovici <thomas.leibovici@cea.fr> 3.0-0.rc1
+- Robinhood v3 rc1
+
+* Fri Mar 25 2016 Thomas Leibovici <thomas.leibovici@cea.fr> 3.0-0.alpha2
+- Robinhood v3 alpha2
+
+* Wed Dec 16 2015 Thomas Leibovici <thomas.leibovici@cea.fr> 3.0-0.alpha1
+- Robinhood v3 alpha1

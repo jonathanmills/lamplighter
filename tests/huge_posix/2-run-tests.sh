@@ -13,9 +13,9 @@ TEMPLATE_DIR='../../doc/templates'
 
 if [[ -z "$PURPOSE" || $PURPOSE = "TMP_FS_MGR" ]]; then
 	is_backup=0
-	RH="../../src/robinhood/robinhood $RBH_OPT"
-	REPORT="../../src/robinhood/rbh-report $RBH_OPT"
-	CMD=robinhood
+	RH="../../src/robinhood/lamplighter $RBH_OPT"
+	REPORT="../../src/robinhood/lux-report $RBH_OPT"
+	CMD=lamplighter
 	PURPOSE="TMP_FS_MGR"
 elif [[ $PURPOSE = "BACKUP" ]]; then
 	is_backup=1
@@ -25,7 +25,7 @@ elif [[ $PURPOSE = "BACKUP" ]]; then
 fi
 
 PROC=$CMD
-CFG_SCRIPT="../../scripts/rbh-config"
+CFG_SCRIPT="../../scripts/lux-config"
 CLEAN="rh_scan.log rh_migr.log rh_rm.log rh.pid rh_purge.log rh_report.log report.out rh_syntax.log"
 
 SUMMARY="/tmp/test_${PROC}_summary.$$"
@@ -72,7 +72,7 @@ function clean_logs
 function clean_db
 {
 	echo "Destroying any running instance of robinhood..."
-	pkill robinhood
+	pkill lamplighter
 	pkill rbh-backup
 
 	if [ -f rh.pid ]; then

@@ -25,7 +25,7 @@ RBH_OPT=""
 # Test whether the testsuite is running from the source tree or has
 # been installed.
 if [ -d "../../src/robinhood" ]; then
-    CFG_SCRIPT="../../scripts/rbh-config"
+    CFG_SCRIPT="../../scripts/lux-config"
     RBH_BINDIR="../../src/robinhood"
     RBH_SBINDIR="../../src/robinhood"
     RBH_MODDIR=$(readlink -m "../../src/modules/.libs")
@@ -34,10 +34,10 @@ if [ -d "../../src/robinhood" ]; then
     RBH_TESTS_DIR=".."
     RBH_CFG_DIR="./cfg"
 else
-    CFG_SCRIPT="rbh-config"
+    CFG_SCRIPT="lux-config"
     RBH_BINDIR=${RBH_BINDIR:-"/usr/bin"}
     RBH_SBINDIR=${RBH_SBINDIR:-"/usr/sbin"}
-    RBH_INSTALL_DIR=${RBH_INSTALL_DIR:-"/usr/share/robinhood"}
+    RBH_INSTALL_DIR=${RBH_INSTALL_DIR:-"/usr/share/lamplighter"}
     RBH_TESTS_DIR="${RBH_INSTALL_DIR}/tests"
     RBH_CFG_DIR="$RBH_TESTS_DIR/test_suite/cfg"
     RBH_TEMPLATE_DIR="$RBH_INSTALL_DIR/doc/templates"
@@ -84,14 +84,14 @@ else
     VALGRIND="valgrind --gen-suppressions=all --suppressions=valgrind.supp --leak-check=full --log-file=vg-test_%q{index}-%p.log"
 fi
 
-RH="$VALGRIND $RBH_SBINDIR/robinhood $RBH_OPT"
-REPORT="$VALGRIND $RBH_SBINDIR/rbh-report $RBH_OPT"
-FIND="$VALGRIND $RBH_BINDIR/rbh-find"
-DU="$VALGRIND $RBH_BINDIR/rbh-du"
-DIFF="$VALGRIND $RBH_SBINDIR/rbh-diff"
-UNDELETE="$VALGRIND $RBH_SBINDIR/rbh-undelete"
+RH="$VALGRIND $RBH_SBINDIR/lamplighter $RBH_OPT"
+REPORT="$VALGRIND $RBH_SBINDIR/lux-report $RBH_OPT"
+FIND="$VALGRIND $RBH_BINDIR/lux-find"
+DU="$VALGRIND $RBH_BINDIR/lux-du"
+DIFF="$VALGRIND $RBH_SBINDIR/lux-diff"
+UNDELETE="$VALGRIND $RBH_SBINDIR/lux-undelete"
 #IMPORT="$VALGRIND $RBH_SBINDIR/rbh-import $RBH_OPT"
-CMD=robinhood
+CMD=lamplighter
 ARCH_STR="migration success for"
 REL_STR="purge success for"
 HSMRM_STR="hsm_remove success for"
@@ -538,7 +538,7 @@ function clean_fs
 	fi
 
 	[ "$DEBUG" = "1" ] && echo "Destroying any running instance of robinhood..."
-	pkill robinhood
+	pkill lamplighter
 
 	if [ -f rh.pid ]; then
 		echo "killing remaining robinhood process..."
@@ -546,7 +546,7 @@ function clean_fs
 		rm -f rh.pid
 	fi
 
-	pgrep robinhood && sleep 1 && pkill -9 robinhood
+	pgrep lamplighter && sleep 1 && pkill -9 lamplighter
 	[ "$DEBUG" = "1" ] && echo "Cleaning robinhood's DB..."
 	$CFG_SCRIPT empty_db $RH_DB > /dev/null
 
@@ -774,8 +774,8 @@ function archive_uuid1
     $REPORT -f $RBH_CFG_DIR/$config_file -e $fid2 | grep "lhsm\.uuid" && error "UUID found in ENTRIES for file2"
     $REPORT -f $RBH_CFG_DIR/$config_file -e $fid3 | grep "lhsm\.uuid" && error "UUID found in ENTRIES for file3"
 
-    echo "3-Test rbh-find with UUID"
-    $FIND -f $RBH_CFG_DIR/$config_file -printf "%p %Rm{lhsm.uuid}\\n" | grep "$fake_uuid" || error "UUID not found by rbh-find for file1"
+    echo "3-Test lux-find with UUID"
+    $FIND -f $RBH_CFG_DIR/$config_file -printf "%p %Rm{lhsm.uuid}\\n" | grep "$fake_uuid" || error "UUID not found by lux-find for file1"
 
     rm -f report.out
 }
@@ -852,8 +852,8 @@ function archive_uuid2
     $REPORT -f $RBH_CFG_DIR/$config_file -e $fid1 | egrep "lhsm\.uuid\s+:\s+$fake_uuid" || error "UUID not found in ENTRIES for file1"
     mysql $RH_DB -e "SELECT lhsm_uuid FROM SOFT_RM WHERE id='$fid2'" | grep "NULL" || error "UUID found in SOFT_RM for file2"
 
-    echo "7-Test rbh-find with UUID"
-    $FIND -f $RBH_CFG_DIR/$config_file -printf "%p %Rm{lhsm.uuid}\\n" | grep "$fake_uuid" || error "UUID not found by rbh-find for file1"
+    echo "7-Test lux-find with UUID"
+    $FIND -f $RBH_CFG_DIR/$config_file -printf "%p %Rm{lhsm.uuid}\\n" | grep "$fake_uuid" || error "UUID not found by lux-find for file1"
 
     rm -f report.out
 }
@@ -1474,7 +1474,7 @@ function link_unlink_remove_test
 	expected_rm=$2
 	sleep_time=$3
 	policy_str="$4"
-    cl_delay=6 # time between action and its impact on rbh-report
+    cl_delay=6 # time between action and its impact on lux-report
 
 	if (( $is_lhsm + $is_hsmlite == 0 )); then
 		echo "HSM test only: skipped"
@@ -3767,7 +3767,7 @@ function test_size_updt
 	config_file=$1
 	event_read_delay=$2
 	policy_str="$3"
-    cl_delay=6 # time between action and its impact on rbh-report
+    cl_delay=6 # time between action and its impact on lux-report
 
 	init=`date "+%s"`
 
@@ -5110,7 +5110,7 @@ function test_checker
         error "scan error"
     check_db_error rh_scan.log
 
-     # if robinhood tree is available, use rbh_cksum.sh from script directory
+     # if robinhood tree is available, use lux_cksum.sh from script directory
     if [ -d "../../src/robinhood" ]; then
         export PATH="../../scripts/:$PATH"
     fi
@@ -5676,7 +5676,7 @@ function test_ost_order
 
 }
 
-# check output of rbh-find -printf "%y %p\t%RP\n"
+# check output of lux-find -printf "%y %p\t%RP\n"
 # arg1: log file
 # arg2: path
 # arg3: expected projid
@@ -6458,7 +6458,7 @@ function fileclass_test
 	(( $nb_pol3 == 8 )) || error "********** TEST FAILED: wrong count of matching files for fileclass 'odd_or_A': $nb_pol3"
 	(( $nb_pol4 == 2 )) || error "********** TEST FAILED: wrong count of matching files for fileclass 'unmatched': $nb_pol4"
 
-    # test rbh-find -class option
+    # test lux-find -class option
     cfg=$RBH_CFG_DIR/$config_file
     check_find "" "-f $cfg -class even_and_B -lsclass" 2
     check_find "" "-f $cfg -b -class even_and_B -lsclass" 2
@@ -6598,7 +6598,7 @@ function diff_chk
 {
     local config_file=$1
 
-    echo "Scanning with rbh-diff..."
+    echo "Scanning with lux-diff..."
     $DIFF -f $RBH_CFG_DIR/$config_file --apply=db -l DEBUG > rh_chglogs.log  2>&1 || error "scanning filesystem"
     grep "DB query failed" rh_chglogs.log && error ": a DB query failed: `grep 'DB query failed' rh_chglogs.log | tail -1`"
     clean_logs
@@ -6899,7 +6899,7 @@ function partial_paths
     if (( $no_log==0 )); then
         # This test was introduced by: 00c3cfd4263679df54bfffbc875419de503e8dcf
         # It seems to be related to the backup module. This test fails for the
-        # LUSTRE_HSM flavor. rbh-undelete will fail if we remove the changelogs
+        # LUSTRE_HSM flavor. lux-undelete will fail if we remove the changelogs
         # here because the parent is has been deleted from the DB.
         if (( $is_hsmlite )); then
             $LFS changelog_clear lustre-MDT0000 cl1 0
@@ -6948,16 +6948,16 @@ function test_mnt_point
     $RH -f $RBH_CFG_DIR/$config_file --scan --once -l EVENT -L rh_scan.log  || error "performing initial scan"
     check_db_error rh_scan.log
 
-    # check that rbh-find output is correct (2 methods)
+    # check that lux-find output is correct (2 methods)
     for opt in "-nobulk $fs_path" "$fs_path" "-nobulk" ""; do
-        echo "checking output for rbh-find $opt..."
+        echo "checking output for lux-find $opt..."
         $FIND -f $RBH_CFG_DIR/$config_file $opt > rh_report.log
         for e in $dir_rel $file_rel; do
-            egrep -E "^$fs_path/$e$" rh_report.log || error "$e not found in rbh-find output"
+            egrep -E "^$fs_path/$e$" rh_report.log || error "$e not found in lux-find output"
         done
     done
 
-    # check that rbh-report output is correct
+    # check that lux-report output is correct
     $REPORT -f $RBH_CFG_DIR/$config_file -q --dump | awk '{print $(NF)}'> rh_report.log
     [ "$DEBUG" = "1" ] && cat rh_report.log
     for e in $dir_rel $file_rel; do
@@ -7100,8 +7100,8 @@ function uid_gid_as_numbers
     $REPORT -f $RBH_CFG_DIR/$config_file --classinfo=mix > rh_report.log
     grep --quiet "Total: 3 entries, volume: 101010 bytes" rh_report.log || error "bad info for class mix"
 
-    echo "4-Check rbh-find"
-    # rbh-find will also find the mount point which belong to root.
+    echo "4-Check lux-find"
+    # lux-find will also find the mount point which belong to root.
     $FIND -f $RBH_CFG_DIR/$config_file $RH_ROOT -ls > find.out
     egrep --quiet "\s0\s+0\s.*/file1" find.out || error "bad for file1"
     egrep --quiet "\s12\s+16\s.*/file2" find.out || error "bad for file2"
@@ -7127,7 +7127,7 @@ function uid_gid_as_numbers
     $FIND -f $RBH_CFG_DIR/$config_file $RH_ROOT -ls -not -group 345654 > find.out
     wc -l < find.out | grep --quiet "^5$" || error "incorrect number of files found6"
 
-    echo "5-Check rbh-find with printf"
+    echo "5-Check lux-find with printf"
     $FIND -f $RBH_CFG_DIR/$config_file $RH_ROOT -printf "%p:%g:%u\n" > find.out
     grep --quiet "$RH_ROOT:0:0" find.out
     grep --quiet "$RH_ROOT/file1:0:0" find.out || error "bad for file1"
@@ -7136,7 +7136,7 @@ function uid_gid_as_numbers
     grep --quiet "$RH_ROOT/file4:645767:0" find.out || error "bad for file4"
     grep --quiet "$RH_ROOT/file5:0:3476576" find.out || error "bad for file5"
 
-    echo "6-Check rbh-du"
+    echo "6-Check lux-du"
     # Each file has a precise size, so we know what the result in
     # bytes will be for any combination
     $DU -f $RBH_CFG_DIR/$config_file -t f -b $RH_ROOT | egrep --quiet "^111110\s" || error "bad sum1"
@@ -7151,8 +7151,8 @@ function uid_gid_as_numbers
 }
 
 # Create a file and touch it to set atime/mtime. Check that crtime and
-# ctime are properly set, using the search criteria of rbh-find, and
-# display of rbh-report. Check that creation_time never changes while
+# ctime are properly set, using the search criteria of lux-find, and
+# display of lux-report. Check that creation_time never changes while
 # ctime does.
 function posix_acmtime
 {
@@ -7184,7 +7184,7 @@ function posix_acmtime
     egrep --quiet "last_access\s+:\s+2010/04/17 13:00:00" report.out || error "bad atime"
 
     # Ensure that the DB and FS agree on atime/mtime and ctime, this
-    # time using rbh-find.
+    # time using lux-find.
     local real_acmtime=$(stat -c '%X %Y %Z' $RH_ROOT/file)
     local db_acmtime=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%As %Ts %Cs")
     [[ $real_acmtime == $db_acmtime ]] || error "FS and DB times don't match1"
@@ -7227,12 +7227,12 @@ function posix_acmtime
     egrep --quiet "last_mod\s+:\s+2010/04/17 14:00:00" report.out || error "bad mtime"
     egrep --quiet "last_access\s+:\s+2010/04/17 13:00:00" report.out || error "bad atime"
 
-    # Check that FS and DB agree, using rbh-find
+    # Check that FS and DB agree, using lux-find
     local real_acmtime=$(stat -c '%X %Y %Z' $RH_ROOT/file)
     local db_acmtime=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%As %Ts %Cs")
     [[ $real_acmtime == $db_acmtime ]] || error "FS and DB times don't match2"
 
-    # Check that FS and DB agree, using rbh-report
+    # Check that FS and DB agree, using lux-report
     local newcrtime=$(egrep "creation\s+:" report.out)
     local newctime=$(egrep "last_mdchange\s+:" report.out)
 
@@ -7249,12 +7249,12 @@ function posix_acmtime
 
     $RH -f $cfg --scan -l FULL -L rh_scan.log  --once || error ""
 
-    # Check that FS and DB agree, using rbh-find
+    # Check that FS and DB agree, using lux-find
     local real_acmtime=$(stat -c '%X %Y %Z' $RH_ROOT/file)
     local db_acmtime=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%As %Ts %Cs")
     [[ $real_acmtime == $db_acmtime ]] || error "FS and DB times don't match3"
 
-    # Check that FS and DB agree, using rbh-report
+    # Check that FS and DB agree, using lux-report
     local newcrtime=$(egrep "creation\s+:" report.out)
     local newctime=$(egrep "last_mdchange\s+:" report.out)
 
@@ -7292,7 +7292,7 @@ function db_schema_convert
     populate $nbent
 
     :> rh.log
-    echo "rbh-report"
+    echo "lux-report"
     # run rbhv3 report
     $REPORT -f $cfg1 -i -l FULL 2>&1 > rh.log
     [ "$DEBUG" = "1" ] && cat rh.log
@@ -7466,7 +7466,7 @@ function db_schema_convert
     fi
 }
 
-# Create files with random names, and use rbh-find on them
+# Create files with random names, and use lux-find on them
 function random_names
 {
     config_file=$1
@@ -7906,7 +7906,7 @@ function test_diff_apply_fs # test diff --apply=fs in particular for entry recov
     # clear umask for recovery
     old_umask=$(umask)
     umask 0000
-    strace -e open,mkdir -f $DIFF -f $RBH_CFG_DIR/$config_file --apply=fs > diff.out 2> diff.log || error "rbh-diff error"
+    strace -e open,mkdir -f $DIFF -f $RBH_CFG_DIR/$config_file --apply=fs > diff.out 2> diff.log || error "lux-diff error"
     umask "$old_umask"
 
     cr1=$(grep -E '^\+\+[^+]' diff.out | wc -l)
@@ -7925,7 +7925,7 @@ function test_diff_apply_fs # test diff --apply=fs in particular for entry recov
         if (($cr3 == $cr1 + $miss)); then
             (( $miss > 0 )) && echo "WARNING: $miss hardlinks not restored"
         else
-            error "Unexpected number of objects created: rbh-diff displayed $cr1, rbh-diff log indicates $cr2, expected $cr3 according to find"
+            error "Unexpected number of objects created: lux-diff displayed $cr1, lux-diff log indicates $cr2, expected $cr3 according to find"
         fi
     else
         echo "OK: $cr1 objects created"
@@ -8111,8 +8111,8 @@ function test_rename
     # hlink_ref hlink must be in report.out
     grep -E " $hlink$" report.out > /dev/null ||  grep -E " $hlink_ref$" report.out > /dev/null || error "$hlink or $hlink_ref must be in report output"
     # both hlink_ref hlink must be in find.out
-    grep -E " $hlink$" find.out > /dev/null || error "$hlink must be in rbh-find output"
-    grep -E " $hlink_ref$" find.out > /dev/null || error "$hlink must be in rbh-find output"
+    grep -E " $hlink$" find.out > /dev/null || error "$hlink must be in lux-find output"
+    grep -E " $hlink_ref$" find.out > /dev/null || error "$hlink must be in lux-find output"
 
     count_nb_init=$(wc -l report.out | awk '{print $1}')
     count_path_init=$(wc -l find.out | awk '{print $1}')
@@ -8219,7 +8219,7 @@ function test_rename
         grep -E " $o$" find.out > /dev/null || error "$o not found in report"
     done
 
-    grep "\[$rmid\]" find.out && error "id of deleted file ($rmid) found in rbh-find output"
+    grep "\[$rmid\]" find.out && error "id of deleted file ($rmid) found in lux-find output"
     unset count_nb_final
 	if (( $is_lhsm + $is_hsmlite == 1 )); then
 		# additionally check that the entry is scheduled for deferred rm (and only this one)
@@ -8767,10 +8767,10 @@ function test_hardlinks
     while [ -n "${hlink_refs[$i]}" ]; do
         file="${hlink_refs[$i]}"
         ok=0
-        grep -E " $file$" find.out > /dev/null || error "$file must be in rbh-find output"
+        grep -E " $file$" find.out > /dev/null || error "$file must be in lux-find output"
         grep -E " $file$" report.out > /dev/null && ok=1
         for l in ${hlinks[$i]}; do
-            grep -E " $l$" find.out > /dev/null || error "$l must be in rbh-find output"
+            grep -E " $l$" find.out > /dev/null || error "$l must be in lux-find output"
             grep -E " $l$" report.out  > /dev/null && ok=1
         done
         [ "$ok" = "0" ] && error "$file or its hardlinks (${hlinks[$i]}) must be in report output"
@@ -8893,10 +8893,10 @@ function test_hardlinks
     while [ -n "${hlink_refs_tgt[$i]}" ]; do
         file="${hlink_refs_tgt[$i]}"
         ok=0
-        grep -E " $file$" find.out > /dev/null || error "$file must be in rbh-find output"
+        grep -E " $file$" find.out > /dev/null || error "$file must be in lux-find output"
         grep -E " $file$" report.out > /dev/null && ok=1
         for l in ${hlinks_tgt[$i]}; do
-            grep -E " $l$" find.out > /dev/null || error "$l must be in rbh-find output"
+            grep -E " $l$" find.out > /dev/null || error "$l must be in lux-find output"
             grep -E " $l$" report.out  > /dev/null && ok=1
         done
         [ "$ok" = "0" ] && error "$file or its hardlinks (${hlinks_tgt[$i]}) must be in report output"
@@ -8936,13 +8936,13 @@ function test_hl_count
 
     # reports to be checked:
     #   dump report (9 entries, no root)
-    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q | wc -l) == ($ino+$extra_dir) )) || error "wrong count in 'rbh-report -D' output"
+    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q | wc -l) == ($ino+$extra_dir) )) || error "wrong count in 'lux-report -D' output"
     #   dump report with path filter (3 entries)
-    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q -P $RH_ROOT/dir.1 | wc -l) == $ino_subdir )) || error "wrong count in 'rbh-report -D -P <path>' output"
+    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q -P $RH_ROOT/dir.1 | wc -l) == $ino_subdir )) || error "wrong count in 'lux-report -D -P <path>' output"
     #   dump find output (whole FS) (10 entries, incl. root)
-    (($($FIND -f $RBH_CFG_DIR/$config_file -nobulk | wc -l) == $ino + 1 + $extra_dir))  || error "wrong count in 'rbh-find' output"
+    (($($FIND -f $RBH_CFG_DIR/$config_file -nobulk | wc -l) == $ino + 1 + $extra_dir))  || error "wrong count in 'lux-find' output"
     #   dump find output (subdir: 3 entries)
-    (($($FIND -f $RBH_CFG_DIR/$config_file $RH_ROOT/dir.1 -nobulk | wc -l) == $ino_subdir )) || error "wrong count in 'rbh-find <path>' output"
+    (($($FIND -f $RBH_CFG_DIR/$config_file $RH_ROOT/dir.1 -nobulk | wc -l) == $ino_subdir )) || error "wrong count in 'lux-find <path>' output"
 
     #   dump summary (9 entries)
     $REPORT -f $RBH_CFG_DIR/$config_file -icq > report.out
@@ -8951,13 +8951,13 @@ function test_hl_count
   	countValues="$(($dcount+$extra_dir));$(($dcount * $fcount))"
     # type counts are in 2nd column
    	colSearch=2
-	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'rbh-report -i' output"
+	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lux-report -i' output"
 
     #   dump summary with path filter (3 entries)
     $REPORT -f $RBH_CFG_DIR/$config_file -iq -P $RH_ROOT/dir.1 > report.out
     [ "$DEBUG" = "1" ] && cat report.out
   	countValues="1;$fcount"
-	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'rbh-report -i -P <path>' output"
+	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lux-report -i -P <path>' output"
 
     # create 1 hardlink per file and recheck
     for d in $(seq 1 $dcount); do
@@ -8973,25 +8973,25 @@ function test_hl_count
     paths_subdir=$(($fcount * 2 + 1))
 
     #   dump report (still 9 entries, no root)
-    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q | wc -l) == $ino + $extra_dir )) || error "wrong count in 'rbh-report -D' output"
+    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q | wc -l) == $ino + $extra_dir )) || error "wrong count in 'lux-report -D' output"
     #   dump report with path filter (still 3 entries)
-    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q -P $RH_ROOT/dir.1 | wc -l) == $ino_subdir )) || error "wrong count in 'rbh-report -D -P <path>' output"
+    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q -P $RH_ROOT/dir.1 | wc -l) == $ino_subdir )) || error "wrong count in 'lux-report -D -P <path>' output"
     #   dump find output (whole FS) (
-    (($($FIND -f $RBH_CFG_DIR/$config_file -nobulk | wc -l) == $paths + 1 ))  || error "wrong count in 'rbh-find' output"
+    (($($FIND -f $RBH_CFG_DIR/$config_file -nobulk | wc -l) == $paths + 1 ))  || error "wrong count in 'lux-find' output"
     #   dump find output (subdir: 3 entries)
-    (($($FIND -f $RBH_CFG_DIR/$config_file $RH_ROOT/dir.1 -nobulk | wc -l) == $paths_subdir )) || error "wrong count in 'rbh-find <path>' output"
+    (($($FIND -f $RBH_CFG_DIR/$config_file $RH_ROOT/dir.1 -nobulk | wc -l) == $paths_subdir )) || error "wrong count in 'lux-find <path>' output"
 
     #   dump summary (9 entries)
     $REPORT -f $RBH_CFG_DIR/$config_file -icq > report.out
     [ "$DEBUG" = "1" ] && cat report.out
   	countValues="$(($dcount + $extra_dir));$(($dcount * $fcount))"
-	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'rbh-report -i' output"
+	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lux-report -i' output"
 
     #   dump summary with path filter (3 entries)
     $REPORT -f $RBH_CFG_DIR/$config_file -iq -P $RH_ROOT/dir.1 > report.out
     [ "$DEBUG" = "1" ] && cat report.out
   	countValues="1;$fcount"
-	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'rbh-report -i -P <path>' output"
+	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lux-report -i -P <path>' output"
 
 
     rm -f report.out
@@ -9368,11 +9368,11 @@ function test_cfg_parsing
     clean_logs
 
     # needed for reading password file
-    if [[ ! -f /etc/robinhood.d/.dbpassword ]]; then
-        if [[ ! -d /etc/robinhood.d ]]; then
-            mkdir /etc/robinhood.d
+    if [[ ! -f /etc/lamplighter.d/.dbpassword ]]; then
+        if [[ ! -d /etc/lamplighter.d ]]; then
+            mkdir /etc/lamplighter.d
         fi
-        echo robinhood > /etc/robinhood.d/.dbpassword
+        echo robinhood > /etc/lamplighter.d/.dbpassword
     fi
 
     GEN_TEMPLATE="/tmp/template.$CMD"
@@ -9930,7 +9930,7 @@ function test_cfg_overflow
 
 }
 
-# Test various aspects of rbh-find -printf
+# Test various aspects of lux-find -printf
 function test_rbh_find_printf
 {
     # Populate the database with a single file
@@ -9938,7 +9938,7 @@ function test_rbh_find_printf
 
     clean_logs
 
-     # if robinhood tree is available, use rbh_cksum.sh from script directory
+     # if robinhood tree is available, use lux_cksum.sh from script directory
     if [ -d "../../src/robinhood" ]; then
         export PATH="../../scripts/:$PATH"
     fi
@@ -9982,147 +9982,147 @@ function test_rbh_find_printf
     $RH -f $RBH_CFG_DIR/$config_file --run=checksum --target=all -I -l DEBUG -L stdout | grep "Policy run summary"
     local after_run=$(date +%s)
 
-    echo "6-rbh-find checks"
+    echo "6-lux-find checks"
 
     # Basic functionality
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "")
-    [[ $STR == "" ]] || error "unexpected rbh-find result (001): $STR"
+    [[ $STR == "" ]] || error "unexpected lux-find result (001): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "some string")
-    [[ $STR == "some string" ]] || error "unexpected rbh-find result (002): $STR"
+    [[ $STR == "some string" ]] || error "unexpected lux-find result (002): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "some string %p")
-    [[ $STR == "some string $srcfile" ]] || error "unexpected rbh-find result (003): $STR"
+    [[ $STR == "some string $srcfile" ]] || error "unexpected lux-find result (003): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "some string %p after")
-    [[ $STR == "some string $srcfile after" ]] || error "unexpected rbh-find result (004): $STR"
+    [[ $STR == "some string $srcfile after" ]] || error "unexpected lux-find result (004): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "X%%Y")
-    [[ $STR == "X%Y" ]] || error "unexpected rbh-find result (005): $STR"
+    [[ $STR == "X%Y" ]] || error "unexpected lux-find result (005): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "some string %%%p after")
-    [[ $STR == "some string %$srcfile after" ]] || error "unexpected rbh-find result (006): $STR"
+    [[ $STR == "some string %$srcfile after" ]] || error "unexpected lux-find result (006): $STR"
 
     # Test each directive
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "blocks=%b")
-    #[[ $STR == "blocks=8" ]] || error "unexpected rbh-find result (100): $STR"
+    #[[ $STR == "blocks=8" ]] || error "unexpected lux-find result (100): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%f bar")
-    [[ $STR == "testf bar" ]] || error "unexpected rbh-find result (101): $STR"
+    [[ $STR == "testf bar" ]] || error "unexpected lux-find result (101): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "group is %g")
-    [[ $STR == "group is $root_str" ]] || error "unexpected rbh-find result (102): $STR"
+    [[ $STR == "group is $root_str" ]] || error "unexpected lux-find result (102): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "hi   %M is mask")
-    [[ $STR == "hi   rw-r--r-- is mask" ]] || error "unexpected rbh-find result (103): $STR"
+    [[ $STR == "hi   rw-r--r-- is mask" ]] || error "unexpected lux-find result (103): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "octal mask twice : %m %m")
-    [[ $STR == "octal mask twice : 644 644" ]] || error "unexpected rbh-find result (104): $STR"
+    [[ $STR == "octal mask twice : 644 644" ]] || error "unexpected lux-find result (104): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "nlinks: %n")
-    [[ $STR == "nlinks: 1" ]] || error "unexpected rbh-find result (105): $STR"
+    [[ $STR == "nlinks: 1" ]] || error "unexpected lux-find result (105): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%p\n")
-    [[ $STR == "$srcfile" ]] || error "unexpected rbh-find result (106): $STR"
+    [[ $STR == "$srcfile" ]] || error "unexpected lux-find result (106): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "size %s\n")
-    [[ $STR == "size 1024" ]] || error "unexpected rbh-find result (107): $STR"
+    [[ $STR == "size 1024" ]] || error "unexpected lux-find result (107): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "owner %u\n")
-    [[ $STR == "owner $root_str" ]] || error "unexpected rbh-find result (108): $STR"
+    [[ $STR == "owner $root_str" ]] || error "unexpected lux-find result (108): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "type %Y\n")
-    [[ $STR == "type file" ]] || error "unexpected rbh-find result (109): $STR"
+    [[ $STR == "type file" ]] || error "unexpected lux-find result (109): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "short type %y\n")
-    [[ $STR == "short type f" ]] || error "unexpected rbh-find result (110): $STR"
+    [[ $STR == "short type f" ]] || error "unexpected lux-find result (110): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "short type %y\n")
-    [[ $STR == "short type f" ]] || error "unexpected rbh-find result (111): $STR"
+    [[ $STR == "short type f" ]] || error "unexpected lux-find result (111): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%p\n")
-    [[ $STR == "$srcfile" ]] || error "unexpected rbh-find result (112): $STR"
+    [[ $STR == "$srcfile" ]] || error "unexpected lux-find result (112): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%f\n")
-    [[ $STR == "testf" ]] || error "unexpected rbh-find result (113): $STR"
+    [[ $STR == "testf" ]] || error "unexpected lux-find result (113): $STR"
 
     STR=$($FIND $RH_ROOT/ -nobulk -type f -f $RBH_CFG_DIR/$config_file -printf "%p\n")
-    [[ $STR == "$srcfile" ]] || error "unexpected rbh-find result (114): $STR"
+    [[ $STR == "$srcfile" ]] || error "unexpected lux-find result (114): $STR"
 
     STR=$($FIND $RH_ROOT/ -nobulk -type f -f $RBH_CFG_DIR/$config_file -printf "%f\n")
-    [[ $STR == "testf" ]] || error "unexpected rbh-find result (115): $STR"
+    [[ $STR == "testf" ]] || error "unexpected lux-find result (115): $STR"
 
     STR=$($FIND $RH_ROOT/test_printf -type f -f $RBH_CFG_DIR/$config_file -printf "%p\n")
-    [[ $STR == "$srcfile" ]] || error "unexpected rbh-find result (116): $STR"
+    [[ $STR == "$srcfile" ]] || error "unexpected lux-find result (116): $STR"
 
     STR=$($FIND $RH_ROOT/test_printf -type f -f $RBH_CFG_DIR/$config_file -printf "%f\n")
-    [[ $STR == "testf" ]] || error "unexpected rbh-find result (117): $STR"
+    [[ $STR == "testf" ]] || error "unexpected lux-find result (117): $STR"
 
     # Test each Robinhood sub-directive
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf " %Rc rh class\n")
-    [[ $STR == " [none] rh class" ]] || error "unexpected rbh-find result (200): $STR"
+    [[ $STR == " [none] rh class" ]] || error "unexpected lux-find result (200): $STR"
 
     if (( $lustre_major >= 2 )); then
 	# exact match
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf " %Rf fid\n")
-        [[ $STR == " $fid fid" ]] || error "unexpected rbh-find result (201): $STR ($fid expected)"
+        [[ $STR == " $fid fid" ]] || error "unexpected lux-find result (201): $STR ($fid expected)"
     else
 	# get_id returns '/<inode>' so we must get <something>/<inode>
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rf fid\n")
-        [[ $STR == *"$fid fid" ]] || error "unexpected rbh-find result (201): $STR ($fid expected)"
+        [[ $STR == *"$fid fid" ]] || error "unexpected lux-find result (201): $STR ($fid expected)"
     fi
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf " %Ro osts\n")
-    #[[ $STR == "ost#0:1044 osts" ]] || error "unexpected rbh-find result (202): $STR"
+    #[[ $STR == "ost#0:1044 osts" ]] || error "unexpected lux-find result (202): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "parent fid=%Rp\n")
-    #[[ $STR == "parent fid=0x200000007:0x1:0x0" ]] || error "unexpected rbh-find result (203): $STR"
+    #[[ $STR == "parent fid=0x200000007:0x1:0x0" ]] || error "unexpected lux-find result (203): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%RCF")
-    [[ $STR == "$(date +%F)" ]] || error "unexpected rbh-find result (204): $STR"
+    [[ $STR == "$(date +%F)" ]] || error "unexpected lux-find result (204): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%AF")
-    [[ $STR == "$(date +%F)" ]] || error "unexpected rbh-find result (205): $STR"
+    [[ $STR == "$(date +%F)" ]] || error "unexpected lux-find result (205): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%TF")
-    [[ $STR == "$(date +%F)" ]] || error "unexpected rbh-find result (206): $STR"
+    [[ $STR == "$(date +%F)" ]] || error "unexpected lux-find result (206): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%CF")
-    [[ $STR == "$(date +%F)" ]] || error "unexpected rbh-find result (206b): $STR"
+    [[ $STR == "$(date +%F)" ]] || error "unexpected lux-find result (206b): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%A-" 2>&1)
-    [[ $STR == *"%-"* ]] || error "unexpected rbh-find result (207): $STR" # NB: invalid format
+    [[ $STR == *"%-"* ]] || error "unexpected lux-find result (207): $STR" # NB: invalid format
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%TG")
-    [[ $STR == "$(date +%G)" ]] || error "unexpected rbh-find result (208): $STR"
+    [[ $STR == "$(date +%G)" ]] || error "unexpected lux-find result (208): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%CG")
-    [[ $STR == "$(date +%G)" ]] || error "unexpected rbh-find result (209): $STR"
+    [[ $STR == "$(date +%G)" ]] || error "unexpected lux-find result (209): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "QWERTY %RCc %TA %CA %Ap %AT" 2>&1)
-    [[ $STR == *"QWERTY"* ]] || error "unexpected rbh-find result (210): $STR"
+    [[ $STR == *"QWERTY"* ]] || error "unexpected lux-find result (210): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "QWERTY %RCOe %TOS %COS %AEx %AEY" 2>&1)
-    [[ $STR == *"QWERTY"* ]] || error "unexpected rbh-find result (211): $STR"
+    [[ $STR == *"QWERTY"* ]] || error "unexpected lux-find result (211): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "QWERTY %RCOA" 2>&1)
-    [[ $STR == *"QWERTY %OA"* ]] || error "unexpected rbh-find result (212): $STR" # NB: invalid format
+    [[ $STR == *"QWERTY %OA"* ]] || error "unexpected lux-find result (212): $STR" # NB: invalid format
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "QWERTY %RCEB" 2>&1)
-    [[ $STR == *"QWERTY %EB"* ]] || error "unexpected rbh-find result (213): $STR" # NB: invalid format
+    [[ $STR == *"QWERTY %EB"* ]] || error "unexpected lux-find result (213): $STR" # NB: invalid format
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%RC{%A, %B %dth, %Y %F}" 2>&1)
-    [[ $STR == *"Error:"* ]] && error "unexpected rbh-find result (214): $STR"
+    [[ $STR == *"Error:"* ]] && error "unexpected lux-find result (214): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%RC{%A, " 2>&1)
-    [[ $STR == *"Error: invalid string format"* ]] || error "unexpected rbh-find result (215): $STR"
+    [[ $STR == *"Error: invalid string format"* ]] || error "unexpected lux-find result (215): $STR"
 
     # Test various combinations
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "FILE %p %s %Y %y %Rc %u %n and stop\n")
-    [[ $STR == "FILE $srcfile 1024 file f [none] $root_str 1 and stop" ]] || error "unexpected rbh-find result (300): $STR"
+    [[ $STR == "FILE $srcfile 1024 file f [none] $root_str 1 and stop" ]] || error "unexpected lux-find result (300): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%s\t%d\t%y")
-    [[ $STR == "1024	1	f" ]] || error "unexpected rbh-find result (301): $STR"
+    [[ $STR == "1024	1	f" ]] || error "unexpected lux-find result (301): $STR"
 
     # bash will not let us store \0 in a string, so test slightly differently and run again on error
     FMT="\0\011\x0\42\x42\x25\x0a"
@@ -10130,7 +10130,7 @@ function test_rbh_find_printf
         <(printf "%s$FMT" "$srcfile")
     if (( $? != 0 )); then
         $FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%p$FMT" | cat -vT
-        error "unexpected rbh-find result (302): (see previous line)"
+        error "unexpected lux-find result (302): (see previous line)"
     fi
 
     cmp <($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -print0) \
@@ -10138,32 +10138,32 @@ function test_rbh_find_printf
     if (( $? != 0 )); then
         $FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -print0 | cat -vT
         echo
-        error "unexpected rbh-find result (303): (see previous line)"
+        error "unexpected lux-find result (303): (see previous line)"
     fi
 
 
     # Test module attributes
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{}" 2>&1)
-    [[ $STR == *"Error: cannot extract module attribute name"* ]] || error "unexpected rbh-find result (400): $STR"
+    [[ $STR == *"Error: cannot extract module attribute name"* ]] || error "unexpected lux-find result (400): $STR"
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{nonexistentmod}" 2>&1)
-    [[ $STR == *"Error: cannot extract module attribute name"* ]] || error "unexpected rbh-find result (401): $STR"
+    [[ $STR == *"Error: cannot extract module attribute name"* ]] || error "unexpected lux-find result (401): $STR"
 
     if (( $is_lhsm != 0 )); then
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{lhsm.no_such_sym}" 2>&1)
-        [[ $STR == *"Error: cannot extract module attribute name"* ]] || error "unexpected rbh-find result (402): $STR"
+        [[ $STR == *"Error: cannot extract module attribute name"* ]] || error "unexpected lux-find result (402): $STR"
 
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{lhsm.archive_id}")
-        [[ $STR == "1" ]] || error "unexpected rbh-find result (403): $STR"
+        [[ $STR == "1" ]] || error "unexpected lux-find result (403): $STR"
 
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{lhsm.no_release}")
-        [[ $STR == "0" ]] || error "unexpected rbh-find result (404): $STR"
+        [[ $STR == "0" ]] || error "unexpected lux-find result (404): $STR"
 
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{lhsm.no_archive}")
-        [[ $STR == "0" ]] || error "unexpected rbh-find result (405): $STR"
+        [[ $STR == "0" ]] || error "unexpected lux-find result (405): $STR"
 
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{lhsm.status}")
-        [[ $STR == "synchro" ]] || error "unexpected rbh-find result (406): $STR"
+        [[ $STR == "synchro" ]] || error "unexpected lux-find result (406): $STR"
     fi
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{checksum.last_check}")
@@ -10173,21 +10173,21 @@ function test_rbh_find_printf
     fi
 
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%Rm{checksum.status}")
-    [[ $STR == "ok" ]] || error "unexpected rbh-find result (408): $STR"
+    [[ $STR == "ok" ]] || error "unexpected lux-find result (408): $STR"
 
     # With some formatting options
     STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "file='%15f' size=%09s")
-    [[ $STR == "file='          testf' size=000001024" ]] || error "unexpected rbh-find result (500): $STR"
+    [[ $STR == "file='          testf' size=000001024" ]] || error "unexpected lux-find result (500): $STR"
 
     if (( $is_lhsm != 0 )); then
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%7Rm{lhsm.archive_id}")
-        [[ $STR == "      1" ]] || error "unexpected rbh-find result (501): $STR"
+        [[ $STR == "      1" ]] || error "unexpected lux-find result (501): $STR"
 
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%07Rm{lhsm.archive_id}")
-        [[ $STR == "0000001" ]] || error "unexpected rbh-find result (502): $STR"
+        [[ $STR == "0000001" ]] || error "unexpected lux-find result (502): $STR"
 
         STR=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%-Rm{lhsm.archive_id}")
-        [[ $STR == "1" ]] || error "unexpected rbh-find result (503): $STR"
+        [[ $STR == "1" ]] || error "unexpected lux-find result (503): $STR"
     fi
 
     rm -f report.out
@@ -14221,10 +14221,10 @@ run_test 103b    test_acct_table acct.conf 5 "yes" "Acct table and triggers crea
 run_test 103c    test_acct_table acct.conf 5 "no" "Acct table and triggers creation (accounting OFF)"
 run_test 104     test_size_updt test_updt.conf 1 "test size update"
 run_test 105     test_enoent test_pipeline.conf "readlog with continuous create/unlink"
-run_test 106a    test_diff info_collect2.conf "diff" "rbh-diff"
-run_test 106b    test_diff info_collect2.conf "diffapply" "rbh-diff --apply"
+run_test 106a    test_diff info_collect2.conf "diff" "lux-diff"
+run_test 106b    test_diff info_collect2.conf "diffapply" "lux-diff --apply"
 run_test 106c    test_diff info_collect2.conf "scan" "robinhood --scan --diff"
-run_test 106d    test_diff info_collect2.conf "partdiff" "rbh-diff --scan=subdir"
+run_test 106d    test_diff info_collect2.conf "partdiff" "lux-diff --scan=subdir"
 run_test 107a    test_completion test_completion.conf OK        "scan completion command"
 run_test 107b    test_completion test_completion.conf unmatched "wrong completion command (syntax error)"
 run_test 107c    test_completion test_completion.conf invalid_ctx_id "wrong completion command (using id)"
@@ -14243,7 +14243,7 @@ run_test 109e    test_hardlinks info_collect.conf partdiff "hardlinks management
 run_test 110     test_unlink info_collect.conf "unlink (readlog)"
 run_test 111     test_layout info_collect.conf "layout changes"
 run_test 112     test_hl_count info_collect.conf "reports with hardlinks"
-run_test 113     test_diff_apply_fs info_collect2.conf  "diff"  "rbh-diff --apply=fs"
+run_test 113     test_diff_apply_fs info_collect2.conf  "diff"  "lux-diff --apply=fs"
 run_test 114     test_root_changelog info_collect.conf "changelog record on root entry"
 run_test 115     partial_paths info_collect.conf "test behavior when handling partial paths"
 run_test 116     test_mnt_point test_mnt_point.conf "test with mount point != fs_path"
@@ -14410,8 +14410,8 @@ run_test 305a   test_cntpct_trigger test_trig_cntpct.conf "trigger on inode usag
 run_test 305b   test_cntpct_ost_trigger test_trig_cntpct.conf "trigger on inode usage percentage on OSTs"
 
 ### projectid related tests
-run_test 350    projectid_test_find info_collect.conf   "Lustre project id and rbh-find"
-run_test 351    projectid_test_report info_collect.conf "Lustre project id and rbh-report"
+run_test 350    projectid_test_find info_collect.conf   "Lustre project id and lux-find"
+run_test 351    projectid_test_report info_collect.conf "Lustre project id and lux-report"
 run_test 352    projectid_test_chglog info_collect.conf "Lustre project id update with changelogs"
 run_test 353    projectid_test_run test_trig3.conf      "Lustre project id targetted policy run"
 
@@ -14425,8 +14425,8 @@ run_test 402b   test_rh_report_split_user_group common.conf 5 "--force-no-acct" 
 run_test 403    test_sort_report common.conf 0 "Sort options of reporting command"
 run_test 404   test_dircount_report common.conf 20  "dircount reports"
 
-run_test 405    test_find   common.conf ""  "rbh-find command"
-run_test 406    test_du   common.conf ""    "rbh-du command"
+run_test 405    test_find   common.conf ""  "lux-find command"
+run_test 406    test_du   common.conf ""    "lux-du command"
 
 #### misc, internals #####
 run_test 500a	test_logs log1.conf file_nobatch 	"file logging without alert batching"
@@ -14462,7 +14462,7 @@ run_test 507a     recov_filters  test_recov.conf  dir    "FS recovery with dir f
 run_test 507b     recov_filters  test_recov2.conf  dir    "FS recovery with dir filter (archive_symlinks=FALSE)"
 run_test 508    test_tokudb "Test TokuDB compression"
 run_test 509    test_cfg_overflow "config options too long"
-run_test 510    test_rbh_find_printf test_checker.conf "Test rbh-find with -printf option"
+run_test 510    test_rbh_find_printf test_checker.conf "Test lux-find with -printf option"
 run_test 511    archive_uuid1 test_uuid.conf "Test UUID presence while scanning"
 run_test 512    archive_uuid2 test_uuid.conf "Archive and undelete file with UUID using changelogs"
 run_test 513    test_reload   alert.conf "Reloading configuration (with alert policy)"

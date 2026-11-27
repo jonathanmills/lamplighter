@@ -1,13 +1,13 @@
 #!/bin/bash
 
 
-[[ -e /etc/sysconfig/rbh_cksum ]] && . /etc/sysconfig/rbh_cksum
+[[ -e /etc/sysconfig/lux_cksum ]] && . /etc/sysconfig/lux_cksum
 
 # "defaults" section
-RBH_CKSUM_CMD=${RBH_CKSUM_CMD:-sha1sum}
-RBH_CKSUM_DV_CMD=${RBH_CKSUM_DV_CMD:-@DV_CMD@}
+LUX_CKSUM_CMD=${LUX_CKSUM_CMD:-sha1sum}
+LUX_CKSUM_DV_CMD=${LUX_CKSUM_DV_CMD:-@DV_CMD@}
 # xattr not set if variable set empty, so allow empty value
-RBH_CKSUM_XATTR=${RBH_CKSUM_XATTR-user.sha1sum}
+LUX_CKSUM_XATTR=${LUX_CKSUM_XATTR-user.sha1sum}
 
 usage() {
 	echo "usage: $(readlink -m "$0") <previous_value> <path>" >&2
@@ -19,7 +19,7 @@ usage() {
 get_dv() {
 	local path="$1"
 
-	$RBH_CKSUM_DV_CMD "$path"
+	$LUX_CKSUM_DV_CMD "$path"
 }
 
 compute_cksum() {
@@ -27,7 +27,7 @@ compute_cksum() {
 	local cksum
 
 	# run checksum program and take first word
-	cksum=$($RBH_CKSUM_CMD "$path")
+	cksum=$($LUX_CKSUM_CMD "$path")
 	echo "${cksum%% *}"
 }
 
@@ -35,22 +35,22 @@ compute_cksum() {
 getfattr_output() {
 	local path="$1"
 
-	[[ -z "$RBH_CKSUM_XATTR" ]] && return
+	[[ -z "$LUX_CKSUM_XATTR" ]] && return
 
-	getfattr -n "$RBH_CKSUM_XATTR" --only-values -- "$path" 2>/dev/null || true
+	getfattr -n "$LUX_CKSUM_XATTR" --only-values -- "$path" 2>/dev/null || true
 }
 
 setfattr_output() {
 	local path="$1"
 	local cksum="$2"
 
-	[[ -z "$RBH_CKSUM_XATTR" ]] && return
+	[[ -z "$LUX_CKSUM_XATTR" ]] && return
 
-	setfattr -n "$RBH_CKSUM_XATTR" -v "$cksum" -- "$path"
+	setfattr -n "$LUX_CKSUM_XATTR" -v "$cksum" -- "$path"
 }
 
 
-rbh_cksum() {
+lux_cksum() {
 	local output="$1"
 	local path="$2"
 	local cksum
@@ -128,4 +128,4 @@ rbh_cksum() {
 # if we're being sourced, don't parse arguments
 [[ $(caller | cut -d' ' -f1) != "0" ]] && return
 
-rbh_cksum "$@"
+lux_cksum "$@"

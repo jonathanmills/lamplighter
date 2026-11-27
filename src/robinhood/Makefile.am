@@ -25,56 +25,57 @@ endif
 all_libs += ./librbhhelpers.la ../list_mgr/liblistmgr.la \
             ../common/libcommontools.la ../cfg_parsing/libconfigparsing.la
 
-#sbin_PROGRAMS=robinhood rbh-report rbh-diff rbh-recov rbh-undelete rbh-import rbh-rebind
-sbin_PROGRAMS=robinhood rbh-report rbh-diff rbh-undelete rbh-rebind
-bin_PROGRAMS=rbh-find rbh-du
+#sbin_PROGRAMS=lamplighter lux-report lux-diff lux-recov lux-undelete lux-import lux-rebind
+# Lamplighter names; the sources keep Robinhood's names (rbh_*.c).
+sbin_PROGRAMS=lamplighter lux-report lux-diff lux-undelete lux-rebind
+bin_PROGRAMS=lux-find lux-du
 
 # dependencies:
-robinhood_DEPENDENCIES=$(all_libs)
-rbh_report_DEPENDENCIES=$(all_libs)
-rbh_du_DEPENDENCIES=$(all_libs)
-rbh_find_DEPENDENCIES=$(all_libs)
-rbh_diff_DEPENDENCIES=$(all_libs)
-#rbh_recov_DEPENDENCIES=$(all_libs)
-rbh_undelete_DEPENDENCIES=$(all_libs)
-#rbh_import_DEPENDENCIES=$(all_libs)
-rbh_rebind_DEPENDENCIES=$(all_libs)
+lamplighter_DEPENDENCIES=$(all_libs)
+lux_report_DEPENDENCIES=$(all_libs)
+lux_du_DEPENDENCIES=$(all_libs)
+lux_find_DEPENDENCIES=$(all_libs)
+lux_diff_DEPENDENCIES=$(all_libs)
+#lux_recov_DEPENDENCIES=$(all_libs)
+lux_undelete_DEPENDENCIES=$(all_libs)
+#lux_import_DEPENDENCIES=$(all_libs)
+lux_rebind_DEPENDENCIES=$(all_libs)
 #
-robinhood_SOURCES=rbh_daemon.c
-robinhood_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-robinhood_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
+lamplighter_SOURCES=rbh_daemon.c
+lamplighter_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+lamplighter_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
 
-rbh_report_SOURCES=rbh_report.c
-rbh_report_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-rbh_report_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
+lux_report_SOURCES=rbh_report.c
+lux_report_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+lux_report_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
 
-rbh_find_SOURCES=rbh_find.c rbh_find_printf.c rbh_find.h
-rbh_find_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-rbh_find_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
+lux_find_SOURCES=rbh_find.c rbh_find_printf.c rbh_find.h
+lux_find_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+lux_find_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
 
-rbh_du_SOURCES=rbh_du.c
-rbh_du_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-rbh_du_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
+lux_du_SOURCES=rbh_du.c
+lux_du_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+lux_du_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
 
-rbh_diff_SOURCES=rbh_diff.c
-rbh_diff_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-rbh_diff_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAG) $(AM_LDFLAGS)
+lux_diff_SOURCES=rbh_diff.c
+lux_diff_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+lux_diff_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAG) $(AM_LDFLAGS)
 
-#rbh_recov_SOURCES=rbh_recov.c
-#rbh_recov_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-#rbh_recov_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
+#lux_recov_SOURCES=rbh_recov.c
+#lux_recov_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+#lux_recov_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
 #
-rbh_undelete_SOURCES=rbh_undelete.c
-rbh_undelete_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-rbh_undelete_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
+lux_undelete_SOURCES=rbh_undelete.c
+lux_undelete_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+lux_undelete_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
 #
-#rbh_import_SOURCES=rbh_import.c
-#rbh_import_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-#rbh_import_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
+#lux_import_SOURCES=rbh_import.c
+#lux_import_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+#lux_import_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
 #
-rbh_rebind_SOURCES=rbh_rebind.c
-rbh_rebind_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
-rbh_rebind_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
+lux_rebind_SOURCES=rbh_rebind.c
+lux_rebind_CFLAGS=$(AM_CFLAGS) $(FS_CFLAGS) $(MISC_FLAGS)
+lux_rebind_LDFLAGS=-rdynamic $(all_libs) $(DB_LDFLAGS) $(FS_LDFLAGS) $(PURPOSE_LDFLAGS) $(AM_LDFLAGS)
 
 new: clean all
 

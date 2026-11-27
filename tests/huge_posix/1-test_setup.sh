@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CFG_SCRIPT="../../scripts/rbh-config"
+CFG_SCRIPT="../../scripts/lux-config"
 
 service mysqld start
 

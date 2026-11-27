@@ -9,9 +9,9 @@ else
 fi
 
 if [ $RBH_TEST_INSTALLED = 0 ]; then
-    CFG_SCRIPT="../../scripts/rbh-config"
+    CFG_SCRIPT="../../scripts/lux-config"
 else
-    CFG_SCRIPT="rbh-config"
+    CFG_SCRIPT="lux-config"
 fi
 
 BKROOT="/tmp/backend"

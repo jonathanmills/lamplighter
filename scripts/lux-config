@@ -16,7 +16,7 @@ if [[ $who != root ]]; then
 fi
 
 
-# this function creates the database for robinhood
+# this function creates the database (Robinhood's schema, unchanged)
 # it must be launched by root.
 function db_check
 {
@@ -105,7 +105,7 @@ function db_config
             done
 
             echo
-            echo "Enter hosts where robinhood commands will run. E.g. localhost"
+            echo "Enter hosts where Lamplighter commands will run. E.g. localhost"
             echo "You can use '%' as wildcard: \"%\" for all hosts, \"cluster%\" for nodes starting with 'cluster'..."
 
             read -p "hosts: " clienthost
@@ -126,7 +126,7 @@ function db_config
                 fi
             done
 
-            echo "Write this password to /etc/robinhood.d/.dbpassword file"
+            echo "Write this password to /etc/lamplighter.d/.dbpassword file"
 
 
             DB_NAME="robinhood_$fsname"
@@ -714,19 +714,19 @@ else
     echo "    precheck_db:"
     echo "        check database packages and service"
     echo "    create_db [<db_name> <client_hosts> <robinhood_passwd> [<db_admin_passwd>]] : "
-    echo "        create robinhood db (interactive if no option is specified)"
+    echo "        create the database (interactive if no option is specified)"
     echo "    enable_chglogs [<fsname>]:"
     echo "        enable changelogs on MDT (interactive if no option is specified)"
     echo "    empty_db [<db_name> [<db_admin_passwd>]]:"
-    echo "        delete robinhood database content (interactive if no option is specified)"
+    echo "        delete database content (interactive if no option is specified)"
     echo "    reset_acct [<db_name> [<db_admin_passwd>]]:"
-    echo "        drop acct info, so robinhood can rebuild it when it restarts."
+    echo "        drop acct info, so lamplighter can rebuild it when it restarts."
     echo "    reset_classes [<db_name> [<db_admin_passwd>]]:"
     echo "        reset fileclasses after a change in config file (interactive if no option is specified)"
     echo "    test_db <db_name> <robinhood_passwd>:"
     echo "        test connection to the database"
     echo "    backup_db [<db_name> <dest_dir> [<db_admin_passwd>]]:"
-    echo "        backup robinhood database to dest dir"
+    echo "        backup the Lamplighter (Robinhood-format) database to dest dir"
     echo "    repair_db [<db_name> [<db_admin_passwd>]]:"
     echo "        check tables and fix them after a mysql server crash"
     echo "    optimize_db [<db_name> [<db_admin_passwd>]]:"

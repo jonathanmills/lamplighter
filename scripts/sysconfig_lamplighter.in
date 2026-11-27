@@ -1,0 +1,7 @@
+# Options for the lamplighter daemon (lamplighter.service and
+# lamplighter@<fsname>.service). Per-filesystem settings go in
+# /etc/sysconfig/lamplighter.<fsname>.
+
+# options for starting the daemon
+# eg. --scan --purge (leave empty for default actions).
+LUX_OPT="@INPUT_OPT@ --run=all"

@@ -2,14 +2,14 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
 #
-# Build Robinhood (POSIX mode) inside the workbench. The read-only
-# repository at /src is copied to /build/robinhood, so build artifacts
+# Build Lamplighter's engine (POSIX mode) inside the workbench. The read-only
+# repository at /src is copied to /build/lamplighter, so build artifacts
 # never land in the macOS checkout. Re-runs are incremental.
 
 set -euo pipefail
 
 src=/src
-dst=/build/robinhood
+dst=/build/lamplighter
 
 mkdir -p "$dst"
 rsync -a --delete \
@@ -34,4 +34,4 @@ if [[ ! -f Makefile ]]; then
 fi
 make -j"$(nproc)"
 
-echo "lux-dev: robinhood built in $dst"
+echo "lux-dev: lamplighter built in $dst"

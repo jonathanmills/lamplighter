@@ -1,0 +1,12 @@
+[Unit]
+Description=Lamplighter policy engine for %I
+Documentation=man:lamplighter(1)
+
+[Service]
+Type=simple
+KillMode=mixed
+EnvironmentFile=-@CONFDIR@/sysconfig/lamplighter
+EnvironmentFile=-@CONFDIR@/sysconfig/lamplighter.%I
+LimitNOFILE=8096
+ExecStart=@SBINDIR@/lamplighter $LUX_OPT -f @CONFDIR@/lamplighter.d/%I.conf
+ExecReload=/bin/kill -HUP $MAINPID

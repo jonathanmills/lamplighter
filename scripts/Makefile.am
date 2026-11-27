@@ -1,12 +1,8 @@
 
-EXTRA_DIST= robinhood.init			\
-	robinhood.init.in			\
-	robinhood.init.sles         		\
-	robinhood.init.sles.in      		\
-	robinhood.service			\
-	robinhood@.service			\
-	sysconfig_robinhood			\
-	sysconfig_robinhood.in			\
+EXTRA_DIST= lamplighter.service		\
+	lamplighter@.service			\
+	sysconfig_lamplighter			\
+	sysconfig_lamplighter.in		\
 	type_gen.pl				\
 	indent.sh 				\
 	demo/disk_usage.sh			\
@@ -14,24 +10,24 @@ EXTRA_DIST= robinhood.init			\
 	demo/rh.migr_purge.conf			\
 	demo/write_data.sh  			\
     cmd2man.sh make_mans.sh fix_man_options.sh  \
-    ld.so.robinhood.conf.in rbh_cksum.sh.in
+    ld.so.lamplighter.conf.in lux_cksum.sh.in
 
 
 ldconfdir=@CONFDIR@/ld.so.conf.d
-ldconf_DATA=robinhood.conf
+ldconf_DATA=lamplighter.conf
 
-robinhood.conf: ld.so.robinhood.conf
-	mv ld.so.robinhood.conf robinhood.conf
+lamplighter.conf: ld.so.lamplighter.conf
+	mv ld.so.lamplighter.conf lamplighter.conf
 
-dist_sbin_SCRIPTS=rbh_cksum.sh
+dist_sbin_SCRIPTS=lux_cksum.sh
 
 if COMMON_RPMS
-dist_sbin_SCRIPTS+=rbh-config
+dist_sbin_SCRIPTS+=lux-config
 endif
 
 if HSM_LITE
-dist_sbin_SCRIPTS+=rbhext_tool rbhext_tool_svr rbhext_tool_clnt
+dist_sbin_SCRIPTS+=luxext_tool luxext_tool_svr luxext_tool_clnt
 endif
 
-all-local: rbh_cksum.sh
-	chmod 755 rbh_cksum.sh
+all-local: lux_cksum.sh
+	chmod 755 lux_cksum.sh

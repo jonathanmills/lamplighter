@@ -63,8 +63,8 @@ services:
 
   # Rocky Linux 9.7 workbench: builds and runs Robinhood, runs tests.
   workbench:
-    build: ./robinhood
-    image: localhost/lux-dev-robinhood
+    build: ./engine
+    image: localhost/lux-dev-engine
     hostname: workbench
     volumes:
       - ../..:/src:ro             # the repository (read-only)
