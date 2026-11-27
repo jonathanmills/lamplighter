@@ -36,6 +36,7 @@ dev = [
 [project.scripts]
 lamplighter-collector = "lamplighter_webui.collector:main"
 lamplighter-jobstats = "lamplighter_webui.jobstats:main"
+lamplighter-scale = "lamplighter_webui.scale:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

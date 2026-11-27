@@ -18,6 +18,19 @@ A self-contained test environment that runs on a laptop with Podman or Docker. E
 | `prometheus` + `jobstats-exporter` | Prometheus 2.55 scraping a simulated Lustre jobstats exporter (`tools/fake_jobstats_exporter.py`), whose counters grow in real time. Used to try the Prometheus jobstats source; `tests/integration/test_prometheus_live.py` runs only while it is up. | `./devenv.sh prometheus` (stop: `prometheus-down`) | `http://127.0.0.1:9090` |
 | `checkmk` | Checkmk Community 2.5 for installing the plugin in a real site. **x86-64 hosts only**: Checkmk publishes no ARM image, and a site does not run under emulation on Apple Silicon. On a Mac, `./devenv.sh checkmk-test` tests the plugin against Checkmk's real Python APIs instead; the end-to-end test belongs on a real Checkmk server. | `docker compose --profile checkmk up -d checkmk` | `http://127.0.0.1:5000/cmk/` |
 
+### Scale tests
+
+`lamplighter-scale` (part of the web UI package) builds a synthetic Robinhood database of any size and times the collector's passes and the request-time queries against it. In the dev environment (MariaDB has a 4 GB buffer pool for this):
+
+```sh
+R=mysql+pymysql://root:devroot@mariadb
+docker compose -p lamplighter-dev exec webui python -m lamplighter_webui.scale gen \
+    --url $R/ --template robinhood_dev --target robinhood_scale --entries 10000000
+docker compose -p lamplighter-dev exec webui python -m lamplighter_webui.scale bench --url $R --db robinhood_scale
+```
+
+On site hardware, run the installed `/opt/lamplighter-webui/bin/lamplighter-scale` the same way, against a scratch MariaDB server (never the production Robinhood server), with `--template` naming a copy of the site's Robinhood database so the schema matches.
+
 ## Quick start
 
 ```sh

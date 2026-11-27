@@ -33,6 +33,8 @@ from .rollup import compute as compute_rollups
 from .store import migrate
 
 log = logging.getLogger("lamplighter_webui.collector")
+# Seconds per pass of the newest run in this process (for lamplighter-scale bench).
+LAST_TIMINGS: dict[str, float] = {}
 
 DAY = 86400
 # (band number, label, upper age limit in seconds; None = no limit).
@@ -111,12 +113,21 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
     t0 = time.monotonic()
     try:
         now = int(time.time())
+        timings: dict[str, float] = {}
+
+        def timed(name, fn, *args):
+            t = time.monotonic()
+            out = fn(*args)
+            timings[name] = round(time.monotonic() - t, 2)
+            return out
+
         with source.connect() as src:
-            hist = _age_histogram(src, now, settings.collector.max_scan_seconds)
-            acct = _acct_snapshot(src)
+            hist = timed("age", _age_histogram, src, now, settings.collector.max_scan_seconds)
+            acct = timed("acct", _acct_snapshot, src)
             fs_path = src.execute(text("SELECT value FROM VARS WHERE varname = 'FS_Path'")).scalar()
-            dirs = compute_rollups(src, now, settings.collector.rollup_depth, _s(fs_path or "/"))
-            classes = collect_counts(src) if settings.collector.policy_counts else []
+            dirs = timed("rollup", compute_rollups, src, now, settings.collector.rollup_depth, _s(fs_path or "/"))
+            classes = (timed("classes", collect_counts, src) if settings.collector.policy_counts else [])
+        t_store = time.monotonic()
         files = sum(r["files"] for r in hist)
         with store.begin() as c:
             if hist:
@@ -140,9 +151,13 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
                     f"VALUES ({run_id}, :fileclass, :field, :value, :entries, :bytes)"), classes)
             c.execute(text("UPDATE collector_runs SET status = 'ok', finished_at = NOW(3), "
                            "entries = :n WHERE id = :id"), {"n": files, "id": run_id})
+        timings["store"] = round(time.monotonic() - t_store, 2)
+        LAST_TIMINGS.clear()
+        LAST_TIMINGS.update(timings, total=round(time.monotonic() - t0, 2))
         log.info("run %d ok: %d files in %d age rows, %d acct rows, %d directories, "
-                 "%d fileclass/status rows, %.1fs",
-                 run_id, files, len(hist), len(acct), len(dirs), len(classes), time.monotonic() - t0)
+                 "%d fileclass/status rows, %.1fs (%s)",
+                 run_id, files, len(hist), len(acct), len(dirs), len(classes), time.monotonic() - t0,
+                 ", ".join(f"{k} {v}s" for k, v in timings.items()))
     except Exception as exc:
         with store.begin() as c:
             c.execute(text("UPDATE collector_runs SET status = 'failed', finished_at = NOW(3), "

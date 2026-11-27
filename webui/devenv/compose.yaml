@@ -45,7 +45,8 @@ services:
 
   mariadb:
     image: docker.io/library/mariadb:10.5
-    command: ["--innodb-buffer-pool-size=512M"]
+    # Sized for scale tests (lamplighter-scale): real servers give InnoDB most of their memory.
+    command: ["--innodb-buffer-pool-size=4G", "--innodb-log-file-size=1G"]
     environment:
       MARIADB_ROOT_PASSWORD: devroot
       MARIADB_DATABASE: robinhood_dev
