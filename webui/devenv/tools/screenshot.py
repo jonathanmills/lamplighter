@@ -22,6 +22,8 @@ SHOTS = [
     ("dave", "/", "dark", 1440, "overview-dark"),
     ("dave", "/triage", "dark", 1440, "triage-dark"),
     ("carol", "/policies", "dark", 1440, "policies-dark"),
+    ("carol", "/search?owner=erin&min_size=21474836480&unit=GiB&type=file&go=1", "dark", 1440, "search-dark"),
+    ("carol", "/search?owner=frank&name=*.bam&min_size=10737418240&unit=GiB&go=1", "light", 400, "search-phone-light"),
     ("carol", "/policies", "light", 400, "policies-phone-light"),
     ("dave", "/triage?sort=io&window=6h", "light", 1440, "triage-light-io"),
     ("dave", "/triage", "dark", 400, "triage-phone"),

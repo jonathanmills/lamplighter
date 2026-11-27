@@ -125,6 +125,15 @@ export interface PolicyCounts {
   policies: Record<string, { field: string; statuses: Record<string, { entries: number; bytes: number }> }>;
 }
 
+export interface SearchResult {
+  dir: { id: string; path: string };
+  criteria: Record<string, string | number>;
+  results: { path: string; type: string; owner: string; group: string; size: number; last_access: number | null; last_mod: number | null }[];
+  complete: boolean; stopped: "result limit" | "directory limit" | "time limit" | null;
+  directories_searched: number; elapsed_seconds: number;
+  limits: { directories: number; results: number; seconds: number };
+}
+
 export type TriageWindow = "15m" | "1h" | "6h" | "24h";
 export type TriageSort = "md" | "io";
 export interface JobFigures {
@@ -172,6 +181,8 @@ export const api = {
   coldOwners: (olderThan: ColdAge) => get<ColdOwners>(`/cold/owners?older_than=${olderThan}`),
   coldCsvUrl: (olderThan: ColdAge) => `/api/v1/cold/owners.csv?older_than=${olderThan}`,
   policies: () => get<PolicyCounts>("/policies"),
+  search: (query: string) => get<SearchResult>(`/search?${query}`),
+  searchCsvUrl: (query: string) => `/api/v1/search.csv?${query}`,
   triage: (window: TriageWindow, sort: TriageSort) => get<Triage>(`/triage?window=${window}&sort=${sort}`),
 };
 

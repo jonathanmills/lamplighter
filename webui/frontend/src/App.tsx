@@ -15,6 +15,7 @@ import Access from "./pages/Access";
 import Browse from "./pages/Browse";
 import Triage from "./pages/Triage";
 import Policies from "./pages/Policies";
+import Search from "./pages/Search";
 import { ComingSoon, Forbidden, NotFound } from "./pages/States";
 
 const MeContext = createContext<Me | null>(null);
@@ -101,6 +102,7 @@ function Page({ item }: { item: NavItem }) {
   if (item.path === "/browse") return <Browse />;
   if (item.path === "/triage") return <Triage />;
   if (item.path === "/policies") return <Policies />;
+  if (item.path === "/search") return <Search />;
   return <ComingSoon item={item} />;
 }
 

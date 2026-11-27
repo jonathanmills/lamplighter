@@ -22,6 +22,7 @@ from .usage_api import router as usage_router
 from .browse_api import router as browse_router
 from .triage_api import router as triage_router
 from .policies_api import router as policies_router
+from .search_api import router as search_router
 from .admin_api import access_router, audit_router, router as admin_router
 from .auth import _page, current_principal, router as auth_router, setup_oauth
 from .config import Settings, load_settings, read_secret
@@ -96,6 +97,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.include_router(browse_router)
     app.include_router(triage_router)
     app.include_router(policies_router)
+    app.include_router(search_router)
     app.include_router(admin_router)
     app.include_router(audit_router)
     app.include_router(access_router)

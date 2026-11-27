@@ -66,6 +66,9 @@ export default function Browse() {
             <b>{r.dir.depth === 0 ? "top" : r.dir.path.split("/").pop()}</b>
           </nav>
         </div>
+        <div className="actions">
+          <Link className="btn btn-ghost" to={`/search?dir=${encodeURIComponent(r.dir.id)}&path=${encodeURIComponent(r.dir.path)}`}>Search here</Link>
+        </div>
       </div>
 
       {t ? (
