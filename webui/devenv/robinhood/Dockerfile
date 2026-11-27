@@ -16,6 +16,7 @@ RUN dnf -y install epel-release dnf-plugins-core \
         mariadb-devel mariadb \
         python3.12 python3.12-pip \
         openldap-clients jq rsync procps-ng which file diffutils \
+        rpm-build systemd systemd-rpm-macros \
  && dnf clean all
 
 # The workbench trusts the dev test CA (mounted at /certs at runtime).

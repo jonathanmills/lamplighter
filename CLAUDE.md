@@ -79,6 +79,8 @@ Web UI front end: `webui/frontend/` (React + TypeScript + Vite, ECharts; no comp
 
 Checkmk plugin: `webui/checkmk/` (Checkmk 2.5 plug-in family `cmk_addons/plugins/robinhood`: special agent, agent-based checks, rulesets, server-side calls; see its README). Test with `webui/devenv/devenv.sh checkmk-test` (Python 3.13 + Checkmk's real APIs copied out of the image into `webui/devenv/.cmk-api/`, never committed) and build the MKP with `devenv.sh mkp`. Checkmk images are x86-64 only and a site does not run under emulation on Apple Silicon. Secrets go to the agent by password-store reference only (`--client-secret-id`).
 
+Packaging: `webui/packaging/` builds the `robinhood-webui` RPM (`build-rpm.sh`: front end in a Node container, rpmbuild in a throwaway Rocky 9.7 container; the venv is built at its real path `/opt/rbh-webui`) and `test-rpm.sh` installs it in a fresh Rocky 9.7 container behind nginx against the dev environment. The RPM's architecture is the build host's: x86_64 production packages need an x86_64 build host. The PHP GUI is no longer built or packaged (the `web_gui/` sources remain for now). Rocky 9 ships nginx 1.20 (no `http2 on;`).
+
 ## Architecture
 
 `src/` is split into static libtool libraries that are linked into every executable in `src/robinhood/` (`robinhood` daemon, `rbh-report`, `rbh-find`, `rbh-du`, `rbh-diff`, `rbh-undelete`, `rbh-rebind`):

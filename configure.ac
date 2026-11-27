@@ -48,7 +48,6 @@ AC_CONFIG_FILES([Makefile
          scripts/rbh_cksum.sh
          tests/Makefile
          tests/test_suite/Makefile
-         web_gui/Makefile
          man/Makefile
          robinhood.spec
          doc/doxygen/doxygen.cfg])
