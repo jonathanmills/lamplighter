@@ -7,8 +7,8 @@ import pytest
 from sqlalchemy import text
 
 from conftest import BASE, SSL, client_credentials_token, oidc_login
-from lux_webui.collector import run_once
-from lux_webui.db import make_engine
+from lamplighter_webui.collector import run_once
+from lamplighter_webui.db import make_engine
 
 pytestmark = pytest.mark.integration
 
@@ -60,12 +60,12 @@ def test_acct_snapshot_matches_acct_stat(engines, run_id):
 
 def test_only_one_collector_at_a_time(settings, engines):
     with engines[1].connect() as other:
-        assert other.execute(text("SELECT GET_LOCK('lux_collector', 0)")).scalar() == 1
+        assert other.execute(text("SELECT GET_LOCK('lamplighter_collector', 0)")).scalar() == 1
         try:
             with pytest.raises(RuntimeError, match="in progress"):
                 run_once(settings, *engines)
         finally:
-            other.execute(text("SELECT RELEASE_LOCK('lux_collector')"))
+            other.execute(text("SELECT RELEASE_LOCK('lamplighter_collector')"))
 
 
 def test_retention_keeps_newest_runs(settings, engines):

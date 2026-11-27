@@ -1,10 +1,11 @@
 #!/bin/bash
+# Regenerate the man pages from each program's --help (needs txt2man).
+# Lamplighter's naming: sbin commands (the lamplighter daemon and the
+# lamplighter-* admin tools) go in section 8, bin commands (lux-*) in 1.
 
 dir=$(readlink -m $(dirname $0))
 root=$(readlink -m "$dir/..")
-
-main=robinhood
-prefix=rbh
+bin=$root/src/robinhood
 
 which txt2man > /dev/null
 if (($? != 0)); then
@@ -12,32 +13,34 @@ if (($? != 0)); then
     exit 0
 fi
 
-if [[ -x $root/src/robinhood/$main ]]; then
-    $dir/cmd2man.sh $root/src/robinhood/$main "policy engine and statistics tool for large file systems" "$prefix-report(1), $prefix-find(1), $prefix-du(1), $prefix-diff(1)" | txt2man -v "Robinhood $VERSION" -t $main -s 1 -I dir -I mdt_idx -I attrset -I ost_index -I cfg_file -I output_file -I logfile -I loglevel -I pidfile -I user_name -I grp_name -I filepath -I policy1 -I policy2 -I args -I pct -I tgt -I size -I nbr | $dir/fix_man_options.sh > $root/man/$main.1
-else
-    echo "src/robinhood/$main is not built: can't generate man/$main.1" >&2
-fi
+# gen <program> <section> <description> <see also> <txt2man -I options...>
+gen() {
+    local prog=$1 sect=$2 desc=$3 see=$4
+    shift 4
+    if [[ -x $bin/$prog ]]; then
+        $dir/cmd2man.sh "$bin/$prog" "$desc" "$see" |
+            txt2man -v "Lamplighter $VERSION" -t "$prog" -s "$sect" "$@" |
+            $dir/fix_man_options.sh > "$root/man/$prog.$sect"
+    else
+        echo "src/robinhood/$prog is not built: can't generate man/$prog.$sect" >&2
+    fi
+}
 
-if [[ -x $root/src/robinhood/$prefix-report ]]; then
-    $dir/cmd2man.sh $root/src/robinhood/$prefix-report "querying command for robinhood policy engine" "$main(1), $prefix-find(1), $prefix-du(1), $prefix-diff(1)" | txt2man -v "Robinhood $VERSION" -t $prefix-report -s 1 -I path -I id -I username -I groupname -I ost_index -I ost_set -I class_expr -I cnt -I range -I cfg_file -I loglevel -I status_name -I status_value | $dir/fix_man_options.sh > $root/man/$prefix-report.1
-else
-    echo "src/robinhood/$prefix-report is not built: can't generate man/$prefix-report.1" >&2
-fi
-
-if [[ -x $root/src/robinhood/$prefix-find ]]; then
-    $dir/cmd2man.sh $root/src/robinhood/$prefix-find "find clone that query robinhood DB" "$main(1), $prefix-report(1), $prefix-du(1), $prefix-diff(1)" | txt2man -v "Robinhood $VERSION" -t $prefix-find -s 1 -I user -I group -I type -I filename -I size_crit -I time_crit -I minute_crit -I second_crit -I status -I ost_index -I log_level -I config_file | $dir/fix_man_options.sh > $root/man/$prefix-find.1
-else
-    echo "src/robinhood/$prefix-find is not built: can't generate man/$prefix-find.1" >&2
-fi
-
-if [[ -x $root/src/robinhood/$prefix-du ]]; then
-    $dir/cmd2man.sh $root/src/robinhood/$prefix-du "du clone that query robinhood DB" "$main(1), $prefix-report(1), $prefix-find(1), $prefix-diff(1)" | txt2man -v "Robinhood $VERSION" -t $prefix-du -s 1 -I user -I group -I type -I status -I log_level -I config_file | $dir/fix_man_options.sh > $root/man/$prefix-du.1
-else
-    echo "src/robinhood/$prefix-du is not built: can't generate man/$prefix-du.1" >&2
-fi
-
-if [[ -x $root/src/robinhood/$prefix-diff ]]; then
-    $dir/cmd2man.sh $root/src/robinhood/$prefix-diff "list differences between robinhood database and the filesystem" "$main(1), $prefix-report(1), $prefix-find(1), $prefix-du(1)" | txt2man -v "Robinhood $VERSION" -t $prefix-diff -s 1 -I loglevel -I configfile -I fs -I db | $dir/fix_man_options.sh > $root/man/$prefix-diff.1
-else
-    echo "src/robinhood/$prefix-diff is not built: can't generate man/$prefix-diff.1" >&2
-fi
+gen lamplighter 8 "policy engine and statistics tool for large file systems" \
+    "lamplighter-report(8), lamplighter-diff(8), lux-find(1), lux-du(1)" \
+    -I dir -I mdt_idx -I attrset -I ost_index -I cfg_file -I output_file -I logfile -I loglevel \
+    -I pidfile -I user_name -I grp_name -I filepath -I policy1 -I policy2 -I args -I pct -I tgt -I size -I nbr
+gen lamplighter-report 8 "querying command for the Lamplighter policy engine" \
+    "lamplighter(8), lamplighter-diff(8), lux-find(1), lux-du(1)" \
+    -I path -I id -I username -I groupname -I ost_index -I ost_set -I class_expr -I cnt -I range \
+    -I cfg_file -I loglevel -I status_name -I status_value
+gen lamplighter-diff 8 "list differences between the Lamplighter database and the filesystem" \
+    "lamplighter(8), lamplighter-report(8), lux-find(1), lux-du(1)" \
+    -I loglevel -I configfile -I fs -I db
+gen lux-find 1 "find clone that queries the Lamplighter database" \
+    "lamplighter(8), lamplighter-report(8), lux-du(1), lamplighter-diff(8)" \
+    -I user -I group -I type -I filename -I size_crit -I time_crit -I minute_crit -I second_crit \
+    -I status -I ost_index -I log_level -I config_file
+gen lux-du 1 "du clone that queries the Lamplighter database" \
+    "lamplighter(8), lamplighter-report(8), lux-find(1), lamplighter-diff(8)" \
+    -I user -I group -I type -I status -I log_level -I config_file

@@ -11,10 +11,10 @@ import pytest
 from sqlalchemy import text
 
 from conftest import oidc_login
-from lux_webui.collector import run_once
-from lux_webui.db import make_engine
-from lux_webui.policies import split_classes, status_columns
-from lux_webui.store import policy_counts
+from lamplighter_webui.collector import run_once
+from lamplighter_webui.db import make_engine
+from lamplighter_webui.policies import split_classes, status_columns
+from lamplighter_webui.store import policy_counts
 
 pytestmark = pytest.mark.integration
 

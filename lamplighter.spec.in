@@ -179,7 +179,7 @@ Group: Applications/System
 Obsoletes: robinhood-adm < 4
 
 %description adm
-This RPM provides an admin/config helper for Lamplighter (command lux-config).
+This RPM provides an admin/config helper for Lamplighter (command lamplighter-config).
 
 
 
@@ -264,19 +264,19 @@ install -m 444 scripts/lamplighter@.service $RPM_BUILD_ROOT/%{_unitdir}/lampligh
 # lamplighter-compat: Robinhood's command names as links
 ln -s lamplighter $RPM_BUILD_ROOT/%{_sbindir}/robinhood
 for c in report diff undelete rebind; do
-	ln -s lux-$c $RPM_BUILD_ROOT/%{_sbindir}/rbh-$c
+	ln -s lamplighter-$c $RPM_BUILD_ROOT/%{_sbindir}/rbh-$c
 done
 for c in find du; do
 	ln -s lux-$c $RPM_BUILD_ROOT/%{_bindir}/rbh-$c
 done
-ln -s lux_cksum.sh $RPM_BUILD_ROOT/%{_sbindir}/rbh_cksum.sh
+ln -s lamplighter-cksum.sh $RPM_BUILD_ROOT/%{_sbindir}/rbh_cksum.sh
 %if %{with common_rpms}
-ln -s lux-config $RPM_BUILD_ROOT/%{_sbindir}/rbh-config
+ln -s lamplighter-config $RPM_BUILD_ROOT/%{_sbindir}/rbh-config
 %endif
 %if %{with backup}
-for t in luxext_tool luxext_tool_svr luxext_tool_clnt; do
-	ln -s $t $RPM_BUILD_ROOT/%{_sbindir}/rbh${t#lux}
-done
+ln -s lamplighter-ext-tool $RPM_BUILD_ROOT/%{_sbindir}/rbhext_tool
+ln -s lamplighter-ext-tool-svr $RPM_BUILD_ROOT/%{_sbindir}/rbhext_tool_svr
+ln -s lamplighter-ext-tool-clnt $RPM_BUILD_ROOT/%{_sbindir}/rbhext_tool_clnt
 %endif
 
 %post %{flavor}
@@ -313,7 +313,7 @@ rm -rf $RPM_BUILD_ROOT
 %if %{with common_rpms}
 
 %files adm
-%{_sbindir}/lux-config
+%{_sbindir}/lamplighter-config
 
 %if %{with recovtools}
 %files recov-tools
@@ -345,15 +345,15 @@ rm -rf $RPM_BUILD_ROOT
 %doc ChangeLog
 
 %if %{with backup}
-%{_sbindir}/luxext_*
+%{_sbindir}/lamplighter-ext-tool*
 %endif
 
 %{_sbindir}/lamplighter
-%{_sbindir}/lux-report
-%{_sbindir}/lux-diff
-%{_sbindir}/lux-undelete
-%{_sbindir}/lux-rebind
-%{_sbindir}/lux_cksum.sh
+%{_sbindir}/lamplighter-report
+%{_sbindir}/lamplighter-diff
+%{_sbindir}/lamplighter-undelete
+%{_sbindir}/lamplighter-rebind
+%{_sbindir}/lamplighter-cksum.sh
 %{_bindir}/lux-du
 %{_bindir}/lux-find
 
@@ -363,7 +363,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_libdir}/lamplighter/librbh_mod_*.so*
 
 # All man pages but the lhsmtool_cmd one
-%{_mandir}/man1/lamplighter*
+%{_mandir}/man8/lamplighter*
 %{_mandir}/man1/lux-*
 
 %config(noreplace) %{_sysconfdir}/sysconfig/lamplighter
@@ -393,7 +393,8 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Fri Nov 27 2026 Jonathan Mills 3.2.0-3
 - Lamplighter: a fork of Robinhood 3.2.0 under a new name. Packages,
-  commands (lamplighter, lux-*), units and /etc/lamplighter.d renamed;
+  commands (lamplighter and lamplighter-* in sbin, lux-find and lux-du
+  in bin), units and /etc/lamplighter.d renamed;
   the database schema and configuration format are unchanged.
 - New lamplighter-compat package with Robinhood's command names.
 - SysV init scripts and the PHP web GUI removed.

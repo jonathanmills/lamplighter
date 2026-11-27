@@ -32,16 +32,16 @@ ou: services
 
 # --- service accounts (bind DNs for the web UI and Keycloak) ---
 
-dn: cn=lux-webui,ou=services,dc=lamplighter,dc=test
+dn: cn=lamplighter-webui,ou=services,dc=lamplighter,dc=test
 objectClass: applicationProcess
 objectClass: simpleSecurityObject
-cn: lux-webui
+cn: lamplighter-webui
 userPassword: webui-bind-secret
 
-dn: cn=lux-keycloak,ou=services,dc=lamplighter,dc=test
+dn: cn=lamplighter-keycloak,ou=services,dc=lamplighter,dc=test
 objectClass: applicationProcess
 objectClass: simpleSecurityObject
-cn: lux-keycloak
+cn: lamplighter-keycloak
 userPassword: keycloak-bind-secret
 
 # --- people ---
@@ -169,21 +169,21 @@ member: uid=dave,ou=people,dc=lamplighter,dc=test
 
 # --- web UI role groups (groupOfNames only; mapped to ACL roles) ---
 
-dn: cn=lux-admins,ou=groups,dc=lamplighter,dc=test
+dn: cn=lamplighter-admins,ou=groups,dc=lamplighter,dc=test
 objectClass: groupOfNames
-cn: lux-admins
+cn: lamplighter-admins
 description: Lamplighter web UI administrators
 member: uid=dave,ou=people,dc=lamplighter,dc=test
 
-dn: cn=lux-data-managers,ou=groups,dc=lamplighter,dc=test
+dn: cn=lamplighter-data-managers,ou=groups,dc=lamplighter,dc=test
 objectClass: groupOfNames
-cn: lux-data-managers
+cn: lamplighter-data-managers
 description: Data managers (cold-data explorer, exports)
 member: uid=carol,ou=people,dc=lamplighter,dc=test
 
-dn: cn=lux-viewers,ou=groups,dc=lamplighter,dc=test
+dn: cn=lamplighter-viewers,ou=groups,dc=lamplighter,dc=test
 objectClass: groupOfNames
-cn: lux-viewers
+cn: lamplighter-viewers
 description: Read-only dashboard access
 member: uid=alice,ou=people,dc=lamplighter,dc=test
 member: uid=erin,ou=people,dc=lamplighter,dc=test

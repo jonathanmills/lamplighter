@@ -28,7 +28,7 @@ cd webui/devenv
 The first run downloads images and takes a few minutes. Later runs take seconds. Run `./devenv.sh` with no arguments to list all commands. The main ones:
 
 - `./devenv.sh scan` re-scans the sample tree into MariaDB.
-- `./devenv.sh collect` runs the web UI collector once: the age histogram and usage snapshot, written to the `lux_webui` schema. The Overview's age chart and the Cold data page need at least one run.
+- `./devenv.sh collect` runs the web UI collector once: the age histogram and usage snapshot, written to the `lamplighter_webui` schema. The Overview's age chart and the Cold data page need at least one run.
 - `./devenv.sh data --scale 4` generates four times as many files (about 100k).
 - `./devenv.sh sql` opens a SQL shell on the Robinhood database.
 - `./devenv.sh test` runs the smoke test (19 checks covering LDAP, Keycloak and Robinhood/MariaDB).
@@ -40,18 +40,18 @@ The first run downloads images and takes a few minutes. Later runs take seconds.
 
 | User | Unix group | Web UI role group | Story in the sample data |
 |---|---|---|---|
-| `alice` | proj-astro | lux-viewers | Active analysis: mostly hot data |
+| `alice` | proj-astro | lamplighter-viewers | Active analysis: mostly hot data |
 | `bob` | proj-astro, proj-climate | — | Small-file storm in `/data/scratch` in the last 2 hours |
-| `carol` | hpc-staff | lux-data-managers | Staff |
-| `dave` | hpc-staff | lux-admins | Staff |
-| `erin` | proj-climate | lux-viewers | Large climate output, 1 month to 1 year old |
+| `carol` | hpc-staff | lamplighter-data-managers | Staff |
+| `dave` | hpc-staff | lamplighter-admins | Staff |
+| `erin` | proj-climate | lamplighter-viewers | Large climate output, 1 month to 1 year old |
 | `frank` | proj-genomics | — | Cold genomics data, untouched for 2 to 6 years |
 
 - Every user's password is `password`.
-- The LDAP service bind for the web UI is `cn=lux-webui,ou=services,dc=lamplighter,dc=test` with password `webui-bind-secret`.
+- The LDAP service bind for the web UI is `cn=lamplighter-webui,ou=services,dc=lamplighter,dc=test` with password `webui-bind-secret`.
 - Keycloak clients:
-  - `lux-webui` (secret `dev-webui-client-secret`): authorization code with PKCE. Direct password grants are also enabled, for automated tests only.
-  - `lux-checkmk` (secret `dev-checkmk-client-secret`): client credentials, with the `monitoring` role.
+  - `lamplighter-webui` (secret `dev-webui-client-secret`): authorization code with PKCE. Direct password grants are also enabled, for automated tests only.
+  - `lamplighter-checkmk` (secret `dev-checkmk-client-secret`): client credentials, with the `monitoring` role.
 - The Keycloak admin console login is `admin` / `admin`.
 
 `ldap/data.ldif` is the single source of truth: the workbench's Unix accounts and the owners of the generated files are derived from it.

@@ -33,7 +33,7 @@ What that means:
 **Design response:** the web UI never runs unbounded queries against `ENTRIES` while a page loads. Instead:
 
 1. **Live reads** use only cheap, indexed or aggregated sources: `ACCT_STAT`, `VARS`, and `NAMES`/`ENTRIES` by `id` or `parent_id`.
-2. A **collector** (a Python batch job, run on a timer) scans `ENTRIES` once per cycle, ideally on a **replica**. It writes pre-computed rollups into a separate `lux_webui` schema that the UI owns. Age histograms, cold-data rankings and per-directory trees all come from these rollups.
+2. A **collector** (a Python batch job, run on a timer) scans `ENTRIES` once per cycle, ideally on a **replica**. It writes pre-computed rollups into a separate `lamplighter_webui` schema that the UI owns. Age histograms, cold-data rankings and per-directory trees all come from these rollups.
 3. The collector also **snapshots** `ACCT_STAT` each cycle, giving per-user and per-group usage history. Robinhood itself only stores current values.
 
 ```
@@ -41,11 +41,11 @@ Lustre ──changelogs──▶ robinhood daemon ──▶ MariaDB (robinhood s
                                                 │
                                    (replica)    │ read-only
                                                 ▼
-                               lux-collector ──▶ MariaDB (lux_webui schema: rollups, history)
+                               lamplighter-collector ──▶ MariaDB (lamplighter_webui schema: rollups, history)
                                                 │
-Lustre jobstats ─▶ (spool dir or Prometheus) ─▶ lux-jobstats ─┤
+Lustre jobstats ─▶ (spool dir or Prometheus) ─▶ lamplighter-jobstats ─┤
                                                 ▼
-                       lux-webui API (Python) ◀──▶ browser (static SPA)
+                       lamplighter-webui API (Python) ◀──▶ browser (static SPA)
                                 ▲
                      OIDC IdP ──┘   (behind nginx, TLS)
 ```
@@ -74,13 +74,13 @@ Three concerns are kept separate:
 |---|---|---|
 | **Authentication** (login) | **OIDC via Keycloak** (preferred), or a **direct LDAP bind** (optional, configurable) | Either method can be enabled, or both. |
 | **Directory** (user identity and groups) | **LDAP**, always | Group memberships always come from LDAP, whichever login method was used. |
-| **Authorization** (ACLs) | Roles and permissions in the UI, **assigned to LDAP groups** | Managed in the UI's admin pages and stored in `lux_webui`. |
+| **Authorization** (ACLs) | Roles and permissions in the UI, **assigned to LDAP groups** | Managed in the UI's admin pages and stored in `lamplighter_webui`. |
 
 ### 4.1 Authentication
 
 **OIDC (Keycloak).** This is the preferred method: the UI never sees user passwords, and users get single sign-on and multi-factor authentication through Keycloak.
 - Authorization Code flow with PKCE, implemented **in the back end** (a "backend-for-frontend"). Tokens never reach the browser. The browser holds only an `HttpOnly; Secure; SameSite=Lax` session cookie containing a random session id. `Lax` rather than `Strict` is required, because the return from Keycloak is a cross-site navigation that must carry the cookie. Cross-site writes are refused by an Origin check. Library: Authlib.
-- `lux-webui` is a **confidential** Keycloak client with standard flow and PKCE (S256) enabled, and redirect URIs restricted to the UI's hostname. The endpoints come from the realm's `.well-known/openid-configuration` discovery document.
+- `lamplighter-webui` is a **confidential** Keycloak client with standard flow and PKCE (S256) enabled, and redirect URIs restricted to the UI's hostname. The endpoints come from the realm's `.well-known/openid-configuration` discovery document.
 - The logged-in user is mapped to the LDAP directory through a configured claim, `preferred_username` by default, matched against the LDAP `uid`. No roles are needed in Keycloak.
 - **Logout** uses RP-initiated logout (Keycloak's `end_session_endpoint`). Back-channel logout should also be enabled, so ending a session in Keycloak ends the UI session.
 
@@ -119,8 +119,8 @@ Example (site-specific values are placeholders):
 ldap:
   servers: [ldaps://ldap1.example.org, ldaps://ldap2.example.org]
   ca_file: /etc/pki/tls/certs/site-ca.pem
-  bind_dn: cn=lux-webui,ou=services,dc=example,dc=org
-  bind_password_file: /etc/lux-webui/ldap.secret
+  bind_dn: cn=lamplighter-webui,ou=services,dc=example,dc=org
+  bind_password_file: /etc/lamplighter.d/webui/ldap.secret
   directory_type: rfc2307bis
   users:
     base_dn: ou=people,dc=example,dc=org
@@ -156,10 +156,10 @@ The model follows Checkmk's: **permissions** are grouped into **roles**, and rol
   | `admin` | Everything, including triage, collector status, LDAP settings and ACL management |
 
 - **Data scope** is the second axis, separate from permissions. A role can be restricted to the user's own files (by `uidNumber`), to the user's Unix groups (`gidNumber`), or to specific path prefixes or projects. So a group's PI can see only their project's data.
-- **Mapping:** LDAP group DN to one or more roles, managed in the UI's admin pages and stored in `lux_webui`. A bootstrap admin group is set in the configuration file, so the first login can configure the rest.
+- **Mapping:** LDAP group DN to one or more roles, managed in the UI's admin pages and stored in `lamplighter_webui`. A bootstrap admin group is set in the configuration file, so the first login can configure the rest.
 - **Enforcement:** permissions are checked in the API, on every endpoint and query. The front end only hides what you can't use; it doesn't enforce anything.
-- **Audit log:** every login, permission denial, lookup and export is recorded with user identity and client address, as structured JSON to journald (the authoritative copy for the site's log collection). A copy also goes to `lux_webui.audit_log` through a background writer, so admins can search it on the **Audit log page** (built; `admin.audit.view`). That copy is pruned after `collector.audit_retention_days`. Routine successful monitoring polls are not audited (one a minute would bury real events); refused ones are.
-- **Access control page** (built; `admin.acl`): a read-only roles × permissions matrix in plain words, and each mapped LDAP group with its members resolved to login names. Role mappings stay in the config file for now. *Open question:* make them editable in the UI (stored in `lux_webui`, audited, with the config file as a fallback)?
+- **Audit log:** every login, permission denial, lookup and export is recorded with user identity and client address, as structured JSON to journald (the authoritative copy for the site's log collection). A copy also goes to `lamplighter_webui.audit_log` through a background writer, so admins can search it on the **Audit log page** (built; `admin.audit.view`). That copy is pruned after `collector.audit_retention_days`. Routine successful monitoring polls are not audited (one a minute would bury real events); refused ones are.
+- **Access control page** (built; `admin.acl`): a read-only roles × permissions matrix in plain words, and each mapped LDAP group with its members resolved to login names. Role mappings stay in the config file for now. *Open question:* make them editable in the UI (stored in `lamplighter_webui`, audited, with the config file as a fallback)?
 
 **Machine clients** (Checkmk) don't go through LDAP. They use the separate Keycloak client-credentials client with a `monitoring` permission only (section 7.4).
 
@@ -223,15 +223,15 @@ The view combines the two:
 1. **A spool directory (default).** A cron one-liner on each Lustre server (`lctl get_param -n mdt.*.job_stats` / `obdfilter.*.job_stats`) writes timestamped snapshot files; the site moves them by any means (NFS, rsync, scp). Lamplighter never connects to the servers. The files are untrusted input: strict names and size limits, safe parsing, never executed, rotated after processing, and stale servers are flagged.
 2. **Prometheus (the only alternative)**, for sites that already scrape jobstats. Metric and label names differ between exporters, so they are mapped in `config.yaml`.
 
-Both produce the same normalized records (window, filesystem, target, job ID, metadata operations, bytes read and written). Jobstats are cumulative and Lustre drops idle jobs (`job_cleanup_interval`), so the spool reader takes differences between consecutive snapshots per target and job, and treats a counter that goes down as a reset. A separate, frequent and cheap timer (`lux-jobstats`) does this, independent of the heavy `ENTRIES` collector.
+Both produce the same normalized records (window, filesystem, target, job ID, metadata operations, bytes read and written). Jobstats are cumulative and Lustre drops idle jobs (`job_cleanup_interval`), so the spool reader takes differences between consecutive snapshots per target and job, and treats a counter that goes down as a reset. A separate, frequent and cheap timer (`lamplighter-jobstats`) does this, independent of the heavy `ENTRIES` collector.
 
 ### 5.5 Browse and search
 - Directory tree browser, cheap through `parent_id` and `NAMES`, showing size and count per subtree from the rollups.
 - Lookup by path, or by owner within a subtree. Bounded queries only, with pagination and time limits.
 
-## 6. Collector design (`lux-collector`)
+## 6. Collector design (`lamplighter-collector`)
 
-Status: **v1 implemented** (`webui/backend/src/lux_webui/collector.py`), covering the age histogram and the `ACCT_STAT` history. Directory rollups are still to be designed (6.3).
+Status: **v1 implemented** (`webui/backend/src/lamplighter_webui/collector.py`), covering the age histogram and the `ACCT_STAT` history. Directory rollups are still to be designed (6.3).
 
 ### 6.1 How a run works
 - The collector runs from a timer (nightly), never from a web request. Only one collector runs at a time (MariaDB `GET_LOCK`), and each run is recorded in `collector_runs`.
@@ -241,15 +241,15 @@ Status: **v1 implemented** (`webui/backend/src/lux_webui/collector.py`), coverin
 - **Retention:** the newest `keep_runs` runs are kept, and their rows are deleted with them (`ON DELETE CASCADE`).
 - **Where it runs:** point `database` at a **read replica**. A long consistent read on the primary holds InnoDB's undo history while Robinhood writes changelog updates.
 
-### 6.2 Schema (`lux_webui`, managed by numbered migrations in `lux_webui/migrations/`)
+### 6.2 Schema (`lamplighter_webui`, managed by numbered migrations in `lamplighter_webui/migrations/`)
 - `collector_runs`: start and finish times, status, file count, error.
 - `age_hist`: run × uid × gid × access band × modify band → files, bytes, for regular files. Bands: < 7 d, 7–30 d, 30–90 d, 90 d–1 y, 1–3 y, > 3 y. Storing the joint distribution means "written long ago but still read" can also be answered.
 - `acct_history`: run × uid × gid × type → entries, bytes, blocks.
 
-The web UI's database user has `SELECT` on Robinhood's schema and full rights on `lux_webui` only. Robinhood's own tables are never written.
+The web UI's database user has `SELECT` on Robinhood's schema and full rights on `lamplighter_webui` only. Robinhood's own tables are never written.
 
 ### 6.3 Per-directory rollups (built, Phase 3)
-Implemented in `lux_webui/rollup.py`, run by the collector on its source connection:
+Implemented in `lamplighter_webui/rollup.py`, run by the collector on its source connection:
 1. A **recursive query** (`WITH RECURSIVE`, MariaDB 10.2+) walks only *directories*, through the `NAMES.parent_id` index, from the root down. The root is found as the parent that is nobody's child. Each directory is mapped to its ancestor at `collector.rollup_depth` (default 4), or to itself when shallower. The result goes into a **TEMPORARY table**, which works on a read-only replica.
 2. **One `GROUP BY` over the files** gives totals per tracked directory: files, bytes, newest and oldest access, and bytes not read for 1 and 3 years. A second `GROUP BY` per (directory, owner) gives the top owner.
 3. Python adds the totals up the tracked tree. Only directories at depth ≤ `rollup_depth` reach Python. Results go in `dir_rollup` (migration 003).
@@ -291,7 +291,7 @@ Checkmk's predictive levels can be applied to rate metrics to catch "unusual com
 **Design principle: Checkmk polls Robinhood's API.** Nothing is installed on the Robinhood host for monitoring (no Checkmk agent plugin), and Robinhood never pushes to Checkmk.
 
 - **API:** `GET /api/v1/monitoring` on the UI back end. It is read-only and returns JSON of all services and metrics.
-- **Machine authentication through Keycloak:** a second Keycloak client, `lux-checkmk`, uses the **client-credentials** grant (a service account) and carries only a `monitoring` role. The Checkmk special agent fetches a short-lived access token and sends it as a Bearer token. The API checks the token's signature against the realm's JWKS, plus its issuer, audience and role. No long-lived static tokens; the client secret is stored in Checkmk's password store. This is independent of how people log in to Checkmk itself (Checkmk's own SSO with Keycloak uses SAML). The special agent is our own code making a standard OAuth 2.0 token request, so the Robinhood side stays entirely OIDC/OAuth 2.0. It must be cheap to call every minute: it reads only live sources and the collector's stored results, and never scans `ENTRIES`.
+- **Machine authentication through Keycloak:** a second Keycloak client, `lamplighter-checkmk`, uses the **client-credentials** grant (a service account) and carries only a `monitoring` role. The Checkmk special agent fetches a short-lived access token and sends it as a Bearer token. The API checks the token's signature against the realm's JWKS, plus its issuer, audience and role. No long-lived static tokens; the client secret is stored in Checkmk's password store. This is independent of how people log in to Checkmk itself (Checkmk's own SSO with Keycloak uses SAML). The special agent is our own code making a standard OAuth 2.0 token request, so the Robinhood side stays entirely OIDC/OAuth 2.0. It must be cheap to call every minute: it reads only live sources and the collector's stored results, and never scans `ENTRIES`.
 - **Checkmk plugin (MKP)**, targeting **Checkmk Pro 2.5** (in use: 2.5.0p21):
   - a **special agent**, running on the Checkmk server and configured through `cmk.server_side_calls.v1`, that polls the endpoint;
   - **check plugins** using `cmk.agent_based.v2`, with services discovered per policy, fileclass, OST, pool and user;
@@ -303,7 +303,7 @@ Checkmk's predictive levels can be applied to rate metrics to catch "unusual com
 
 ```
 webui/
-  backend/        # FastAPI app (lux_webui package): api/, auth/, db/, collector/
+  backend/        # FastAPI app (lamplighter_webui package): api/, auth/, db/, collector/
   frontend/       # React + TS (Vite); `npm run build` → static dist/
   checkmk/        # Checkmk MKP: special agent, check plugins, rulesets
   packaging/      # lamplighter-webui.spec, systemd units, nginx example config
@@ -325,11 +325,11 @@ If measurements call for it, an analytical copy of ENTRIES in MariaDB ColumnStor
 
 | Phase | Delivers |
 |---|---|
-| 0. Skeleton | Repo layout, FastAPI app, OIDC login against a local Keycloak container (a test realm with the `lux-webui` and `lux-checkmk` clients), an OpenLDAP test container (RFC 2307bis), LDAP directory lookups and the ACL model, nginx config, read-only DB user, dev environment (Linux container with MariaDB and a sample Robinhood DB). |
+| 0. Skeleton | Repo layout, FastAPI app, OIDC login against a local Keycloak container (a test realm with the `lamplighter-webui` and `lamplighter-checkmk` clients), an OpenLDAP test container (RFC 2307bis), LDAP directory lookups and the ACL model, nginx config, read-only DB user, dev environment (Linux container with MariaDB and a sample Robinhood DB). |
 | 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. *Done: Overview, collector v1, a first Cold data page (owners with the most cold data, LDAP contact details, audited CSV export), and Users & groups (sortable tables with LDAP names, small-file share and change since the last snapshot, plus a per-user page with age, sizes, history and groups; viewers see only themselves). Still open: the scale test.* |
 | 2. Checkmk | *Done: admin pages (Directory, Access control (read-only), Audit log) and the Checkmk 2.5 plugin (`webui/checkmk`: special agent, 3 services, rulesets, MKP), tested against Checkmk's real APIs. Per-fileclass, per-policy and jobstats services done too (plugin 0.2.0; counts from the collector's fileclass/status pass, migration 005). Still to do: install on the site's real Checkmk 2.5 server (Checkmk publishes x86-64 images only, so not on Apple Silicon).* Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
 | 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. *Done: directory rollups, Browse (paths.view_all), coldest directories. Still open: own-files browsing (paths.view_own), scale measurement.* |
-| 4. Triage | Jobstats ingestion (spool directory, then Prometheus), triage dashboard. Rate metrics also feed Checkmk. No job scheduler dependency. *Done: spool source (`lux-jobstats` every minute, migration 004), triage API and page (busiest jobs with owners from LDAP, targets, activity over time, stale sources, Robinhood's recent changes and changelog), no-op job-details hook, RPM units, spool directory and `lux-jobstats` group. Prometheus source done too (`increase()` per run, metric/label mapping, checked against a real Prometheus 2.55). Still open: rate metrics for Checkmk; trying both sources on a real Lustre system.* |
+| 4. Triage | Jobstats ingestion (spool directory, then Prometheus), triage dashboard. Rate metrics also feed Checkmk. No job scheduler dependency. *Done: spool source (`lamplighter-jobstats` every minute, migration 004), triage API and page (busiest jobs with owners from LDAP, targets, activity over time, stale sources, Robinhood's recent changes and changelog), no-op job-details hook, RPM units, spool directory and `lamplighter-jobstats` group. Prometheus source done too (`increase()` per run, metric/label mapping, checked against a real Prometheus 2.55). Still open: rate metrics for Checkmk; trying both sources on a real Lustre system.* |
 | 5. Retire PHP | Feature parity check against `gui_v3`, remove `web_gui/` from the build and RPM, RPM packaging for the new UI. *Done: `robinhood-webgui` (PHP) removed from the build and spec; `lamplighter-webui` RPM (`webui/packaging`) with venv, systemd units, collector timer and nginx example, tested by installing it in a fresh Rocky 9.7 container behind nginx. `web_gui/` deleted (last copy: tag `robinhood-php-gui-final`). Still open: an x86_64 build host/CI, and these `gui_v3` features the new UI does not have yet (file search is done: directory-scoped, bounded, CSV export): **per-fileclass and policy-status counts** (the same per-policy counts Phase 2 needs), **a general data export** (CSV/JSON beyond the cold-data export), and **scheduled report tasks and custom/stacked graphs** (decide whether they are wanted). Dropped on purpose: access control by client IP address (a job for the firewall or nginx).* |
 
 ## 10. Licensing
@@ -351,7 +351,7 @@ Rules:
 
 ## 11. Open questions
 
-1. **Keycloak clients**: can the Keycloak admins create the `lux-webui` (authorization code) and `lux-checkmk` (client-credentials) clients? Does `preferred_username` in tokens always equal the LDAP `uid`?
+1. **Keycloak clients**: can the Keycloak admins create the `lamplighter-webui` (authorization code) and `lamplighter-checkmk` (client-credentials) clients? Does `preferred_username` in tokens always equal the LDAP `uid`?
 2. **Replica**: can the collector read from a MariaDB replica of the Robinhood database?
 3. **Scale**: roughly how many entries are in `ENTRIES` now, and how fast does it change? This sets the collector's design budget.
 4. **JavaScript tooling policy**: is building a React front end with npm on a build host acceptable, or do we need the no-build htmx option?

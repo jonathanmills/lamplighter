@@ -13,7 +13,7 @@ Lamplighter is a policy engine and metadata mirror for large Lustre and POSIX fi
 
 **Lamplighter is a fork of the [Robinhood Policy Engine](https://github.com/cea-hpc/robinhood)**, created by CEA in France. The engine at its heart is Robinhood's, and we intend to keep it that way.
 
-> **Status: early work in progress.** The rename is done: the daemon is `lamplighter`, the commands are `lux-find`, `lux-report` and so on, and the packages are `lamplighter-*`. The new web UI and Checkmk plugin work in the development environment, but nothing here is released yet. See [Status](#status).
+> **Status: early work in progress.** The rename is done: the daemon is `lamplighter`, its administration tools are `lamplighter-report`, `lamplighter-config` and so on, the user tools are `lux-find` and `lux-du`, and the packages are `lamplighter-*`. The new web UI and Checkmk plugin work in the development environment, but nothing here is released yet. See [Status](#status).
 
 ## Standing on the shoulders of Robinhood
 
@@ -31,7 +31,7 @@ As a firm project goal, and out of respect for Robinhood, **a site running Robin
 
 - **The database is unchanged.** Lamplighter uses Robinhood 3's database schema and data structures exactly as they are: the same tables, columns, triggers and stored functions. The same configuration produces the same schema in either program. We will not change them.
 - **Configuration files work unchanged.** Copy `/etc/robinhood.d/my-lustre-fs.conf` to `/etc/lamplighter.d/my-lustre-fs.conf` and it works: same syntax, same policies, same module names, same standard include files.
-- **Renamed helper programs are handled for you.** If a policy action runs a helper that Lamplighter renamed, Lamplighter uses the new name and logs a clear warning, and `lux-config check` helps you tidy your configuration once.
+- **Renamed helper programs are handled for you.** If a policy action runs a helper that Lamplighter renamed, Lamplighter uses the new name and logs a clear warning, and `lamplighter-config check` helps you tidy your configuration once.
 - **Old command names are available.** The optional `lamplighter-compat` package provides `rbh-find`, `rbh-report` and the other old names, so existing scripts and cron jobs keep running.
 
 ### Trying Lamplighter on a copy of your Robinhood database
@@ -62,7 +62,7 @@ The full contract, including exactly how renamed commands in configuration files
 
 There is a French connection too: the lamplighter (*l'allumeur de réverbères*) is one of the best-loved characters in Saint-Exupéry's *Le Petit Prince*, a fitting nod to Robinhood's French origins.
 
-**The commands use the prefix `lux-`**, Latin for *light*: `lux-find`, `lux-du`, `lux-report`. The daemon is `lamplighter`, run as `lamplighter@<fsname>.service`.
+**Tools for every user carry the prefix `lux-`**, Latin for *light*: `lux-find` and `lux-du`, installed in `/usr/bin`. Everything else carries the project's own name, following Unix's `bin`/`sbin` split: the daemon `lamplighter` (run as `lamplighter@<fsname>.service`) and the administration tools in `/usr/sbin`, `lamplighter-report`, `lamplighter-config` and the rest.
 
 **And a second story, from Rome:** once the census of the whole people was complete, a censor performed the *lustrum*, the purification of the people. First you count everything, then you purify. Lamplighter works the same way: it takes a census of the filesystem into a database, then runs policies over what it found. *Lustrum* is also an ancestor of the word "lustre". The whole naming discussion is in [doc/NAMING.md](doc/NAMING.md).
 
@@ -110,7 +110,7 @@ Perl build helpers are being replaced with Python, and the kernel's `checkpatch.
 | Area | Where it stands |
 |---|---|
 | Policy engine, scanner, changelog reader, `find`/`du`/`report` tools | Robinhood 3's engine, working, now under Lamplighter's names. |
-| Rename to Lamplighter (`lux-*`, `lamplighter`, `/etc/lamplighter.d`, packages, `lamplighter-compat`) | Done, following [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md). Upgrading over installed Robinhood RPMs and the full integration suite still need testing on a Linux host. |
+| Rename to Lamplighter (`lamplighter`, `lamplighter-*`, `lux-find`/`lux-du`, `/etc/lamplighter.d`, packages, `lamplighter-compat`) | Done, following [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md). Upgrading over installed Robinhood RPMs and the full integration suite still need testing on a Linux host. |
 | Web UI: sign-in (OIDC and LDAP), LDAP groups and ACLs, audit log | Working in the development environment |
 | Web UI: overview, users and groups, cold data, directory browsing | Working in the development environment |
 | Web UI: slowdown triage with Lustre jobstats | In progress |
@@ -144,9 +144,9 @@ sudo dnf builddep rpms/SRPMS/lamplighter-*.src.rpm
 rpmbuild --rebuild rpms/SRPMS/lamplighter-*.src.rpm     # RPMs in ~/rpmbuild/RPMS/<arch>/
 ```
 
-This builds the POSIX packages: `lamplighter-posix`, `lamplighter-adm` (`lux-config`), `lamplighter-tests` and `lamplighter-compat` (Robinhood's command names, only if you need them). For Lustre, add `--with lustre` to `rpmbuild --rebuild` on a host with the Lustre client and its development package; the Lustre build has not been tested in this project's own environment yet.
+This builds the POSIX packages: `lamplighter-posix`, `lamplighter-adm` (`lamplighter-config`), `lamplighter-tests` and `lamplighter-compat` (Robinhood's command names, only if you need them). For Lustre, add `--with lustre` to `rpmbuild --rebuild` on a host with the Lustre client and its development package; the Lustre build has not been tested in this project's own environment yet.
 
-Then install the packages, create the database (`lux-config create_db`), put your configuration in `/etc/lamplighter.d/<fsname>.conf` (templates are in `/etc/lamplighter.d/templates/`, and a Robinhood configuration works unchanged), and start `lamplighter@<fsname>.service`. Robinhood's installation guide covers the details: [doc/ROBINHOOD-README.md](doc/ROBINHOOD-README.md), with Lamplighter's names (`lamplighter` for `robinhood`, `lux-*` for `rbh-*`, `/etc/lamplighter.d` for `/etc/robinhood.d`).
+Then install the packages, create the database (`lamplighter-config create_db`), put your configuration in `/etc/lamplighter.d/<fsname>.conf` (templates are in `/etc/lamplighter.d/templates/`, and a Robinhood configuration works unchanged), and start `lamplighter@<fsname>.service`. Robinhood's installation guide covers the details: [doc/ROBINHOOD-README.md](doc/ROBINHOOD-README.md), with Lamplighter's names (`lamplighter` for `robinhood`, `lamplighter-report` and friends for `rbh-report` and friends, `lux-find`/`lux-du` for `rbh-find`/`rbh-du`, `/etc/lamplighter.d` for `/etc/robinhood.d`).
 
 ### The web UI
 

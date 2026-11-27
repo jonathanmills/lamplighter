@@ -54,7 +54,7 @@ usage: ./devenv.sh COMMAND
   scan      run a full Robinhood scan of the sample tree into MariaDB
   classify  run the classifier alert policy once (fileclasses, alert_status)
   collect   run the web UI collector once (age histogram, usage snapshot)
-  jobstats  write simulated Lustre jobstats to the spool and run lux-jobstats
+  jobstats  write simulated Lustre jobstats to the spool and run lamplighter-jobstats
   prometheus       start the optional Prometheus with a simulated jobstats exporter
   prometheus-down  stop it
   test      run the smoke test (LDAP, Keycloak, MariaDB/Robinhood)
@@ -79,7 +79,7 @@ case $cmd in
         mkdir -p ../frontend/dist
         compose up -d --build
         # the web UI's own schema and user (idempotent; also run on fresh volumes)
-        compose exec -T mariadb mariadb -uroot -pdevroot < mariadb/lux_webui.sql
+        compose exec -T mariadb mariadb -uroot -pdevroot < mariadb/lamplighter_webui.sql
         wait_keycloak
         compose ps
         ;;
@@ -103,7 +103,7 @@ case $cmd in
             -f /devenv/engine/lamplighter.conf
         ;;
     collect)
-        compose exec -T webui lux-collector run
+        compose exec -T webui lamplighter-collector run
         ;;
     prometheus)
         # opt-in: Prometheus + simulated jobstats exporter (http://127.0.0.1:9090)
@@ -113,23 +113,24 @@ case $cmd in
         compose --profile prometheus stop prometheus jobstats-exporter
         ;;
     jobstats)
-        # simulated Lustre servers drop snapshots; lux-jobstats reads them.
+        # simulated Lustre servers drop snapshots; lamplighter-jobstats reads them.
         # Start from empty tables: each run simulates the last two hours anew.
         compose exec -T webui python - <<'PY'
 from sqlalchemy import text
-from lux_webui.config import load_settings
-from lux_webui.db import make_engine
-from lux_webui.store import migrate
+from lamplighter_webui.config import load_settings
+from lamplighter_webui.db import make_engine
+from lamplighter_webui.store import migrate
 engine = make_engine(load_settings().store)
 migrate(engine)
 with engine.begin() as c:
     c.execute(text("DELETE FROM jobstats_interval"))
     c.execute(text("DELETE FROM jobstats_sources"))
 PY
-        compose exec -T webui python /devenv/tools/gen_jobstats.py /var/spool/lux-jobstats
-        compose exec -T webui python -m lux_webui.jobstats
+        compose exec -T webui python /devenv/tools/gen_jobstats.py /var/spool/lamplighter-jobstats
+        compose exec -T webui python -m lamplighter_webui.jobstats
         ;;
     test)
+        python3 tools/check_names.py || exit 1   # the naming rule (bin: lux-, else lamplighter)
         wait_keycloak
         wb bash /devenv/smoke-test.sh
         ;;
@@ -140,7 +141,7 @@ PY
     checkmk-test|mkp)
         cmk_api
         run_py313() {
-            docker run --rm --network lux-dev_default -v "$PWD/.cmk-api:/cmkapi:ro" \
+            docker run --rm --network lamplighter-dev_default -v "$PWD/.cmk-api:/cmkapi:ro" \
                 -v "$PWD/../checkmk:/plugin" -v "$PWD/.certs:/certs:ro" \
                 -e PYTHONPATH=/cmkapi:/plugin -e PYTHONDONTWRITEBYTECODE=1 \
                 docker.io/library/python:3.13-slim sh -c "pip install -q pytest pydantic cryptography 2>/dev/null; $1"
@@ -155,7 +156,7 @@ PY
     shots)
         # Hard time limit and one retry: headless Chromium can stall at start-up.
         for attempt in 1 2; do
-            if docker run --rm --network lux-dev_default --ipc=host -v "$PWD:/devenv" \
+            if docker run --rm --network lamplighter-dev_default --ipc=host -v "$PWD:/devenv" \
                    mcr.microsoft.com/playwright/python:v1.48.0-noble \
                    sh -c "pip install -q playwright==1.48.0 && timeout 240 python /devenv/tools/screenshot.py"; then
                 break

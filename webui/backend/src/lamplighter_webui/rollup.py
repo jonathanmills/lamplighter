@@ -40,9 +40,9 @@ def compute(c: Connection, now: int, depth: int, fs_path: str) -> list[dict]:
     root = _root(c)
     if root is None:
         return []
-    c.execute(text("DROP TEMPORARY TABLE IF EXISTS lux_webui_tree"))
+    c.execute(text("DROP TEMPORARY TABLE IF EXISTS lamplighter_webui_tree"))
     c.execute(text(
-        "CREATE TEMPORARY TABLE lux_webui_tree (id VARBINARY(64), parent_id VARBINARY(64), "
+        "CREATE TEMPORARY TABLE lamplighter_webui_tree (id VARBINARY(64), parent_id VARBINARY(64), "
         "name VARBINARY(255), depth INT, anc VARBINARY(64), KEY (id), KEY (anc)) ENGINE=InnoDB "
         "WITH RECURSIVE tree AS ("
         "  SELECT n.id, n.parent_id, n.name, 1 AS depth, n.id AS anc"
@@ -56,7 +56,7 @@ def compute(c: Connection, now: int, depth: int, fs_path: str) -> list[dict]:
 
     # The tracked directories themselves (few): id, parent, name, depth, owner.
     tracked = c.execute(text(
-        "SELECT t.id, t.parent_id, t.name, t.depth, e.uid FROM lux_webui_tree t "
+        "SELECT t.id, t.parent_id, t.name, t.depth, e.uid FROM lamplighter_webui_tree t "
         "JOIN ENTRIES e ON e.id = t.id WHERE t.depth <= :depth"), {"depth": depth}).all()
 
     cold1, cold3 = now - YEAR, now - 3 * YEAR
@@ -68,15 +68,15 @@ def compute(c: Connection, now: int, depth: int, fs_path: str) -> list[dict]:
         "GROUP BY k {group_owner}")
     p = {"c1": cold1, "c3": cold3, "root": root}
     # files under tracked directories, keyed by their tracked ancestor
-    direct = c.execute(text(agg_sql.format(key="t.anc", owner="", join="JOIN lux_webui_tree t ON t.id = n.parent_id",
+    direct = c.execute(text(agg_sql.format(key="t.anc", owner="", join="JOIN lamplighter_webui_tree t ON t.id = n.parent_id",
                                            where="", group_owner="")), p).all()
     # files directly in the root
     direct += c.execute(text(agg_sql.format(key="n.parent_id", owner="", join="",
                                             where="AND n.parent_id = :root", group_owner="")), p).all()
     owners = c.execute(text(
         "SELECT t.anc, e.uid, COALESCE(SUM(e.size), 0) FROM ENTRIES e JOIN NAMES n ON n.id = e.id "
-        "JOIN lux_webui_tree t ON t.id = n.parent_id WHERE e.type = 'file' GROUP BY t.anc, e.uid")).all()
-    c.execute(text("DROP TEMPORARY TABLE IF EXISTS lux_webui_tree"))
+        "JOIN lamplighter_webui_tree t ON t.id = n.parent_id WHERE e.type = 'file' GROUP BY t.anc, e.uid")).all()
+    c.execute(text("DROP TEMPORARY TABLE IF EXISTS lamplighter_webui_tree"))
 
     # --- assemble and roll up in Python (tracked directories only) ---
     node: dict[bytes, dict] = {root: {"dir_id": root, "parent_dir": None, "depth": 0, "name": "",

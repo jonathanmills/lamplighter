@@ -18,7 +18,7 @@ SERV_PORT=49999
 # must be < lamplighter's copy_timeout
 TIMEOUT=15000
 
-LOG_FILE="/var/log/lamplighter/luxext_tool_clnt.log"
+LOG_FILE="/var/log/lamplighter/lamplighter-ext-tool-clnt.log"
 
 #Should be 'y' if you want to debug
 DEBUG="n"

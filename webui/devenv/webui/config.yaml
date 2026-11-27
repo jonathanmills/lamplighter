@@ -12,14 +12,14 @@ server:
 oidc:
   enabled: true
   issuer: https://keycloak.test:9443/realms/lamplighter
-  client_id: lux-webui
+  client_id: lamplighter-webui
   client_secret_file: /devenv/webui/oidc-client.secret
   ca_file: /certs/ca.pem
 
 ldap:
   servers: [ldaps://ldap.test:636]
   ca_file: /certs/ca.pem
-  bind_dn: cn=lux-webui,ou=services,dc=lamplighter,dc=test
+  bind_dn: cn=lamplighter-webui,ou=services,dc=lamplighter,dc=test
   bind_password_file: /devenv/webui/ldap-bind.secret
   directory_type: rfc2307bis
   users:
@@ -34,11 +34,11 @@ login:
 
 access:
   bootstrap_admin_groups:
-    - cn=lux-admins,ou=groups,dc=lamplighter,dc=test
+    - cn=lamplighter-admins,ou=groups,dc=lamplighter,dc=test
   role_mappings:
-    - group: cn=lux-data-managers,ou=groups,dc=lamplighter,dc=test
+    - group: cn=lamplighter-data-managers,ou=groups,dc=lamplighter,dc=test
       roles: [data-manager]
-    - group: cn=lux-viewers,ou=groups,dc=lamplighter,dc=test
+    - group: cn=lamplighter-viewers,ou=groups,dc=lamplighter,dc=test
       roles: [viewer]
 
 database:
@@ -49,8 +49,8 @@ database:
 
 store:
   host: mariadb
-  name: lux_webui
-  user: lux_webui
+  name: lamplighter_webui
+  user: lamplighter_webui
   password_file: /devenv/webui/store.secret
 
 collector:
@@ -61,10 +61,10 @@ collector:
 jobstats:
   source: spool
   spool:
-    directory: /var/spool/lux-jobstats
+    directory: /var/spool/lamplighter-jobstats
   stale_after_seconds: 300
 
 monitoring:
   enabled: true
-  audience: lux-webui
+  audience: lamplighter-webui
   required_role: monitoring

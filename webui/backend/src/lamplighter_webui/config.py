@@ -2,8 +2,8 @@
 # Copyright (C) 2026 Jonathan Mills
 """Configuration, loaded from one YAML file.
 
-The file is named by the LUX_WEBUI_CONFIG environment variable
-(default /etc/lux-webui/config.yaml). Secrets never appear in it:
+The file is named by the LAMPLIGHTER_WEBUI_CONFIG environment variable
+(default /etc/lamplighter.d/webui/config.yaml). Secrets never appear in it:
 each one is read from its own file (``*_file`` settings), which
 should be readable only by the service account.
 """
@@ -149,7 +149,7 @@ class CollectorConfig(BaseModel):
 class JobstatsSpool(BaseModel):
     # Each Lustre server drops <host>.<unix time>.jobstats files here
     # (written as .tmp, then renamed). The service account owns it.
-    directory: str = "/var/spool/lux-jobstats"
+    directory: str = "/var/spool/lamplighter-jobstats"
     max_file_bytes: int = 64 * 1024 * 1024
     # Snapshots further apart than this are not differenced (a gap would
     # smear hours of activity into one interval): the newer one becomes
@@ -163,7 +163,7 @@ class JobstatsPrometheus(BaseModel):
     bearer_token_file: str | None = None
     timeout_seconds: float = 10.0
     # Metric and label names differ between exporters, so they are mapped
-    # here. Each metric is a counter; lux-jobstats queries increase() over
+    # here. Each metric is a counter; lamplighter-jobstats queries increase() over
     # the interval since its previous run.
     job_label: str = "jobid"
     target_label: str = "target"
@@ -216,7 +216,7 @@ class Settings(BaseModel):
     login: LoginConfig = LoginConfig()
     access: AccessConfig = AccessConfig()
     database: DatabaseConfig           # Robinhood's schema: read only (ideally a replica)
-    store: DatabaseConfig              # the web UI's own lux_webui schema: read-write
+    store: DatabaseConfig              # the web UI's own lamplighter_webui schema: read-write
     collector: CollectorConfig = CollectorConfig()
     monitoring: MonitoringConfig | None = None
     jobstats: JobstatsConfig | None = None   # None: triage shows Robinhood's side only
@@ -229,6 +229,6 @@ class Settings(BaseModel):
 
 
 def load_settings(path: str | None = None) -> Settings:
-    path = path or os.environ.get("LUX_WEBUI_CONFIG", "/etc/lux-webui/config.yaml")
+    path = path or os.environ.get("LAMPLIGHTER_WEBUI_CONFIG", "/etc/lamplighter.d/webui/config.yaml")
     with open(path, encoding="utf-8") as fh:
         return Settings.model_validate(yaml.safe_load(fh))

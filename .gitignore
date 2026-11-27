@@ -49,7 +49,7 @@ cscope.*
 /scripts/sysconfig_lamplighter
 /scripts/ld.so.lamplighter.conf
 /scripts/lamplighter.conf
-/scripts/lux_cksum.sh
+/scripts/lamplighter-cksum.sh
 /src/Makefile
 /src/todo
 /src/robinhood/todo
@@ -88,10 +88,10 @@ cscope.*
 /src/tools/lhsmtool_cmd
 /src/robinhood/lux-du
 /src/robinhood/lux-find
-/src/robinhood/lux-report
-/src/robinhood/lux-rebind
-/src/robinhood/lux-diff
-/src/robinhood/lux-undelete
+/src/robinhood/lamplighter-report
+/src/robinhood/lamplighter-rebind
+/src/robinhood/lamplighter-diff
+/src/robinhood/lamplighter-undelete
 /src/robinhood/lamplighter
 /tests/lustre_fs/*.log
 /tests/posix_fs/*.log

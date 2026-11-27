@@ -150,17 +150,17 @@ static const struct {
     const char *new_name;
 } renamed_cmds[] = {
     {"robinhood", "lamplighter"},
-    {"rbh-report", "lux-report"},
+    {"rbh-report", "lamplighter-report"},
     {"rbh-find", "lux-find"},
     {"rbh-du", "lux-du"},
-    {"rbh-diff", "lux-diff"},
-    {"rbh-undelete", "lux-undelete"},
-    {"rbh-rebind", "lux-rebind"},
-    {"rbh-config", "lux-config"},
-    {"rbh_cksum.sh", "lux_cksum.sh"},
-    {"rbhext_tool", "luxext_tool"},
-    {"rbhext_tool_svr", "luxext_tool_svr"},
-    {"rbhext_tool_clnt", "luxext_tool_clnt"},
+    {"rbh-diff", "lamplighter-diff"},
+    {"rbh-undelete", "lamplighter-undelete"},
+    {"rbh-rebind", "lamplighter-rebind"},
+    {"rbh-config", "lamplighter-config"},
+    {"rbh_cksum.sh", "lamplighter-cksum.sh"},
+    {"rbhext_tool", "lamplighter-ext-tool"},
+    {"rbhext_tool_svr", "lamplighter-ext-tool-svr"},
+    {"rbhext_tool_clnt", "lamplighter-ext-tool-clnt"},
     {NULL, NULL}
 };
 
@@ -226,7 +226,7 @@ static void translate_renamed_cmd(char **argv, const char *param,
                    "WARNING: %s = cmd(\"%s\"): '%s' is Robinhood's name "
                    "for Lamplighter's '%s'. It runs as written, because "
                    "the old name is installed (lamplighter-compat). Please "
-                   "update the configuration: see 'lux-config check'.",
+                   "update the configuration: see 'lamplighter-config check'.",
                    param, cmd, base, renamed_cmds[i].new_name);
         return;
     }
@@ -237,7 +237,7 @@ static void translate_renamed_cmd(char **argv, const char *param,
                "WARNING: %s = cmd(\"%s\"): '%s' is Robinhood's name for "
                "Lamplighter's '%s' and is not installed, so '%s' runs "
                "instead. Please update the configuration: see "
-               "'lux-config check'.",
+               "'lamplighter-config check'.",
                param, cmd, argv[0], renamed_cmds[i].new_name, new_prog);
     g_free(argv[0]);
     argv[0] = new_prog;

@@ -5,8 +5,8 @@
 import pytest
 
 from conftest import BASE, oidc_login, post_same_origin
-from lux_webui.ldapdiag import test_servers as run_ldap_test
-from lux_webui.ldapdir import Directory
+from lamplighter_webui.ldapdiag import test_servers as run_ldap_test
+from lamplighter_webui.ldapdir import Directory
 
 pytestmark = pytest.mark.integration
 
@@ -25,7 +25,7 @@ def test_only_admins(client, user):
 def test_config_never_contains_secrets(client):
     oidc_login(client, "dave", "password")
     body = client.get("/api/v1/admin/directory/config").text
-    for secret in ("webui-bind-secret", "dev-webui-client-secret", "dev-session-secret", "lux_webui\n"):
+    for secret in ("webui-bind-secret", "dev-webui-client-secret", "dev-session-secret", "lamplighter_webui\n"):
         assert secret not in body
     cfg = client.get("/api/v1/admin/directory/config").json()
     assert cfg["ldap"]["users"]["filter"] == "(&(objectClass=posixAccount)(uid={username}))"
@@ -80,5 +80,5 @@ def test_mappings_checked_against_directory(client):
     oidc_login(client, "dave", "password")
     rows = client.get("/api/v1/admin/directory/mappings").json()["mappings"]
     assert all(r["exists"] for r in rows)
-    viewers = next(r for r in rows if r["group"].startswith("cn=lux-viewers"))
+    viewers = next(r for r in rows if r["group"].startswith("cn=lamplighter-viewers"))
     assert viewers["members"] == 2 and viewers["roles"] == ["viewer"]

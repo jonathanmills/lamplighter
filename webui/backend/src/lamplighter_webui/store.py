@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
-"""The web UI's own schema (lux_webui): migrations and reads.
+"""The web UI's own schema (lamplighter_webui): migrations and reads.
 
-Migrations are numbered SQL files in lux_webui/migrations, applied in
+Migrations are numbered SQL files in lamplighter_webui/migrations, applied in
 order and recorded in schema_version. They are never edited once
 released; changes go in a new file.
 """
@@ -21,7 +21,7 @@ log = logging.getLogger(__name__)
 
 def _migrations() -> list[tuple[int, str, str]]:
     found = []
-    for f in resources.files("lux_webui.migrations").iterdir():
+    for f in resources.files("lamplighter_webui.migrations").iterdir():
         m = re.match(r"(\d+)_.*\.sql$", f.name)
         if m:
             found.append((int(m.group(1)), f.name, f.read_text(encoding="utf-8")))
@@ -40,7 +40,7 @@ def migrate(engine: Engine) -> int:
                        "version INT NOT NULL PRIMARY KEY, name VARCHAR(255) NOT NULL, "
                        "applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB"))
         # Serialize concurrent migrators (e.g. two collectors starting at once).
-        c.execute(text("SELECT GET_LOCK('lux_webui_migrate', 60)"))
+        c.execute(text("SELECT GET_LOCK('lamplighter_webui_migrate', 60)"))
         try:
             done = {v for (v,) in c.execute(text("SELECT version FROM schema_version"))}
             for version, name, sql in _migrations():
@@ -53,7 +53,7 @@ def migrate(engine: Engine) -> int:
                           {"v": version, "n": name})
             return c.execute(text("SELECT COALESCE(MAX(version), 0) FROM schema_version")).scalar_one()
         finally:
-            c.execute(text("SELECT RELEASE_LOCK('lux_webui_migrate')"))
+            c.execute(text("SELECT RELEASE_LOCK('lamplighter_webui_migrate')"))
 
 
 # --- reads for the API ----------------------------------------------------

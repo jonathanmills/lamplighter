@@ -7,14 +7,14 @@
   "accessTokenLifespan": 300,
   "roles": {
     "client": {
-      "lux-webui": [
+      "lamplighter-webui": [
         { "name": "monitoring", "description": "Machine access to /api/v1/monitoring (Checkmk)" }
       ]
     }
   },
   "clients": [
     {
-      "clientId": "lux-webui",
+      "clientId": "lamplighter-webui",
       "name": "Lamplighter Web UI",
       "protocol": "openid-connect",
       "enabled": true,
@@ -33,7 +33,7 @@
       }
     },
     {
-      "clientId": "lux-checkmk",
+      "clientId": "lamplighter-checkmk",
       "name": "Checkmk special agent",
       "protocol": "openid-connect",
       "enabled": true,
@@ -46,11 +46,11 @@
       "serviceAccountsEnabled": true,
       "protocolMappers": [
         {
-          "name": "audience-lux-webui",
+          "name": "audience-lamplighter-webui",
           "protocol": "openid-connect",
           "protocolMapper": "oidc-audience-mapper",
           "config": {
-            "included.client.audience": "lux-webui",
+            "included.client.audience": "lamplighter-webui",
             "access.token.claim": "true",
             "id.token.claim": "false"
           }
@@ -60,10 +60,10 @@
   ],
   "users": [
     {
-      "username": "service-account-lux-checkmk",
+      "username": "service-account-lamplighter-checkmk",
       "enabled": true,
-      "serviceAccountClientId": "lux-checkmk",
-      "clientRoles": { "lux-webui": ["monitoring"] }
+      "serviceAccountClientId": "lamplighter-checkmk",
+      "clientRoles": { "lamplighter-webui": ["monitoring"] }
     }
   ],
   "components": {
@@ -126,7 +126,7 @@
           "connectionUrl": ["ldaps://ldap.test:636"],
           "useTruststoreSpi": ["always"],
           "authType": ["simple"],
-          "bindDn": ["cn=lux-keycloak,ou=services,dc=lamplighter,dc=test"],
+          "bindDn": ["cn=lamplighter-keycloak,ou=services,dc=lamplighter,dc=test"],
           "bindCredential": ["keycloak-bind-secret"],
           "usersDn": ["ou=people,dc=lamplighter,dc=test"],
           "searchScope": ["1"],

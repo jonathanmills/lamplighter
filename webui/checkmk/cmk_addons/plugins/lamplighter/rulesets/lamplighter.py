@@ -50,7 +50,7 @@ def _agent_form() -> Dictionary:
                 help_text=Help("For example https://keycloak.example.org/realms/REALM/protocol/openid-connect/token"),
                 custom_validate=(_HTTPS,))),
             "client_id": DictElement(required=True, parameter_form=String(
-                title=Title("Client ID"), prefill=DefaultValue("lux-checkmk"),
+                title=Title("Client ID"), prefill=DefaultValue("lamplighter-checkmk"),
                 custom_validate=(LengthInRange(min_value=1),))),
             "client_secret": DictElement(required=True, parameter_form=Password(
                 title=Title("Client secret"))),

@@ -4,7 +4,7 @@
 
 Two views side by side (doc/webui-design.md section 5.4):
 - Lustre jobstats, when configured: the busiest jobs, targets and a
-  time series, from lux-jobstats' tables (cheap, indexed by time).
+  time series, from lamplighter-jobstats' tables (cheap, indexed by time).
   Job IDs are shown as Lustre labels them; with the default jobid_name
   ("%e.%u") the UID is resolved to a person through LDAP.
 - Robinhood: recently modified data by owner (collector) and the

@@ -34,4 +34,4 @@ if [[ ! -f Makefile ]]; then
 fi
 make -j"$(nproc)"
 
-echo "lux-dev: lamplighter built in $dst"
+echo "lamplighter-dev: lamplighter built in $dst"

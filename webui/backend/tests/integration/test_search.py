@@ -8,8 +8,8 @@ import pytest
 from sqlalchemy import text
 
 from conftest import oidc_login
-from lux_webui.db import make_engine
-from lux_webui.search_api import MAX_RESULTS, glob_to_like
+from lamplighter_webui.db import make_engine
+from lamplighter_webui.search_api import MAX_RESULTS, glob_to_like
 
 pytestmark = pytest.mark.integration
 GiB = 1 << 30

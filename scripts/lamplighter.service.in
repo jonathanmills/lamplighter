@@ -8,5 +8,5 @@ Type=simple
 KillMode=mixed
 EnvironmentFile=-@CONFDIR@/sysconfig/lamplighter
 LimitNOFILE=8096
-ExecStart=@SBINDIR@/lamplighter $LUX_OPT
+ExecStart=@SBINDIR@/lamplighter $LAMPLIGHTER_OPT
 ExecReload=/bin/kill -HUP $MAINPID

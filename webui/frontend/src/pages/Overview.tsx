@@ -76,7 +76,7 @@ export default function Overview() {
                table={ageBands.length ? { columns: ["Last accessed", "Volume", "Files"], rows: ageBands.map((b) => [b.label, bytes(b.bytes), int(b.files)]) } : undefined}>
           {age === "none" ? (
             <div className="empty" style={{ padding: 8 }}>
-              <p className="muted">Appears after the collector's first run (<span className="cmd">lux-collector run</span>).</p>
+              <p className="muted">Appears after the collector's first run (<span className="cmd">lamplighter-collector run</span>).</p>
             </div>
           ) : (
             <BarChart binary categories={ageLabels} values={ageBytes} colorTokens={RAMP} format={bytes}

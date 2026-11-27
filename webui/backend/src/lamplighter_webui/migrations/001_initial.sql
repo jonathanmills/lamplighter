@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 -- Copyright (C) 2026 Jonathan Mills
 --
--- lux_webui schema, version 1: the collector's outputs.
+-- lamplighter_webui schema, version 1: the collector's outputs.
 -- This schema belongs to the web UI; Robinhood's own schema is never written.
 
 CREATE TABLE collector_runs (

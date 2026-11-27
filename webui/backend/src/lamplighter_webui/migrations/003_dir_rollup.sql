@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 -- Copyright (C) 2026 Jonathan Mills
 --
--- lux_webui schema, version 3: per-directory subtree totals down to
+-- lamplighter_webui schema, version 3: per-directory subtree totals down to
 -- collector.rollup_depth, for Browse and the coldest-directories view.
 
 CREATE TABLE dir_rollup (

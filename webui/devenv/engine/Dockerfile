@@ -20,6 +20,6 @@ RUN dnf -y install epel-release dnf-plugins-core \
  && dnf clean all
 
 # The workbench trusts the dev test CA (mounted at /certs at runtime).
-COPY entrypoint.sh /usr/local/bin/lux-dev-entrypoint
-ENTRYPOINT ["/usr/local/bin/lux-dev-entrypoint"]
+COPY entrypoint.sh /usr/local/bin/lamplighter-dev-entrypoint
+ENTRYPOINT ["/usr/local/bin/lamplighter-dev-entrypoint"]
 CMD ["sleep", "infinity"]

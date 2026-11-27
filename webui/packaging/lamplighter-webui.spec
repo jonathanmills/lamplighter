@@ -7,11 +7,11 @@
 # architecture. The front end is built here with Node.js 18 or newer
 # (BuildRequires only: the installed RPM never needs Node.js). npm and pip
 # download packages, so the build host needs internet access or mirrors.
-# %%install creates the virtualenv at its real path (/opt/lux-webui),
+# %%install creates the virtualenv at its real path (/opt/lamplighter-webui),
 # because virtualenvs record absolute paths: build on a host where
-# /opt/lux-webui is not in use.
+# /opt/lamplighter-webui is not in use.
 
-%global venv /opt/lux-webui
+%global venv /opt/lamplighter-webui
 %global debug_package %{nil}
 %global __brp_python_bytecompile %{nil}
 # Everything under the venv is private: no automatic Requires/Provides from it.
@@ -20,7 +20,7 @@
 
 Name:           lamplighter-webui
 Version:        0.1.0
-Release:        3%{?dist}
+Release:        4%{?dist}
 Summary:        Web UI and monitoring API for Lamplighter
 License:        GPL-2.0-or-later
 URL:            https://github.com/jonathanmills/lamplighter
@@ -60,62 +60,68 @@ python3.12 -m venv %{venv}
 mkdir -p %{buildroot}/opt
 cp -a %{venv} %{buildroot}/opt/
 
-install -d %{buildroot}%{_datadir}/lux-webui
-cp -a frontend/dist %{buildroot}%{_datadir}/lux-webui/frontend
+install -d %{buildroot}%{_datadir}/lamplighter-webui
+cp -a frontend/dist %{buildroot}%{_datadir}/lamplighter-webui/frontend
 
-install -D -m 0644 packaging/lux-webui.service           %{buildroot}%{_unitdir}/lux-webui.service
-install -D -m 0644 packaging/lux-collector.service %{buildroot}%{_unitdir}/lux-collector.service
-install -D -m 0644 packaging/lux-collector.timer   %{buildroot}%{_unitdir}/lux-collector.timer
-install -D -m 0644 packaging/lux-jobstats.service  %{buildroot}%{_unitdir}/lux-jobstats.service
-install -D -m 0644 packaging/lux-jobstats.timer    %{buildroot}%{_unitdir}/lux-jobstats.timer
-install -d %{buildroot}%{_localstatedir}/spool/lux-jobstats
-install -D -m 0644 packaging/lux-webui.sysusers          %{buildroot}%{_sysusersdir}/lux-webui.conf
-install -D -m 0640 packaging/config.yaml.example         %{buildroot}%{_sysconfdir}/lux-webui/config.yaml
+install -D -m 0644 packaging/lamplighter-webui.service           %{buildroot}%{_unitdir}/lamplighter-webui.service
+install -D -m 0644 packaging/lamplighter-collector.service %{buildroot}%{_unitdir}/lamplighter-collector.service
+install -D -m 0644 packaging/lamplighter-collector.timer   %{buildroot}%{_unitdir}/lamplighter-collector.timer
+install -D -m 0644 packaging/lamplighter-jobstats.service  %{buildroot}%{_unitdir}/lamplighter-jobstats.service
+install -D -m 0644 packaging/lamplighter-jobstats.timer    %{buildroot}%{_unitdir}/lamplighter-jobstats.timer
+install -d %{buildroot}%{_localstatedir}/spool/lamplighter-jobstats
+install -D -m 0644 packaging/lamplighter-webui.sysusers          %{buildroot}%{_sysusersdir}/lamplighter-webui.conf
+install -D -m 0640 packaging/config.yaml.example         %{buildroot}%{_sysconfdir}/lamplighter.d/webui/config.yaml
 # Templates are regular files, not %%doc: minimal installs skip documentation.
-install -D -m 0644 packaging/nginx-lux-webui.conf        %{buildroot}%{_datadir}/lux-webui/nginx-lux-webui.conf.example
-install -D -m 0644 packaging/config.yaml.example         %{buildroot}%{_datadir}/lux-webui/config.yaml.example
+install -D -m 0644 packaging/nginx-lamplighter-webui.conf        %{buildroot}%{_datadir}/lamplighter-webui/nginx-lamplighter-webui.conf.example
+install -D -m 0644 packaging/config.yaml.example         %{buildroot}%{_datadir}/lamplighter-webui/config.yaml.example
 
 %pre
-getent group lux-webui >/dev/null || groupadd -r lux-webui
-getent passwd lux-webui >/dev/null || \
-    useradd -r -g lux-webui -d /var/lib/lux-webui -s /sbin/nologin -c "Lamplighter web UI" lux-webui
-# Accounts that deliver jobstats snapshots join lux-jobstats, never lux-webui.
-getent group lux-jobstats >/dev/null || groupadd -r lux-jobstats
-id -nG lux-webui | grep -qw lux-jobstats || usermod -a -G lux-jobstats lux-webui
+getent group lamplighter-webui >/dev/null || groupadd -r lamplighter-webui
+getent passwd lamplighter-webui >/dev/null || \
+    useradd -r -g lamplighter-webui -d /var/lib/lamplighter-webui -s /sbin/nologin -c "Lamplighter web UI" lamplighter-webui
+# Accounts that deliver jobstats snapshots join lamplighter-jobstats, never lamplighter-webui.
+getent group lamplighter-jobstats >/dev/null || groupadd -r lamplighter-jobstats
+id -nG lamplighter-webui | grep -qw lamplighter-jobstats || usermod -a -G lamplighter-jobstats lamplighter-webui
 exit 0
 
 %post
-%systemd_post lux-webui.service lux-collector.timer lux-jobstats.timer
+%systemd_post lamplighter-webui.service lamplighter-collector.timer lamplighter-jobstats.timer
 
 %preun
-%systemd_preun lux-webui.service lux-collector.service lux-collector.timer lux-jobstats.service lux-jobstats.timer
+%systemd_preun lamplighter-webui.service lamplighter-collector.service lamplighter-collector.timer lamplighter-jobstats.service lamplighter-jobstats.timer
 
 %postun
-%systemd_postun_with_restart lux-webui.service
+%systemd_postun_with_restart lamplighter-webui.service
 
 %files
 %license LICENSE
 %doc packaging/README.md
 %{venv}
-%{_datadir}/lux-webui
-%{_unitdir}/lux-webui.service
-%{_unitdir}/lux-collector.service
-%{_unitdir}/lux-collector.timer
-%{_unitdir}/lux-jobstats.service
-%{_unitdir}/lux-jobstats.timer
-# setgid: delivered files stay group lux-jobstats
-%dir %attr(2770,lux-webui,lux-jobstats) %{_localstatedir}/spool/lux-jobstats
-%{_sysusersdir}/lux-webui.conf
-%dir %attr(0750,root,lux-webui) %{_sysconfdir}/lux-webui
-%config(noreplace) %attr(0640,root,lux-webui) %{_sysconfdir}/lux-webui/config.yaml
+%{_datadir}/lamplighter-webui
+%{_unitdir}/lamplighter-webui.service
+%{_unitdir}/lamplighter-collector.service
+%{_unitdir}/lamplighter-collector.timer
+%{_unitdir}/lamplighter-jobstats.service
+%{_unitdir}/lamplighter-jobstats.timer
+# setgid: delivered files stay group lamplighter-jobstats
+%dir %attr(2770,lamplighter-webui,lamplighter-jobstats) %{_localstatedir}/spool/lamplighter-jobstats
+%{_sysusersdir}/lamplighter-webui.conf
+# /etc/lamplighter.d is shared with the engine packages (both own the directory)
+%dir %{_sysconfdir}/lamplighter.d
+%dir %attr(0750,root,lamplighter-webui) %{_sysconfdir}/lamplighter.d/webui
+%config(noreplace) %attr(0640,root,lamplighter-webui) %{_sysconfdir}/lamplighter.d/webui/config.yaml
 
 %changelog
+* Fri Nov 27 2026 Jonathan Mills - 0.1.0-4
+- Lamplighter naming: package, user, units, /opt/lamplighter-webui,
+  configuration in /etc/lamplighter.d/webui, lamplighter_webui schema.
+
 * Fri Nov 27 2026 Jonathan Mills - 0.1.0-3
 - The SRPM carries the front-end source, built by rpmbuild with Node.js
   on the build host, so make-srpm.sh needs no containers.
 
 * Fri Nov 27 2026 Jonathan Mills - 0.1.0-2
-- lux-jobstats service and timer, and the jobstats spool directory.
+- lamplighter-jobstats service and timer, and the jobstats spool directory.
 
 * Thu Nov 26 2026 Jonathan Mills - 0.1.0-1
 - First package: back end, front end, collector timer, nginx example.

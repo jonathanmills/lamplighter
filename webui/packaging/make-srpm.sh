@@ -29,7 +29,7 @@ find "$src/backend" \( -name __pycache__ -o -name "*.egg-info" \) -prune -exec r
 cp -a "$webui/frontend/package.json" "$webui/frontend/package-lock.json" "$webui/frontend/tsconfig.json" \
       "$webui/frontend/vite.config.ts" "$webui/frontend/index.html" "$webui/frontend/src" \
       "$webui/frontend/public" "$src/frontend/"
-cp README.md config.yaml.example nginx-lux-webui.conf lux-*.service lux-*.timer lux-webui.sysusers \
+cp README.md config.yaml.example nginx-lamplighter-webui.conf lamplighter-*.service lamplighter-*.timer lamplighter-webui.sysusers \
    "$src/packaging/"
 cp lamplighter-webui.spec "$webui/LICENSE" "$src/"
 

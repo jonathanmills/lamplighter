@@ -8,12 +8,12 @@ Wants=network-online.target
 
 [Service]
 Type=exec
-User=lux-webui
-Group=lux-webui
-Environment=LUX_WEBUI_CONFIG=/etc/lux-webui/config.yaml
+User=lamplighter-webui
+Group=lamplighter-webui
+Environment=LAMPLIGHTER_WEBUI_CONFIG=/etc/lamplighter.d/webui/config.yaml
 # Listens on localhost only; nginx terminates TLS in front of it.
 # One worker: login sessions are kept in memory (see the README).
-ExecStart=/opt/lux-webui/bin/uvicorn lux_webui.app:create_app --factory \
+ExecStart=/opt/lamplighter-webui/bin/uvicorn lamplighter_webui.app:create_app --factory \
     --host 127.0.0.1 --port 8000 --workers 1 \
     --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-server-header
 Restart=on-failure

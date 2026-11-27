@@ -394,7 +394,7 @@ def job_details_provider(name: str) -> JobDetails:
     raise ValueError(f"unknown job details provider {name!r}")
 
 
-# --- lux-jobstats ------------------------------------------------------------------
+# --- lamplighter-jobstats ------------------------------------------------------------------
 
 def collect(cfg: JobstatsConfig, store: Engine) -> tuple[list[Interval], list[SourceStatus]]:
     if cfg.source == "prometheus":
@@ -416,8 +416,8 @@ def run_once(settings: Settings) -> int:
     migrate(store)
     with store.connect() as lock:
         # one run at a time; released explicitly (pooled connections outlive us)
-        if lock.execute(text("SELECT GET_LOCK('lux_jobstats', 0)")).scalar() != 1:
-            log.info("another lux-jobstats run is in progress; skipping")
+        if lock.execute(text("SELECT GET_LOCK('lamplighter_jobstats', 0)")).scalar() != 1:
+            log.info("another lamplighter-jobstats run is in progress; skipping")
             return 0
         try:
             intervals, statuses = collect(settings.jobstats, store)
@@ -425,22 +425,22 @@ def run_once(settings: Settings) -> int:
             log.info("stored %d intervals from %d sources", n, len(statuses))
             return n
         finally:
-            lock.execute(text("SELECT RELEASE_LOCK('lux_jobstats')"))
+            lock.execute(text("SELECT RELEASE_LOCK('lamplighter_jobstats')"))
 
 
 def main(argv: list[str] | None = None) -> int:
     import argparse
     import sys
-    ap = argparse.ArgumentParser(prog="lux-jobstats",
+    ap = argparse.ArgumentParser(prog="lamplighter-jobstats",
                                  description="Read Lustre jobstats for Lamplighter's triage view.")
-    ap.add_argument("--config", help="config file (default: $LUX_WEBUI_CONFIG)")
+    ap.add_argument("--config", help="config file (default: $LAMPLIGHTER_WEBUI_CONFIG)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s",
                         stream=sys.stderr)
     try:
         run_once(load_settings(args.config))
     except Exception as exc:
-        log.error("lux-jobstats failed: %s", exc)
+        log.error("lamplighter-jobstats failed: %s", exc)
         return 1
     return 0
 

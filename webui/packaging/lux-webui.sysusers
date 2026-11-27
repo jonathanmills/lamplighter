@@ -1,6 +1,0 @@
-# SPDX-License-Identifier: GPL-2.0-or-later
-u lux-webui - "Lamplighter web UI" /var/lib/lux-webui /sbin/nologin
-# Accounts that deliver Lustre jobstats snapshots into the spool join this
-# group (never lux-webui, which can read /etc/lux-webui).
-g lux-jobstats -
-m lux-webui lux-jobstats

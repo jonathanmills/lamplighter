@@ -4,12 +4,12 @@
 
 import pytest
 
-from lux_webui.acl import BUILTIN_ROLES, AccessPolicy, Perm
-from lux_webui.config import AccessConfig, LDAPConfig, RoleMapping
+from lamplighter_webui.acl import BUILTIN_ROLES, AccessPolicy, Perm
+from lamplighter_webui.config import AccessConfig, LDAPConfig, RoleMapping
 
-ADMINS = "cn=lux-admins,ou=groups,dc=lamplighter,dc=test"
-DM = "cn=lux-data-managers,ou=groups,dc=lamplighter,dc=test"
-VIEW = "cn=lux-viewers,ou=groups,dc=lamplighter,dc=test"
+ADMINS = "cn=lamplighter-admins,ou=groups,dc=lamplighter,dc=test"
+DM = "cn=lamplighter-data-managers,ou=groups,dc=lamplighter,dc=test"
+VIEW = "cn=lamplighter-viewers,ou=groups,dc=lamplighter,dc=test"
 
 
 def policy():
@@ -46,7 +46,7 @@ def test_viewer_cannot_export_or_see_all_paths():
 
 
 def test_dn_matching_ignores_case_and_spacing():
-    g = policy().grants_for(["CN=LUX-Viewers, OU=Groups, DC=lamplighter, DC=test"])
+    g = policy().grants_for(["CN=LAMPLIGHTER-Viewers, OU=Groups, DC=lamplighter, DC=test"])
     assert g.roles == {"viewer"}
 
 

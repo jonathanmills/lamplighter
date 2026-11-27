@@ -8,7 +8,7 @@ import pytest
 from sqlalchemy import text
 
 from conftest import oidc_login, post_same_origin
-from lux_webui.db import make_engine
+from lamplighter_webui.db import make_engine
 
 pytestmark = pytest.mark.integration
 
@@ -76,6 +76,6 @@ def test_access_shows_roles_and_resolved_members(client):
     assert len(roles["admin"]) == len(a["permissions"]) == 12
     assert "cold.export" in roles["data-manager"] and "cold.export" not in roles["viewer"]
     members = {g["group"].split(",")[0]: g["members"] for g in a["groups"]}
-    assert members == {"cn=lux-admins": ["dave"], "cn=lux-data-managers": ["carol"],
-                       "cn=lux-viewers": ["alice", "erin"]}
+    assert members == {"cn=lamplighter-admins": ["dave"], "cn=lamplighter-data-managers": ["carol"],
+                       "cn=lamplighter-viewers": ["alice", "erin"]}
 

@@ -23,7 +23,7 @@ Metrics: `lamplighter_scan_age`, `lamplighter_scan_errors`, `lamplighter_entries
 
 ## Installing
 
-1. **Keycloak:** create a confidential client (for example `lux-checkmk`) with *Client authentication* and *Service accounts* on and *Standard flow* off. Give its service account the web UI client's `monitoring` role, and add an audience mapper so tokens carry the web UI client in `aud`. The dev realm (`../devenv/keycloak/realm-lamplighter.json`) shows a working example.
+1. **Keycloak:** create a confidential client (for example `lamplighter-checkmk`) with *Client authentication* and *Service accounts* on and *Standard flow* off. Give its service account the web UI client's `monitoring` role, and add an audience mapper so tokens carry the web UI client in `aud`. The dev realm (`../devenv/keycloak/realm-lamplighter.json`) shows a working example.
 2. **Install the package** as the site user: `mkp add lamplighter-0.2.0.mkp && mkp enable lamplighter`. You can also use *Setup › Maintenance › Extension packages* in the web UI.
 3. **Store the client secret:** *Setup › General › Passwords*.
 4. **Create the special agent rule:** *Setup › Agents › VM, cloud, container › Lamplighter*, or search for "Lamplighter". Enter:

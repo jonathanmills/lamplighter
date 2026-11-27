@@ -9,9 +9,9 @@ else
 fi
 
 if [ $RBH_TEST_INSTALLED = 0 ]; then
-    CFG_SCRIPT="../../scripts/lux-config"
+    CFG_SCRIPT="../../scripts/lamplighter-config"
 else
-    CFG_SCRIPT="lux-config"
+    CFG_SCRIPT="lamplighter-config"
 fi
 
 

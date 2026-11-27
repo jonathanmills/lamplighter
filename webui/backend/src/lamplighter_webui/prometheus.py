@@ -3,7 +3,7 @@
 """Jobstats from Prometheus, for sites that already scrape them.
 
 The alternative to the spool directory (doc/webui-design.md section 5.4).
-Each lux-jobstats run asks Prometheus for the increase of the configured
+Each lamplighter-jobstats run asks Prometheus for the increase of the configured
 counters since the previous run, grouped by job, target and server, and
 turns the answer into the same Interval records as the spool.
 

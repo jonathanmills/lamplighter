@@ -19,7 +19,7 @@ HINTS=$4
 ###############################
 ###### EDIT if necessary ######
 
-LOG_FILE="/var/log/luxext_tool.log"
+LOG_FILE="/var/log/lamplighter-ext-tool.log"
 
 # must be >= lamplighter's copy_timeout value
 TIMEOUT=15000

@@ -25,7 +25,7 @@ RBH_OPT=""
 # Test whether the testsuite is running from the source tree or has
 # been installed.
 if [ -d "../../src/robinhood" ]; then
-    CFG_SCRIPT="../../scripts/lux-config"
+    CFG_SCRIPT="../../scripts/lamplighter-config"
     RBH_BINDIR="../../src/robinhood"
     RBH_SBINDIR="../../src/robinhood"
     RBH_MODDIR=$(readlink -m "../../src/modules/.libs")
@@ -34,7 +34,7 @@ if [ -d "../../src/robinhood" ]; then
     RBH_TESTS_DIR=".."
     RBH_CFG_DIR="./cfg"
 else
-    CFG_SCRIPT="lux-config"
+    CFG_SCRIPT="lamplighter-config"
     RBH_BINDIR=${RBH_BINDIR:-"/usr/bin"}
     RBH_SBINDIR=${RBH_SBINDIR:-"/usr/sbin"}
     RBH_INSTALL_DIR=${RBH_INSTALL_DIR:-"/usr/share/lamplighter"}
@@ -85,11 +85,11 @@ else
 fi
 
 RH="$VALGRIND $RBH_SBINDIR/lamplighter $RBH_OPT"
-REPORT="$VALGRIND $RBH_SBINDIR/lux-report $RBH_OPT"
+REPORT="$VALGRIND $RBH_SBINDIR/lamplighter-report $RBH_OPT"
 FIND="$VALGRIND $RBH_BINDIR/lux-find"
 DU="$VALGRIND $RBH_BINDIR/lux-du"
-DIFF="$VALGRIND $RBH_SBINDIR/lux-diff"
-UNDELETE="$VALGRIND $RBH_SBINDIR/lux-undelete"
+DIFF="$VALGRIND $RBH_SBINDIR/lamplighter-diff"
+UNDELETE="$VALGRIND $RBH_SBINDIR/lamplighter-undelete"
 #IMPORT="$VALGRIND $RBH_SBINDIR/rbh-import $RBH_OPT"
 CMD=lamplighter
 ARCH_STR="migration success for"
@@ -1474,7 +1474,7 @@ function link_unlink_remove_test
 	expected_rm=$2
 	sleep_time=$3
 	policy_str="$4"
-    cl_delay=6 # time between action and its impact on lux-report
+    cl_delay=6 # time between action and its impact on lamplighter-report
 
 	if (( $is_lhsm + $is_hsmlite == 0 )); then
 		echo "HSM test only: skipped"
@@ -3767,7 +3767,7 @@ function test_size_updt
 	config_file=$1
 	event_read_delay=$2
 	policy_str="$3"
-    cl_delay=6 # time between action and its impact on lux-report
+    cl_delay=6 # time between action and its impact on lamplighter-report
 
 	init=`date "+%s"`
 
@@ -5110,7 +5110,7 @@ function test_checker
         error "scan error"
     check_db_error rh_scan.log
 
-     # if robinhood tree is available, use lux_cksum.sh from script directory
+     # if robinhood tree is available, use lamplighter-cksum.sh from script directory
     if [ -d "../../src/robinhood" ]; then
         export PATH="../../scripts/:$PATH"
     fi
@@ -6598,7 +6598,7 @@ function diff_chk
 {
     local config_file=$1
 
-    echo "Scanning with lux-diff..."
+    echo "Scanning with lamplighter-diff..."
     $DIFF -f $RBH_CFG_DIR/$config_file --apply=db -l DEBUG > rh_chglogs.log  2>&1 || error "scanning filesystem"
     grep "DB query failed" rh_chglogs.log && error ": a DB query failed: `grep 'DB query failed' rh_chglogs.log | tail -1`"
     clean_logs
@@ -6899,7 +6899,7 @@ function partial_paths
     if (( $no_log==0 )); then
         # This test was introduced by: 00c3cfd4263679df54bfffbc875419de503e8dcf
         # It seems to be related to the backup module. This test fails for the
-        # LUSTRE_HSM flavor. lux-undelete will fail if we remove the changelogs
+        # LUSTRE_HSM flavor. lamplighter-undelete will fail if we remove the changelogs
         # here because the parent is has been deleted from the DB.
         if (( $is_hsmlite )); then
             $LFS changelog_clear lustre-MDT0000 cl1 0
@@ -6957,7 +6957,7 @@ function test_mnt_point
         done
     done
 
-    # check that lux-report output is correct
+    # check that lamplighter-report output is correct
     $REPORT -f $RBH_CFG_DIR/$config_file -q --dump | awk '{print $(NF)}'> rh_report.log
     [ "$DEBUG" = "1" ] && cat rh_report.log
     for e in $dir_rel $file_rel; do
@@ -7152,7 +7152,7 @@ function uid_gid_as_numbers
 
 # Create a file and touch it to set atime/mtime. Check that crtime and
 # ctime are properly set, using the search criteria of lux-find, and
-# display of lux-report. Check that creation_time never changes while
+# display of lamplighter-report. Check that creation_time never changes while
 # ctime does.
 function posix_acmtime
 {
@@ -7232,7 +7232,7 @@ function posix_acmtime
     local db_acmtime=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%As %Ts %Cs")
     [[ $real_acmtime == $db_acmtime ]] || error "FS and DB times don't match2"
 
-    # Check that FS and DB agree, using lux-report
+    # Check that FS and DB agree, using lamplighter-report
     local newcrtime=$(egrep "creation\s+:" report.out)
     local newctime=$(egrep "last_mdchange\s+:" report.out)
 
@@ -7254,7 +7254,7 @@ function posix_acmtime
     local db_acmtime=$($FIND $RH_ROOT/ -type f -f $RBH_CFG_DIR/$config_file -printf "%As %Ts %Cs")
     [[ $real_acmtime == $db_acmtime ]] || error "FS and DB times don't match3"
 
-    # Check that FS and DB agree, using lux-report
+    # Check that FS and DB agree, using lamplighter-report
     local newcrtime=$(egrep "creation\s+:" report.out)
     local newctime=$(egrep "last_mdchange\s+:" report.out)
 
@@ -7292,7 +7292,7 @@ function db_schema_convert
     populate $nbent
 
     :> rh.log
-    echo "lux-report"
+    echo "lamplighter-report"
     # run rbhv3 report
     $REPORT -f $cfg1 -i -l FULL 2>&1 > rh.log
     [ "$DEBUG" = "1" ] && cat rh.log
@@ -7906,7 +7906,7 @@ function test_diff_apply_fs # test diff --apply=fs in particular for entry recov
     # clear umask for recovery
     old_umask=$(umask)
     umask 0000
-    strace -e open,mkdir -f $DIFF -f $RBH_CFG_DIR/$config_file --apply=fs > diff.out 2> diff.log || error "lux-diff error"
+    strace -e open,mkdir -f $DIFF -f $RBH_CFG_DIR/$config_file --apply=fs > diff.out 2> diff.log || error "lamplighter-diff error"
     umask "$old_umask"
 
     cr1=$(grep -E '^\+\+[^+]' diff.out | wc -l)
@@ -7925,7 +7925,7 @@ function test_diff_apply_fs # test diff --apply=fs in particular for entry recov
         if (($cr3 == $cr1 + $miss)); then
             (( $miss > 0 )) && echo "WARNING: $miss hardlinks not restored"
         else
-            error "Unexpected number of objects created: lux-diff displayed $cr1, lux-diff log indicates $cr2, expected $cr3 according to find"
+            error "Unexpected number of objects created: lamplighter-diff displayed $cr1, lamplighter-diff log indicates $cr2, expected $cr3 according to find"
         fi
     else
         echo "OK: $cr1 objects created"
@@ -8936,9 +8936,9 @@ function test_hl_count
 
     # reports to be checked:
     #   dump report (9 entries, no root)
-    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q | wc -l) == ($ino+$extra_dir) )) || error "wrong count in 'lux-report -D' output"
+    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q | wc -l) == ($ino+$extra_dir) )) || error "wrong count in 'lamplighter-report -D' output"
     #   dump report with path filter (3 entries)
-    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q -P $RH_ROOT/dir.1 | wc -l) == $ino_subdir )) || error "wrong count in 'lux-report -D -P <path>' output"
+    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q -P $RH_ROOT/dir.1 | wc -l) == $ino_subdir )) || error "wrong count in 'lamplighter-report -D -P <path>' output"
     #   dump find output (whole FS) (10 entries, incl. root)
     (($($FIND -f $RBH_CFG_DIR/$config_file -nobulk | wc -l) == $ino + 1 + $extra_dir))  || error "wrong count in 'lux-find' output"
     #   dump find output (subdir: 3 entries)
@@ -8951,13 +8951,13 @@ function test_hl_count
   	countValues="$(($dcount+$extra_dir));$(($dcount * $fcount))"
     # type counts are in 2nd column
    	colSearch=2
-	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lux-report -i' output"
+	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lamplighter-report -i' output"
 
     #   dump summary with path filter (3 entries)
     $REPORT -f $RBH_CFG_DIR/$config_file -iq -P $RH_ROOT/dir.1 > report.out
     [ "$DEBUG" = "1" ] && cat report.out
   	countValues="1;$fcount"
-	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lux-report -i -P <path>' output"
+	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lamplighter-report -i -P <path>' output"
 
     # create 1 hardlink per file and recheck
     for d in $(seq 1 $dcount); do
@@ -8973,9 +8973,9 @@ function test_hl_count
     paths_subdir=$(($fcount * 2 + 1))
 
     #   dump report (still 9 entries, no root)
-    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q | wc -l) == $ino + $extra_dir )) || error "wrong count in 'lux-report -D' output"
+    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q | wc -l) == $ino + $extra_dir )) || error "wrong count in 'lamplighter-report -D' output"
     #   dump report with path filter (still 3 entries)
-    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q -P $RH_ROOT/dir.1 | wc -l) == $ino_subdir )) || error "wrong count in 'lux-report -D -P <path>' output"
+    (($($REPORT -f $RBH_CFG_DIR/$config_file -D -q -P $RH_ROOT/dir.1 | wc -l) == $ino_subdir )) || error "wrong count in 'lamplighter-report -D -P <path>' output"
     #   dump find output (whole FS) (
     (($($FIND -f $RBH_CFG_DIR/$config_file -nobulk | wc -l) == $paths + 1 ))  || error "wrong count in 'lux-find' output"
     #   dump find output (subdir: 3 entries)
@@ -8985,13 +8985,13 @@ function test_hl_count
     $REPORT -f $RBH_CFG_DIR/$config_file -icq > report.out
     [ "$DEBUG" = "1" ] && cat report.out
   	countValues="$(($dcount + $extra_dir));$(($dcount * $fcount))"
-	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lux-report -i' output"
+	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lamplighter-report -i' output"
 
     #   dump summary with path filter (3 entries)
     $REPORT -f $RBH_CFG_DIR/$config_file -iq -P $RH_ROOT/dir.1 > report.out
     [ "$DEBUG" = "1" ] && cat report.out
   	countValues="1;$fcount"
-	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lux-report -i -P <path>' output"
+	find_allValuesinCSVreport report.out $typeValues $countValues $colSearch || error "wrong count in 'lamplighter-report -i -P <path>' output"
 
 
     rm -f report.out
@@ -9938,7 +9938,7 @@ function test_rbh_find_printf
 
     clean_logs
 
-     # if robinhood tree is available, use lux_cksum.sh from script directory
+     # if robinhood tree is available, use lamplighter-cksum.sh from script directory
     if [ -d "../../src/robinhood" ]; then
         export PATH="../../scripts/:$PATH"
     fi
@@ -14221,10 +14221,10 @@ run_test 103b    test_acct_table acct.conf 5 "yes" "Acct table and triggers crea
 run_test 103c    test_acct_table acct.conf 5 "no" "Acct table and triggers creation (accounting OFF)"
 run_test 104     test_size_updt test_updt.conf 1 "test size update"
 run_test 105     test_enoent test_pipeline.conf "readlog with continuous create/unlink"
-run_test 106a    test_diff info_collect2.conf "diff" "lux-diff"
-run_test 106b    test_diff info_collect2.conf "diffapply" "lux-diff --apply"
+run_test 106a    test_diff info_collect2.conf "diff" "lamplighter-diff"
+run_test 106b    test_diff info_collect2.conf "diffapply" "lamplighter-diff --apply"
 run_test 106c    test_diff info_collect2.conf "scan" "robinhood --scan --diff"
-run_test 106d    test_diff info_collect2.conf "partdiff" "lux-diff --scan=subdir"
+run_test 106d    test_diff info_collect2.conf "partdiff" "lamplighter-diff --scan=subdir"
 run_test 107a    test_completion test_completion.conf OK        "scan completion command"
 run_test 107b    test_completion test_completion.conf unmatched "wrong completion command (syntax error)"
 run_test 107c    test_completion test_completion.conf invalid_ctx_id "wrong completion command (using id)"
@@ -14243,7 +14243,7 @@ run_test 109e    test_hardlinks info_collect.conf partdiff "hardlinks management
 run_test 110     test_unlink info_collect.conf "unlink (readlog)"
 run_test 111     test_layout info_collect.conf "layout changes"
 run_test 112     test_hl_count info_collect.conf "reports with hardlinks"
-run_test 113     test_diff_apply_fs info_collect2.conf  "diff"  "lux-diff --apply=fs"
+run_test 113     test_diff_apply_fs info_collect2.conf  "diff"  "lamplighter-diff --apply=fs"
 run_test 114     test_root_changelog info_collect.conf "changelog record on root entry"
 run_test 115     partial_paths info_collect.conf "test behavior when handling partial paths"
 run_test 116     test_mnt_point test_mnt_point.conf "test with mount point != fs_path"
@@ -14411,7 +14411,7 @@ run_test 305b   test_cntpct_ost_trigger test_trig_cntpct.conf "trigger on inode 
 
 ### projectid related tests
 run_test 350    projectid_test_find info_collect.conf   "Lustre project id and lux-find"
-run_test 351    projectid_test_report info_collect.conf "Lustre project id and lux-report"
+run_test 351    projectid_test_report info_collect.conf "Lustre project id and lamplighter-report"
 run_test 352    projectid_test_chglog info_collect.conf "Lustre project id update with changelogs"
 run_test 353    projectid_test_run test_trig3.conf      "Lustre project id targetted policy run"
 

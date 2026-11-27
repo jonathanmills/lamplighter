@@ -311,7 +311,7 @@ def social_preview() -> None:
     d.text((x0, 205), "Lamplighter", fill=(0xDF, 0xDB, 0xD2), font=font(0, 92))
     d.text((x0, 330), "A fork of the Robinhood Policy Engine", fill=(0xC9, 0xB8, 0xC4), font=font(1, 34))
     d.text((x0, 378), "for Lustre and POSIX filesystems", fill=(0xC9, 0xB8, 0xC4), font=font(1, 34))
-    d.text((x0, 450), "lux-find · lux-du · lux-report · web UI", fill=(0x7F, 0xB8, 0xE1), font=font(1, 28))
+    d.text((x0, 450), "lux-find · lux-du · lamplighter-report · web UI", fill=(0x7F, 0xB8, 0xE1), font=font(1, 28))
     card.save(DIST / "lamplighter-social-preview.png", optimize=True)
     print("wrote dist/lamplighter-social-preview.png")
 

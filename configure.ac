@@ -43,7 +43,7 @@ AC_CONFIG_FILES([Makefile
          scripts/lamplighter@.service
          scripts/sysconfig_lamplighter
          scripts/ld.so.lamplighter.conf
-         scripts/lux_cksum.sh
+         scripts/lamplighter-cksum.sh
          tests/Makefile
          tests/test_suite/Makefile
          man/Makefile

@@ -1,8 +1,8 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 -- Copyright (C) 2026 Jonathan Mills
 --
--- lux_webui schema, version 4: Lustre jobstats for the triage view.
--- Written by lux-jobstats (spool directory or Prometheus); see
+-- lamplighter_webui schema, version 4: Lustre jobstats for the triage view.
+-- Written by lamplighter-jobstats (spool directory or Prometheus); see
 -- doc/webui-design.md section 5.4.
 
 -- One row per source: a Lustre server's spool name, or the Prometheus URL.

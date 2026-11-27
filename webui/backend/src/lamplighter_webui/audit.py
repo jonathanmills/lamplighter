@@ -2,10 +2,10 @@
 # Copyright (C) 2026 Jonathan Mills
 """Audit log.
 
-Every event is written as one JSON line on the "lux_webui.audit" logger
+Every event is written as one JSON line on the "lamplighter_webui.audit" logger
 (journald under systemd: the authoritative copy for the site's log
 collection). When a store is attached, events are also queued to the
-lux_webui.audit_log table, so admins can search them in the UI. A
+lamplighter_webui.audit_log table, so admins can search them in the UI. A
 background thread does the inserts, so a request never waits on the
 database, and a database outage never blocks or fails a request.
 
@@ -24,7 +24,7 @@ from datetime import datetime, timezone
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
 
-_log = logging.getLogger("lux_webui.audit")
+_log = logging.getLogger("lamplighter_webui.audit")
 _queue: "queue.Queue[dict]" = queue.Queue(maxsize=10000)
 _writer: threading.Thread | None = None
 

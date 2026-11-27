@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 -- Copyright (C) 2026 Jonathan Mills
 --
--- lux_webui schema, version 5: entries and bytes per Robinhood fileclass
+-- lamplighter_webui schema, version 5: entries and bytes per Robinhood fileclass
 -- and policy status, per collector run (policies.py).
 --   fileclass = <name>, status_field = ''        totals per fileclass ('' = unclassified)
 --   fileclass = '*',    status_field = <column>  totals per status value

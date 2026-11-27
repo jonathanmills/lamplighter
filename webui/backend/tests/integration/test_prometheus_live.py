@@ -12,8 +12,8 @@ import time
 import httpx
 import pytest
 
-from lux_webui.config import JobstatsPrometheus
-from lux_webui.prometheus import PrometheusSource
+from lamplighter_webui.config import JobstatsPrometheus
+from lamplighter_webui.prometheus import PrometheusSource
 
 pytestmark = pytest.mark.integration
 URL = "http://prometheus:9090"

@@ -1,13 +1,13 @@
 #!/bin/bash
 
 
-[[ -e /etc/sysconfig/lux_cksum ]] && . /etc/sysconfig/lux_cksum
+[[ -e /etc/sysconfig/lamplighter-cksum ]] && . /etc/sysconfig/lamplighter-cksum
 
 # "defaults" section
-LUX_CKSUM_CMD=${LUX_CKSUM_CMD:-sha1sum}
-LUX_CKSUM_DV_CMD=${LUX_CKSUM_DV_CMD:-@DV_CMD@}
+LAMPLIGHTER_CKSUM_CMD=${LAMPLIGHTER_CKSUM_CMD:-sha1sum}
+LAMPLIGHTER_CKSUM_DV_CMD=${LAMPLIGHTER_CKSUM_DV_CMD:-@DV_CMD@}
 # xattr not set if variable set empty, so allow empty value
-LUX_CKSUM_XATTR=${LUX_CKSUM_XATTR-user.sha1sum}
+LAMPLIGHTER_CKSUM_XATTR=${LAMPLIGHTER_CKSUM_XATTR-user.sha1sum}
 
 usage() {
 	echo "usage: $(readlink -m "$0") <previous_value> <path>" >&2
@@ -19,7 +19,7 @@ usage() {
 get_dv() {
 	local path="$1"
 
-	$LUX_CKSUM_DV_CMD "$path"
+	$LAMPLIGHTER_CKSUM_DV_CMD "$path"
 }
 
 compute_cksum() {
@@ -27,7 +27,7 @@ compute_cksum() {
 	local cksum
 
 	# run checksum program and take first word
-	cksum=$($LUX_CKSUM_CMD "$path")
+	cksum=$($LAMPLIGHTER_CKSUM_CMD "$path")
 	echo "${cksum%% *}"
 }
 
@@ -35,22 +35,22 @@ compute_cksum() {
 getfattr_output() {
 	local path="$1"
 
-	[[ -z "$LUX_CKSUM_XATTR" ]] && return
+	[[ -z "$LAMPLIGHTER_CKSUM_XATTR" ]] && return
 
-	getfattr -n "$LUX_CKSUM_XATTR" --only-values -- "$path" 2>/dev/null || true
+	getfattr -n "$LAMPLIGHTER_CKSUM_XATTR" --only-values -- "$path" 2>/dev/null || true
 }
 
 setfattr_output() {
 	local path="$1"
 	local cksum="$2"
 
-	[[ -z "$LUX_CKSUM_XATTR" ]] && return
+	[[ -z "$LAMPLIGHTER_CKSUM_XATTR" ]] && return
 
-	setfattr -n "$LUX_CKSUM_XATTR" -v "$cksum" -- "$path"
+	setfattr -n "$LAMPLIGHTER_CKSUM_XATTR" -v "$cksum" -- "$path"
 }
 
 
-lux_cksum() {
+lamplighter_cksum() {
 	local output="$1"
 	local path="$2"
 	local cksum
@@ -128,4 +128,4 @@ lux_cksum() {
 # if we're being sourced, don't parse arguments
 [[ $(caller | cut -d' ' -f1) != "0" ]] && return
 
-lux_cksum "$@"
+lamplighter_cksum "$@"

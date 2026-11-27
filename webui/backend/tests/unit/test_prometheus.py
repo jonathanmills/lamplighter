@@ -8,8 +8,8 @@ from urllib.parse import parse_qs, urlparse
 import httpx
 import pytest
 
-from lux_webui.config import JobstatsConfig, JobstatsPrometheus
-from lux_webui.prometheus import PrometheusSource
+from lamplighter_webui.config import JobstatsConfig, JobstatsPrometheus
+from lamplighter_webui.prometheus import PrometheusSource
 
 NOW = 1795000030          # collect() aligns to the minute: t1 = 1795000020 // 60 * 60
 

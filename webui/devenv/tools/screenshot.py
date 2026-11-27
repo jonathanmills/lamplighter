@@ -82,7 +82,7 @@ def main() -> int:
             page.fill("#password", "password")
             page.click("text=Sign in with directory password")
             page.wait_for_url(BASE + "/")
-            page.evaluate(f"localStorage.setItem('lux-theme', '{theme}')")
+            page.evaluate(f"localStorage.setItem('lamplighter-theme', '{theme}')")
             if "{projects}" in path:
                 # Entry ids change with every fresh scan: look up /data/projects.
                 root = page.request.get(BASE + "/api/v1/browse").json()

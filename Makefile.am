@@ -87,7 +87,7 @@ cppcheck:
 	cppcheck -j12 -v --force --enable=all -I`pwd`/src/include -DHAVE_CONFIG_H @PURPOSE_CFLAGS@ @DB_CFLAGS@ src/
 
 lcov:
-	lcov --capture --directory . --output-file lux_cov.info && genhtml lux_cov.info --output-directory lux_cov
+	lcov --capture --directory . --output-file lamplighter_cov.info && genhtml lamplighter_cov.info --output-directory lamplighter_cov
 mans:
 	chmod +x ./scripts/make_mans.sh && ./scripts/make_mans.sh
 

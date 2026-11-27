@@ -44,7 +44,7 @@ export default function Policies() {
       {state === "none" && (
         <section className="panel"><div className="empty">
           <h2>No collector run yet</h2>
-          <p className="muted">These counts come from the nightly collector. Run it once with <span className="cmd">lux-collector run</span>.</p>
+          <p className="muted">These counts come from the nightly collector. Run it once with <span className="cmd">lamplighter-collector run</span>.</p>
         </div></section>
       )}
       {state === "error" && <section className="panel"><div className="empty"><h2>Could not load</h2><p className="error-line">{error}</p></div></section>}

@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from lux_webui.jobstats import SpoolSource, intervals_between, parse_snapshot
+from lamplighter_webui.jobstats import SpoolSource, intervals_between, parse_snapshot
 
 MDT_212 = """\
 mdt.lustre-MDT0000.job_stats=

@@ -1,4 +1,5 @@
-dist_man_MANS=lamplighter.1 lux-report.1 lux-find.1 lux-du.1 lux-diff.1
+# sbin commands in section 8, bin commands in section 1
+dist_man_MANS=lamplighter.8 lamplighter-report.8 lamplighter-diff.8 lux-find.1 lux-du.1
 
 if LUSTRE_HSM
 dist_man_MANS+=lhsmtool_cmd.1

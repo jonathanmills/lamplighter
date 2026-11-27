@@ -4,12 +4,12 @@
 # Lamplighter web UI development environment. Use ./devenv.sh rather
 # than calling compose directly. All passwords here are TEST-ONLY.
 
-name: lux-dev
+name: lamplighter-dev
 
 services:
   ldap:
     build: ./ldap
-    image: localhost/lux-dev-ldap
+    image: localhost/lamplighter-dev-ldap
     volumes:
       - ./.certs:/certs:ro
     networks:
@@ -52,8 +52,8 @@ services:
       MARIADB_USER: robinhood
       MARIADB_PASSWORD: robinhood
     volumes:
-      - lux-db:/var/lib/mysql
-      - ./mariadb/lux_webui.sql:/docker-entrypoint-initdb.d/20-lux_webui.sql:ro
+      - lamplighter-db:/var/lib/mysql
+      - ./mariadb/lamplighter_webui.sql:/docker-entrypoint-initdb.d/20-lamplighter_webui.sql:ro
     ports:
       - "127.0.0.1:13306:3306"
     healthcheck:
@@ -64,13 +64,13 @@ services:
   # Rocky Linux 9.7 workbench: builds and runs Robinhood, runs tests.
   workbench:
     build: ./engine
-    image: localhost/lux-dev-engine
+    image: localhost/lamplighter-dev-engine
     hostname: workbench
     volumes:
       - ../..:/src:ro             # the repository (read-only)
       - .:/devenv:ro              # this directory
       - ./.certs:/certs:ro
-      - lux-build:/build          # out-of-tree copy + build of Robinhood
+      - lamplighter-build:/build          # out-of-tree copy + build of Robinhood
     tmpfs:
       - /data:size=4g,mode=0755   # scanned filesystem (sparse test files)
     depends_on:
@@ -80,9 +80,9 @@ services:
   # Web UI back end (FastAPI), with live reload from the source tree.
   webui:
     build: ../backend
-    image: localhost/lux-dev-webui
+    image: localhost/lamplighter-dev-webui
     environment:
-      LUX_WEBUI_CONFIG: /devenv/webui/config.yaml
+      LAMPLIGHTER_WEBUI_CONFIG: /devenv/webui/config.yaml
       # File events from a macOS host don't reach the VM: poll instead.
       WATCHFILES_FORCE_POLLING: "true"
     volumes:
@@ -90,7 +90,7 @@ services:
       - ../frontend/dist:/srv/frontend:ro   # built by the frontend service
       - .:/devenv:ro
       - ./.certs:/certs:ro
-      - lux-jobstats-spool:/var/spool/lux-jobstats
+      - lamplighter-jobstats-spool:/var/spool/lamplighter-jobstats
     networks:
       default:
         aliases: [webui.test]
@@ -111,7 +111,7 @@ services:
     volumes:
       - ../frontend:/app
       - .:/devenv:ro
-      - lux-node-modules:/app/node_modules
+      - lamplighter-node-modules:/app/node_modules
 
   # Optional: Prometheus scraping a simulated jobstats exporter, for the
   # Prometheus jobstats source. Start with: devenv.sh prometheus
@@ -149,7 +149,7 @@ services:
     depends_on: [webui]
 
 volumes:
-  lux-db:
-  lux-build:
-  lux-node-modules:
-  lux-jobstats-spool:
+  lamplighter-db:
+  lamplighter-build:
+  lamplighter-node-modules:
+  lamplighter-jobstats-spool:

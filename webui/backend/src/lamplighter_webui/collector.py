@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
-"""lux-collector: periodic summaries of Robinhood's database.
+"""lamplighter-collector: periodic summaries of Robinhood's database.
 
 Run from a timer (nightly), never from a web request. One run:
 
@@ -13,7 +13,7 @@ Run from a timer (nightly), never from a web request. One run:
    which gives usage history over time.
 3. A run record, and deletion of runs older than ``keep_runs``.
 
-Usage: lux-collector [run|migrate] [--config FILE]
+Usage: lamplighter-collector [run|migrate] [--config FILE]
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ from .policies import collect_counts
 from .rollup import compute as compute_rollups
 from .store import migrate
 
-log = logging.getLogger("lux_webui.collector")
+log = logging.getLogger("lamplighter_webui.collector")
 
 DAY = 86400
 # (band number, label, upper age limit in seconds; None = no limit).
@@ -95,12 +95,12 @@ def run_once(settings: Settings, source: Engine | None = None, store: Engine | N
     with store.connect() as lock_conn:
         # One collector at a time. GET_LOCK belongs to this connection, and a
         # pooled connection stays open after use, so release it explicitly.
-        if not lock_conn.execute(text("SELECT GET_LOCK('lux_collector', 0)")).scalar():
+        if not lock_conn.execute(text("SELECT GET_LOCK('lamplighter_collector', 0)")).scalar():
             raise RuntimeError("another collector run is in progress")
         try:
             return _run_locked(settings, source, store)
         finally:
-            lock_conn.execute(text("SELECT RELEASE_LOCK('lux_collector')"))
+            lock_conn.execute(text("SELECT RELEASE_LOCK('lamplighter_collector')"))
 
 
 def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
@@ -162,9 +162,9 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(prog="lux-collector", description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser(prog="lamplighter-collector", description=__doc__.split("\n\n")[0])
     ap.add_argument("command", nargs="?", default="run", choices=["run", "migrate"])
-    ap.add_argument("--config", help="config file (default: $LUX_WEBUI_CONFIG)")
+    ap.add_argument("--config", help="config file (default: $LAMPLIGHTER_WEBUI_CONFIG)")
     args = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     settings = load_settings(args.config)

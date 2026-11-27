@@ -106,7 +106,7 @@ def _root(c, store) -> bytes:
         row = sc.execute(text("SELECT r.dir_id FROM dir_rollup r JOIN collector_runs c ON c.id = r.run_id "
                               "WHERE c.status = 'ok' AND r.depth = 0 ORDER BY r.run_id DESC LIMIT 1")).first()
     if row is None:
-        raise HTTPException(404, "No collector run yet: run lux-collector once.")
+        raise HTTPException(404, "No collector run yet: run lamplighter-collector once.")
     return row[0]
 
 

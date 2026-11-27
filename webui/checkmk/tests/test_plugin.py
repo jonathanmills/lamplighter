@@ -49,7 +49,7 @@ def agent_output(capfd_module=None):
     with contextlib.redirect_stdout(buf):
         rc = agent.main(["--url", "https://webui.test:8443",
                          "--token-url", "https://keycloak.test:9443/realms/lamplighter/protocol/openid-connect/token",
-                         "--client-id", "lux-checkmk", "--client-secret", "dev-checkmk-client-secret",
+                         "--client-id", "lamplighter-checkmk", "--client-secret", "dev-checkmk-client-secret",
                          "--ca-file", "/certs/ca.pem"])
     assert rc == 0
     return buf.getvalue()
@@ -78,14 +78,14 @@ def test_live_data_gives_ok_services(agent_output):
 def test_agent_fails_cleanly_on_a_wrong_secret(capsys):
     rc = agent.main(["--url", "https://webui.test:8443",
                      "--token-url", "https://keycloak.test:9443/realms/lamplighter/protocol/openid-connect/token",
-                     "--client-id", "lux-checkmk", "--client-secret", "wrong", "--ca-file", "/certs/ca.pem"])
+                     "--client-id", "lamplighter-checkmk", "--client-secret", "wrong", "--ca-file", "/certs/ca.pem"])
     assert rc == 1 and "HTTP 401" in capsys.readouterr().err
 
 
 def test_agent_refuses_an_untrusted_certificate(capsys):
     rc = agent.main(["--url", "https://webui.test:8443",
                      "--token-url", "https://keycloak.test:9443/realms/lamplighter/protocol/openid-connect/token",
-                     "--client-id", "lux-checkmk", "--client-secret", "dev-checkmk-client-secret"])
+                     "--client-id", "lamplighter-checkmk", "--client-secret", "dev-checkmk-client-secret"])
     assert rc == 1 and "CERTIFICATE_VERIFY_FAILED" in capsys.readouterr().err
 
 
@@ -141,7 +141,7 @@ def test_bad_agent_output_is_ignored():
 def test_secret_is_passed_by_reference_only():
     host = HostConfig(name="lamplighter", ipv4_config=IPv4Config(address="10.0.0.1"))
     params = {"url": "https://lamplighter.example.org", "token_url": "https://kc.example.org/t",
-              "client_id": "lux-checkmk", "client_secret": Secret(42), "timeout": 20}
+              "client_id": "lamplighter-checkmk", "client_secret": Secret(42), "timeout": 20}
     [cmd] = list(ssc.special_agent_lamplighter(params, host))
     args = cmd.command_arguments
     i = args.index("--client-secret-id")

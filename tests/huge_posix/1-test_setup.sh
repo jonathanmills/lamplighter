@@ -1,6 +1,6 @@
 #!/bin/sh
 
-CFG_SCRIPT="../../scripts/lux-config"
+CFG_SCRIPT="../../scripts/lamplighter-config"
 
 service mysqld start
 

@@ -680,11 +680,11 @@ EOF
 
 # Robinhood helper commands that Lamplighter renamed. Keep in sync with
 # renamed_cmds[] in src/policies/policy_loader.c (doc/COMPATIBILITY.md).
-RENAMED_CMDS="robinhood:lamplighter rbh-report:lux-report rbh-find:lux-find
-rbh-du:lux-du rbh-diff:lux-diff rbh-undelete:lux-undelete
-rbh-rebind:lux-rebind rbh-config:lux-config rbh_cksum.sh:lux_cksum.sh
-rbhext_tool:luxext_tool rbhext_tool_svr:luxext_tool_svr
-rbhext_tool_clnt:luxext_tool_clnt"
+RENAMED_CMDS="robinhood:lamplighter rbh-report:lamplighter-report rbh-find:lux-find
+rbh-du:lux-du rbh-diff:lamplighter-diff rbh-undelete:lamplighter-undelete
+rbh-rebind:lamplighter-rebind rbh-config:lamplighter-config rbh_cksum.sh:lamplighter-cksum.sh
+rbhext_tool:lamplighter-ext-tool rbhext_tool_svr:lamplighter-ext-tool-svr
+rbhext_tool_clnt:lamplighter-ext-tool-clnt"
 
 # Report cmd("...") actions whose program has a Robinhood name. Only the
 # program at the start of the command line is considered. With fix=1,

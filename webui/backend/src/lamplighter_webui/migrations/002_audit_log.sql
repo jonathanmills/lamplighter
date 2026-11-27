@@ -1,8 +1,8 @@
 -- SPDX-License-Identifier: GPL-2.0-or-later
 -- Copyright (C) 2026 Jonathan Mills
 --
--- lux_webui schema, version 2: audit events, searchable from the UI.
--- journald (the "lux_webui.audit" logger) remains the authoritative copy;
+-- lamplighter_webui schema, version 2: audit events, searchable from the UI.
+-- journald (the "lamplighter_webui.audit" logger) remains the authoritative copy;
 -- this table is a convenience copy with a retention limit.
 
 CREATE TABLE audit_log (

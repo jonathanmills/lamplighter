@@ -127,7 +127,7 @@ def main(spool: str) -> None:
             name = out / f"{host}.{t}.jobstats"
             name.with_suffix(".tmp").write_text("\n".join(lines) + "\n")
             name.with_suffix(".tmp").rename(name)
-    print(f"lux-dev: wrote {len(list(out.glob('*.jobstats')))} jobstats snapshots to {out}")
+    print(f"lamplighter-dev: wrote {len(list(out.glob('*.jobstats')))} jobstats snapshots to {out}")
 
 
 if __name__ == "__main__":

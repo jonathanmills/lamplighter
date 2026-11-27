@@ -13,12 +13,12 @@ import ssl
 import httpx
 import pytest
 
-from lux_webui.config import load_settings
-from lux_webui.ldapdir import Directory
+from lamplighter_webui.config import load_settings
+from lamplighter_webui.ldapdir import Directory
 
 pytestmark = pytest.mark.integration
 
-BASE = os.environ.get("LUX_WEBUI_URL", "https://webui.test:8443")
+BASE = os.environ.get("LAMPLIGHTER_WEBUI_URL", "https://webui.test:8443")
 KC = "https://keycloak.test:9443/realms/lamplighter"
 CA = "/certs/ca.pem"
 SSL = ssl.create_default_context(cafile=CA)
@@ -56,7 +56,7 @@ def oidc_login(c: httpx.Client, username: str, password: str) -> httpx.Response:
                   data={"username": username, "password": password, "credentialId": ""})
 
 
-def client_credentials_token(client_id="lux-checkmk", secret="dev-checkmk-client-secret") -> str:
+def client_credentials_token(client_id="lamplighter-checkmk", secret="dev-checkmk-client-secret") -> str:
     r = httpx.post(KC + "/protocol/openid-connect/token", verify=SSL, data={
         "grant_type": "client_credentials", "client_id": client_id, "client_secret": secret})
     r.raise_for_status()
@@ -65,7 +65,7 @@ def client_credentials_token(client_id="lux-checkmk", secret="dev-checkmk-client
 
 def password_grant_token(username: str, password: str) -> str:
     r = httpx.post(KC + "/protocol/openid-connect/token", verify=SSL, data={
-        "grant_type": "password", "client_id": "lux-webui",
+        "grant_type": "password", "client_id": "lamplighter-webui",
         "client_secret": "dev-webui-client-secret", "username": username, "password": password})
     r.raise_for_status()
     return r.json()["access_token"]

@@ -23,7 +23,7 @@ export const useMe = () => useContext(MeContext)!;
 export const can = (me: Me, perm: string) => me.permissions.includes(perm);
 
 function readCollapsed(): boolean {
-  try { return localStorage.getItem("lux-sidebar") === "collapsed"; } catch { return false; }
+  try { return localStorage.getItem("lamplighter-sidebar") === "collapsed"; } catch { return false; }
 }
 
 export default function App() {
@@ -46,7 +46,7 @@ function Shell() {
   const toggle = () => {
     const next = !collapsed;
     setCollapsed(next);
-    try { localStorage.setItem("lux-sidebar", next ? "collapsed" : "expanded"); } catch { /* ignore */ }
+    try { localStorage.setItem("lamplighter-sidebar", next ? "collapsed" : "expanded"); } catch { /* ignore */ }
   };
   const visible = NAV.filter((n) => can(me, n.perm));
   const groups = [...new Set(visible.map((n) => n.group))];

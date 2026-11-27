@@ -14,7 +14,7 @@ TEMPLATE_DIR='../../doc/templates'
 if [[ -z "$PURPOSE" || $PURPOSE = "TMP_FS_MGR" ]]; then
 	is_backup=0
 	RH="../../src/robinhood/lamplighter $RBH_OPT"
-	REPORT="../../src/robinhood/lux-report $RBH_OPT"
+	REPORT="../../src/robinhood/lamplighter-report $RBH_OPT"
 	CMD=lamplighter
 	PURPOSE="TMP_FS_MGR"
 elif [[ $PURPOSE = "BACKUP" ]]; then
@@ -25,7 +25,7 @@ elif [[ $PURPOSE = "BACKUP" ]]; then
 fi
 
 PROC=$CMD
-CFG_SCRIPT="../../scripts/lux-config"
+CFG_SCRIPT="../../scripts/lamplighter-config"
 CLEAN="rh_scan.log rh_migr.log rh_rm.log rh.pid rh_purge.log rh_report.log report.out rh_syntax.log"
 
 SUMMARY="/tmp/test_${PROC}_summary.$$"

@@ -15,8 +15,8 @@ import pytest
 from sqlalchemy import text
 
 from conftest import oidc_login
-from lux_webui.db import make_engine
-from lux_webui.jobstats import run_once
+from lamplighter_webui.db import make_engine
+from lamplighter_webui.jobstats import run_once
 
 pytestmark = pytest.mark.integration
 

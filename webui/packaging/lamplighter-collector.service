@@ -1,21 +1,21 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
 [Unit]
-Description=Lamplighter jobstats reader (Lustre jobstats for the triage view)
+Description=Lamplighter web UI collector (age histogram, usage history, directory totals)
 Documentation=file:///usr/share/doc/lamplighter-webui/README.md
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=oneshot
-User=lux-webui
-Group=lux-webui
-Environment=LUX_WEBUI_CONFIG=/etc/lux-webui/config.yaml
-ExecStart=/opt/lux-webui/bin/lux-jobstats
-# Reads the spool (or Prometheus); small and quick, runs every minute.
-TimeoutStartSec=5min
-# Processed snapshots are renamed and pruned in the spool.
-ReadWritePaths=/var/spool/lux-jobstats
+User=lamplighter-webui
+Group=lamplighter-webui
+Environment=LAMPLIGHTER_WEBUI_CONFIG=/etc/lamplighter.d/webui/config.yaml
+ExecStart=/opt/lamplighter-webui/bin/lamplighter-collector run
+# One full scan of Robinhood's ENTRIES table: keep it gentle.
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=8h
 
 NoNewPrivileges=yes
 ProtectSystem=strict

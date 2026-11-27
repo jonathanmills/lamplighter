@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
-"""Application factory: ``uvicorn lux_webui.app:create_app --factory``."""
+"""Application factory: ``uvicorn lamplighter_webui.app:create_app --factory``."""
 
 from __future__ import annotations
 
@@ -56,7 +56,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     app.state.sessions = SessionStore(settings.server.session_ttl_seconds)
     app.state.oauth = setup_oauth(settings)
     app.state.engine = make_engine(settings.database)          # Robinhood (read only)
-    app.state.store_engine = make_engine(settings.store)       # lux_webui (collector output, audit)
+    app.state.store_engine = make_engine(settings.store)       # lamplighter_webui (collector output, audit)
     migrate(app.state.store_engine)
     attach_store(app.state.store_engine)
     app.state.token_verifier = (TokenVerifier(settings.oidc, settings.monitoring)
@@ -87,7 +87,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # short-lived OIDC state/PKCE verifier.
     app.add_middleware(SessionMiddleware,
                        secret_key=read_secret(settings.server.session_secret_file),
-                       session_cookie="lux_session", https_only=True,
+                       session_cookie="lamplighter_session", https_only=True,
                        same_site=settings.server.cookie_samesite,
                        max_age=settings.server.session_ttl_seconds)
 
