@@ -67,9 +67,14 @@ License: CeCILL-C
 Url: https://github.com/jonathanmills/lamplighter
 Source0: @PACKAGE@-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildRequires: gcc
+BuildRequires: make
+BuildRequires: bison
+BuildRequires: flex
 BuildRequires: glib2-devel >= 2.16
 BuildRequires: libattr-devel
 BuildRequires: systemd
+BuildRequires: systemd-rpm-macros
 %systemd_requires
 %if %{with lustre}
 %if %{defined lversion}
