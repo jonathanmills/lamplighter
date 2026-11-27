@@ -51,7 +51,7 @@ function Shell() {
   return (
     <div className={"shell" + (collapsed ? " collapsed" : "")}>
       <aside className="sidebar" aria-label="Main navigation">
-        <div className="brand"><span className="brand-mark" aria-hidden="true">R</span><span className="brand-text">Robinhood</span></div>
+        <div className="brand"><span className="brand-mark" role="img" aria-label="Lamplighter logo" /><span className="brand-text">Robinhood</span></div>
         <nav className="nav">
           {groups.map((g) => (
             <div className="nav-group" key={g}>

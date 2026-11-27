@@ -64,22 +64,25 @@ def _client(request: Request) -> str | None:
 _PAGE = """<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Robinhood · Sign in</title>
+<link rel="icon" href="/favicon.ico" sizes="16x16 32x32 48x48">
 <style>
 :root{{color-scheme:dark}}
 *,*::before,*::after{{box-sizing:border-box}}
-body{{margin:0;min-height:100vh;display:grid;place-items:center;
+body{{margin:0;min-height:100vh;display:grid;place-items:center;align-content:center;gap:22px;
  font:15px/1.5 Ubuntu,"Segoe UI",system-ui,sans-serif;color:#DFDBD2;
  background:linear-gradient(135deg,#77216F 0%,#5E2750 35%,#2C001E 100%);padding:16px}}
 main{{background:#262523;border:1px solid #4D4C47;border-radius:12px;padding:28px;
  width:min(380px,100%);display:grid;gap:16px}}
-h1{{margin:0;font-size:1.3rem;font-weight:500}} p{{margin:0;color:#AEA79F}}
+h1{{margin:0;font-size:1.3rem;font-weight:500;text-align:center}} p{{margin:0;color:#AEA79F}}
+.logo{{height:190px;width:120px;background:#7FB8E1;-webkit-mask:url(/lamplighter.svg) center/contain no-repeat;
+ mask:url(/lamplighter.svg) center/contain no-repeat}}
 .btn{{display:block;text-align:center;background:#4B9CD3;color:#13294B;border:0;border-radius:6px;
  padding:10px;font-family:inherit;font-weight:500;font-size:.95rem;text-decoration:none;cursor:pointer;width:100%}}
 form{{display:grid;gap:10px}} label{{display:grid;gap:4px;font-size:.85rem;color:#AEA79F}}
 input{{background:#2F2E2B;color:#DFDBD2;border:1px solid #4D4C47;border-radius:6px;padding:8px;font:inherit}}
 input:focus,.btn:focus{{outline:2px solid #4B9CD3;outline-offset:2px}}
 .err{{color:#FF5F57}} hr{{border:0;border-top:1px solid #4D4C47;width:100%}}
-</style></head><body><main>
+</style></head><body><div class="logo" role="img" aria-label="Lamplighter logo"></div><main>
 <h1>Robinhood</h1>{body}</main></body></html>"""
 
 

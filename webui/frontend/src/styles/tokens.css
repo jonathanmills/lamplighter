@@ -31,6 +31,7 @@
   --accent-tint-line: rgba(75, 156, 211, 0.40);
   --focus: #4B9CD3;
   --brand: #E95420;          /* Ubuntu orange: shapes only, never text */
+  --logo: #7FB8E1;           /* the lamp: Sky, 7.2:1 on the dark sidebar */
   /* status, reserved; always with an icon or label */
   --ok: #34C759;
   --warn: #FF9E1B;
@@ -67,6 +68,7 @@
   --accent-tint-line: rgba(44, 80, 128, 0.40);
   --focus: #2F7CB5;
   --brand: #E95420;
+  --logo: #2C5080;           /* the lamp: Bolin Creek on the light sidebar */
   --ok: #248A3D;
   --warn: #8F5400;
   --error: #C0362C;

@@ -16,7 +16,9 @@ BASE = "https://webui.test:8443"
 OUT = Path("/devenv/.shots")
 
 SHOTS = [
-    # (user, path, theme, width, name)
+    # (user, path, theme, width, name); user None = signed out
+    (None, "/auth/login", "dark", 1440, "login"),
+    (None, "/auth/login", "dark", 400, "login-phone"),
     ("dave", "/", "dark", 1440, "overview-dark"),
     ("dave", "/", "light", 1440, "overview-light"),
     ("dave", "/", "dark", 1000, "overview-medium"),
@@ -62,6 +64,12 @@ def main() -> int:
                     errors.append(f"{n}: {m.text}")
             page.on("console", on_console)
             page.on("pageerror", lambda e, n=name: errors.append(f"{n}: {e}"))
+            if user is None:
+                page.goto(BASE + path)
+                page.wait_for_timeout(800)
+                page.screenshot(path=str(OUT / f"{name}.png"), full_page=True)
+                ctx.close()
+                continue
             page.goto(BASE + "/auth/login")
             page.fill("#username", user)
             page.fill("#password", "password")
