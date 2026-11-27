@@ -43,8 +43,7 @@ Lustre ──changelogs──▶ robinhood daemon ──▶ MariaDB (robinhood s
                                                 ▼
                                lux-collector ──▶ MariaDB (lux_webui schema: rollups, history)
                                                 │
-Lustre jobstats ─▶ jobstats collector ──────────┤
-Slurm (slurmrestd) ─────────────────────────────┤
+Lustre jobstats ─▶ (spool dir or Prometheus) ─▶ lux-jobstats ─┤
                                                 ▼
                        lux-webui API (Python) ◀──▶ browser (static SPA)
                                 ▲
@@ -212,12 +211,19 @@ Modelled on the appearance of the Checkmk Pro GUI:
 ### 5.4 Triage ("the cluster is slow")
 What Robinhood can and cannot say:
 - It can show **what changed recently**: files and directories by owner with recent `last_mod` or `md_update`, and bursts of metadata activity (changelog rate from `VARS`).
-- It **cannot** show live I/O. Lustre updates atime lazily, and ATIME changelog records are off by default. Real I/O by job comes from **Lustre jobstats** (`jobid_var=SLURM_JOB_ID`), collected from the metadata and storage servers.
+- It **cannot** show live I/O. Lustre updates atime lazily, and ATIME changelog records are off by default. Real I/O by job comes from **Lustre jobstats**, kept on the metadata and storage servers.
 
 The view combines the two:
-- Top jobs by metadata operations and by read/write bytes (jobstats), joined to the **Slurm** job's user, account, nodes and working directory (via `slurmrestd`), joined to that user's or directory's footprint in Robinhood.
+- Top jobs by metadata operations and by bytes read and written, per Lustre target and over time. Job IDs are shown as Lustre labels them (`jobid_name`): process name and UID by default (for example `dd.1234`, with the UID resolved to a name through LDAP), the hostname, or a scheduler's job ID.
+- Recently changed data by user, group and directory, and the changelog rate, linked to the same users.
 
-This needs a jobstats collector on or near the Lustre servers. It is Phase 3, and could reuse an existing exporter if the site already collects jobstats.
+**No job scheduler dependency.** Lamplighter must work at sites without Slurm (or any scheduler). Scheduler details (account, nodes, working directory) are out of scope for now, and could later become an optional plug-in for any scheduler.
+
+**Sources (decided November 2026):** sites should not need new infrastructure, so jobstats come from:
+1. **A spool directory (default).** A cron one-liner on each Lustre server (`lctl get_param -n mdt.*.job_stats` / `obdfilter.*.job_stats`) writes timestamped snapshot files; the site moves them by any means (NFS, rsync, scp). Lamplighter never connects to the servers. The files are untrusted input: strict names and size limits, safe parsing, never executed, rotated after processing, and stale servers are flagged.
+2. **Prometheus (the only alternative)**, for sites that already scrape jobstats. Metric and label names differ between exporters, so they are mapped in `config.yaml`.
+
+Both produce the same normalized records (window, filesystem, target, job ID, metadata operations, bytes read and written). Jobstats are cumulative and Lustre drops idle jobs (`job_cleanup_interval`), so the spool reader takes differences between consecutive snapshots per target and job, and treats a counter that goes down as a reset. A separate, frequent and cheap timer (`lux-jobstats`) does this, independent of the heavy `ENTRIES` collector.
 
 ### 5.5 Browse and search
 - Directory tree browser, cheap through `parent_id` and `NAMES`, showing size and count per subtree from the rollups.
@@ -312,7 +318,7 @@ webui/
 | 1. Core | Overview and status, Users/Groups from `ACCT_STAT`, collector v1 (`acct_history` and `age_hist`) **with a scale test**. *Done: Overview, collector v1, a first Cold data page (owners with the most cold data, LDAP contact details, audited CSV export), and Users & groups (sortable tables with LDAP names, small-file share and change since the last snapshot, plus a per-user page with age, sizes, history and groups; viewers see only themselves). Still open: the scale test.* |
 | 2. Checkmk | *Done: admin pages (Directory, Access control (read-only), Audit log) and the Checkmk 2.5 plugin (`webui/checkmk`: special agent, 3 services, rulesets, MKP), tested against Checkmk's real APIs. Still to do: install on an x86-64 Checkmk 2.5 site; per-policy services need per-policy counts from the collector.* Monitoring endpoint (deployable on its own), Checkmk 2.5 MKP with a polling special agent (Robinhood status and usage services first, then per-policy services from the collector), Robinhood config guidance for classifier-only alert policies. |
 | 3. Data managers | Cold-data explorer, directory rollups, exports, role-based access. *Done: directory rollups, Browse (paths.view_all), coldest directories. Still open: own-files browsing (paths.view_own), scale measurement.* |
-| 4. Triage | Jobstats collector, Slurm integration, triage dashboard. Rate metrics also feed Checkmk. |
+| 4. Triage | Jobstats ingestion (spool directory, then Prometheus), triage dashboard. Rate metrics also feed Checkmk. No job scheduler dependency. |
 | 5. Retire PHP | Feature parity check against `gui_v3`, remove `web_gui/` from the build and RPM, RPM packaging for the new UI. *Done: `robinhood-webgui` (PHP) removed from the build and spec; `lamplighter-webui` RPM (`webui/packaging`) with venv, systemd units, collector timer and nginx example, tested by installing it in a fresh Rocky 9.7 container behind nginx. `web_gui/` deleted (last copy: tag `robinhood-php-gui-final`). Still open: an x86_64 build host/CI, and these `gui_v3` features the new UI does not have yet: **file search** (by owner, size, age or path), **per-fileclass and policy-status counts** (the same per-policy counts Phase 2 needs), **a general data export** (CSV/JSON beyond the cold-data export), and **scheduled report tasks and custom/stacked graphs** (decide whether they are wanted). Dropped on purpose: access control by client IP address (a job for the firewall or nginx).* |
 
 ## 10. Licensing
@@ -339,5 +345,5 @@ Rules:
 3. **Scale**: roughly how many entries are in `ENTRIES` now, and how fast does it change? This sets the collector's design budget.
 4. **JavaScript tooling policy**: is building a React front end with npm on a build host acceptable, or do we need the no-build htmx option?
 5. **Self-service**: should ordinary users log in to see their own data, or is it staff only?
-6. **Jobstats**: is jobstats collection already enabled or exported somewhere (for example to Prometheus)?
+6. **Jobstats**: is jobstats collection enabled, and with which `jobid_name`? *Sources decided: spool directory by default, Prometheus as the alternative (section 5.4).*
 7. **First policies to monitor**: which conditions caused real slowdowns or data problems recently? Those become the first classifier policies and Checkmk services.

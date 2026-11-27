@@ -93,7 +93,7 @@ A tool that shows who owns every file on a shared filesystem needs proper access
 ### Insight operations staff need
 
 - **Cold data, for data managers:** the oldest, largest and least-used files and directories, and the **owners to contact**, as candidates to purge or move to cold storage such as an archive tier or cloud cold storage. This supports data-retention mandates without anyone writing SQL.
-- **"Why is the cluster slow?" triage** (planned): what data is hot, by user, group and directory, correlated with **Slurm** jobs. Robinhood sees only metadata, and Lustre updates access times lazily, so real per-job I/O will come from **Lustre jobstats** shown alongside it.
+- **"Why is the cluster slow?" triage** (planned): what data is hot, by user, group and directory, and which jobs are doing the most I/O. Robinhood sees only metadata, and Lustre updates access times lazily, so real per-job I/O will come from **Lustre jobstats** shown alongside it. No job scheduler is required, and no extra infrastructure: each Lustre server's jobstats arrive through a simple spool directory, or from Prometheus if a site already runs it.
 
 ### One alerting tool: yours
 
@@ -113,7 +113,7 @@ Perl build helpers are being replaced with Python, and the kernel's `checkpatch.
 | Rename to Lamplighter (`lux-*`, `lamplighter`, `/etc/lamplighter.d`, packages, `lamplighter-compat`) | Done, following [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md). Upgrading over installed Robinhood RPMs and the full integration suite still need testing on a Linux host. |
 | Web UI: sign-in (OIDC and LDAP), LDAP groups and ACLs, audit log | Working in the development environment |
 | Web UI: overview, users and groups, cold data, directory browsing | Working in the development environment |
-| Web UI: slowdown triage with Slurm and jobstats | Planned |
+| Web UI: slowdown triage with Lustre jobstats | In progress |
 | Checkmk 2.5 plugin | Built and tested against Checkmk's APIs, not yet run on a live site |
 | RPM packaging for Rocky Linux / RHEL 9 | Engine and web UI packages build and install in a clean Rocky 9.7 container |
 | PHP web GUI | Removed. The last copy is kept at the git tag `robinhood-php-gui-final`. |
