@@ -9,14 +9,29 @@ The `lamplighter-webui` RPM installs:
 | `/etc/lux-webui/config.yaml` | Configuration (`root:lux-webui`, mode 0640); a commented example on first install |
 | `lux-webui.service` | The web service: 127.0.0.1:8000, as user `lux-webui`, sandboxed by systemd |
 | `lux-collector.service` / `.timer` | The collector, nightly at 02:30 (±30 min) |
+| `lux-jobstats.service` / `.timer` | Reads Lustre jobstats for the triage view, every minute (when configured) |
+| `/var/spool/lux-jobstats/` | Where Lustre servers deliver jobstats snapshots (`2770 lux-webui:lux-jobstats`) |
 | `/usr/share/lux-webui/*.example` | Templates: `nginx-lux-webui.conf.example` and a pristine `config.yaml.example` |
 | `/usr/share/doc/lamplighter-webui/` | This file |
 
 No PHP, no Node.js and no compiler is needed on the server. The PHP GUI (`robinhood-webgui`) is no longer built.
 
+## Building the RPM
+
+On any Rocky Linux / RHEL 9 build host (x86-64 or ARM), from a git clone:
+
+```sh
+webui/packaging/make-srpm.sh           # or "make webui-srpm"; needs only rpm-build and tar
+sudo dnf module enable -y nodejs:22    # Node.js 18+ for the front end, on the build host only
+sudo dnf builddep webui/packaging/dist/lamplighter-webui-*.src.rpm
+rpmbuild --rebuild webui/packaging/dist/lamplighter-webui-*.src.rpm
+```
+
+The build downloads Python and npm packages (internet access or local mirrors). It creates the virtual environment at its real path, `/opt/lux-webui`, so use a build host where that path is not in use. Maintainers can run the same steps in a throwaway container with `build-rpm.sh`.
+
 ## Steps
 
-1. **Install:** `dnf install ./lamplighter-webui-0.1.0-1.el9.<arch>.rpm nginx`
+1. **Install:** `dnf install ./lamplighter-webui-<version>.el9.<arch>.rpm nginx`
 2. **Databases:** let your DBA create:
    - on the Robinhood database (preferably a replica): user `lux_webui` with `SELECT` and `CREATE TEMPORARY TABLES` on the Robinhood schema
    - a schema `lux_webui` with `ALL` for that user (it can live on another server)

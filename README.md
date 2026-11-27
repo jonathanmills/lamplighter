@@ -120,15 +120,47 @@ Perl build helpers are being replaced with Python, and the kernel's `checkpatch.
 
 The design for everything web-related is in [doc/webui-design.md](doc/webui-design.md).
 
-## Getting started
+## Building and installing
 
-Lamplighter has no release yet. Robinhood's installation guide ([doc/ROBINHOOD-README.md](doc/ROBINHOOD-README.md)) still applies, with Lamplighter's names: `lamplighter` for `robinhood`, `lux-*` for `rbh-*`, `/etc/lamplighter.d` for `/etc/robinhood.d`. To build, on Rocky Linux / RHEL 9:
+Lamplighter has no release yet: you build RPMs from a git clone. Any Rocky Linux or RHEL 9 host can be the build host, x86-64 or ARM. You get a source RPM (SRPM), and `rpmbuild --rebuild` turns it into RPMs for the build host's architecture.
+
+### The engine
 
 ```sh
+# Build tools. EPEL and CRB provide jemalloc-devel.
+sudo dnf install -y git dnf-plugins-core epel-release
+sudo dnf config-manager --set-enabled crb
+sudo dnf install -y gcc make autoconf automake libtool bison flex glib2-devel libattr-devel \
+    mariadb-connector-c-devel jemalloc-devel rpm-build systemd-rpm-macros
+
+git clone https://github.com/jonathanmills/lamplighter.git
+cd lamplighter
 sh autogen.sh
-./configure            # --disable-lustre for a POSIX-only build
-make rpm               # RPMs in rpms/RPMS/<arch>: lamplighter-posix (or -lustre), -adm, -tests, -compat
+./configure --enable-dist
+make srpm                        # rpms/SRPMS/lamplighter-<version>.src.rpm
+
+# On this or any other build host:
+sudo dnf builddep rpms/SRPMS/lamplighter-*.src.rpm
+rpmbuild --rebuild rpms/SRPMS/lamplighter-*.src.rpm     # RPMs in ~/rpmbuild/RPMS/<arch>/
 ```
+
+This builds the POSIX packages: `lamplighter-posix`, `lamplighter-adm` (`lux-config`), `lamplighter-tests` and `lamplighter-compat` (Robinhood's command names, only if you need them). For Lustre, add `--with lustre` to `rpmbuild --rebuild` on a host with the Lustre client and its development package; the Lustre build has not been tested in this project's own environment yet.
+
+Then install the packages, create the database (`lux-config create_db`), put your configuration in `/etc/lamplighter.d/<fsname>.conf` (templates are in `/etc/lamplighter.d/templates/`, and a Robinhood configuration works unchanged), and start `lamplighter@<fsname>.service`. Robinhood's installation guide covers the details: [doc/ROBINHOOD-README.md](doc/ROBINHOOD-README.md), with Lamplighter's names (`lamplighter` for `robinhood`, `lux-*` for `rbh-*`, `/etc/lamplighter.d` for `/etc/robinhood.d`).
+
+### The web UI
+
+```sh
+make webui-srpm                  # or webui/packaging/make-srpm.sh: needs only rpm-build and tar
+
+sudo dnf module enable -y nodejs:22    # the build needs Node.js 18 or newer; Rocky 9's default is 16
+sudo dnf builddep webui/packaging/dist/lamplighter-webui-*.src.rpm
+rpmbuild --rebuild webui/packaging/dist/lamplighter-webui-*.src.rpm
+```
+
+Node.js is needed only on the build host, to build the front end once; the servers that run Lamplighter never need it, nor PHP. The build downloads Python and npm packages, so the build host needs internet access (or local mirrors). Configuration, nginx and the systemd units are described in [webui/packaging/README.md](webui/packaging/README.md).
+
+### Developing
 
 To work on the web UI, the Checkmk plugin or the packaging, use the container development environment (it also runs on macOS with Podman):
 

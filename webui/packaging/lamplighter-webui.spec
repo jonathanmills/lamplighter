@@ -1,11 +1,15 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 # Copyright (C) 2026 Jonathan Mills
 #
-# Lamplighter web UI. Build with webui/packaging/build-rpm.sh, which builds
-# the front end (Node, in a container) and runs rpmbuild in a throwaway
-# Rocky Linux container. %%install creates the virtualenv at its real path
-# (/opt/lux-webui) because virtualenvs record absolute paths, so never run
-# this spec on a machine where /opt/lux-webui matters.
+# Lamplighter web UI. Make the SRPM from a git checkout with
+# webui/packaging/make-srpm.sh (or "make webui-srpm"), then
+# "rpmbuild --rebuild" it on any Rocky Linux / RHEL 9 build host, of either
+# architecture. The front end is built here with Node.js 18 or newer
+# (BuildRequires only: the installed RPM never needs Node.js). npm and pip
+# download packages, so the build host needs internet access or mirrors.
+# %%install creates the virtualenv at its real path (/opt/lux-webui),
+# because virtualenvs record absolute paths: build on a host where
+# /opt/lux-webui is not in use.
 
 %global venv /opt/lux-webui
 %global debug_package %{nil}
@@ -16,13 +20,16 @@
 
 Name:           lamplighter-webui
 Version:        0.1.0
-Release:        2%{?dist}
+Release:        3%{?dist}
 Summary:        Web UI and monitoring API for Lamplighter
 License:        GPL-2.0-or-later
-URL:            https://github.com/jonathanmills/robinhood
+URL:            https://github.com/jonathanmills/lamplighter
 Source0:        %{name}-%{version}.tar.gz
 
 BuildRequires:  python3.12 python3.12-devel python3.12-pip gcc openldap-devel systemd-rpm-macros
+# Rocky Linux 9's default nodejs is 16: dnf module enable nodejs:22 first.
+BuildRequires:  nodejs >= 1:18
+BuildRequires:  npm
 Requires:       python3.12 openldap
 Requires(pre):  shadow-utils
 %{?systemd_requires}
@@ -39,8 +46,10 @@ never writes to it. No PHP.
 %setup -q
 
 %build
-# Nothing to compile here: the front end is pre-built (frontend-dist/), and
-# the Python environment is assembled in %%install.
+# The front end: static files, built once here. Node.js stays on the build host.
+cd frontend
+npm ci --no-audit --no-fund --loglevel=error
+npm run build
 
 %install
 rm -rf %{venv}
@@ -52,7 +61,7 @@ mkdir -p %{buildroot}/opt
 cp -a %{venv} %{buildroot}/opt/
 
 install -d %{buildroot}%{_datadir}/lux-webui
-cp -a frontend-dist %{buildroot}%{_datadir}/lux-webui/frontend
+cp -a frontend/dist %{buildroot}%{_datadir}/lux-webui/frontend
 
 install -D -m 0644 packaging/lux-webui.service           %{buildroot}%{_unitdir}/lux-webui.service
 install -D -m 0644 packaging/lux-collector.service %{buildroot}%{_unitdir}/lux-collector.service
@@ -101,6 +110,10 @@ exit 0
 %config(noreplace) %attr(0640,root,lux-webui) %{_sysconfdir}/lux-webui/config.yaml
 
 %changelog
+* Fri Nov 27 2026 Jonathan Mills - 0.1.0-3
+- The SRPM carries the front-end source, built by rpmbuild with Node.js
+  on the build host, so make-srpm.sh needs no containers.
+
 * Fri Nov 27 2026 Jonathan Mills - 0.1.0-2
 - lux-jobstats service and timer, and the jobstats spool directory.
 

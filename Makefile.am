@@ -79,6 +79,10 @@ srpm: lamplighter.spec mydist
 	cp -f $(distdir).tar.gz $(rpm_dir)/SOURCES/.
 	rpmbuild --without lustre --define="_topdir $(rpm_dir)" -bs lamplighter.spec
 
+# The web UI's source RPM (needs only rpm-build): webui/packaging/make-srpm.sh
+webui-srpm:
+	$(top_srcdir)/webui/packaging/make-srpm.sh
+
 cppcheck:
 	cppcheck -j12 -v --force --enable=all -I`pwd`/src/include -DHAVE_CONFIG_H @PURPOSE_CFLAGS@ @DB_CFLAGS@ src/
 
