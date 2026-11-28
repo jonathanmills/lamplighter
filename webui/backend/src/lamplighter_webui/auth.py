@@ -232,10 +232,13 @@ def current_principal(request: Request) -> Principal:
     return Principal(user=user, grants=grants, session=session)
 
 
-def require(perm: Perm):
+def require(*perms: Perm):
+    """Dependency: the signed-in person, who must hold at least one of ``perms``."""
+    names = " or ".join(x.value for x in perms)
+
     def dep(request: Request, p: Principal = Depends(current_principal)) -> Principal:
-        if not p.grants.allows(perm):
-            audit("denied", user=p.user.uid, outcome="denied", client=request.client.host if request.client else None, permission=perm.value, path=request.url.path)
-            raise HTTPException(403, f"Missing permission: {perm.value}")
+        if not any(p.grants.allows(x) for x in perms):
+            audit("denied", user=p.user.uid, outcome="denied", client=request.client.host if request.client else None, permission=names, path=request.url.path)
+            raise HTTPException(403, f"Missing permission: {names}")
         return p
     return dep

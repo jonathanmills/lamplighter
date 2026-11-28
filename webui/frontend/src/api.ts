@@ -92,6 +92,7 @@ export interface DirTotals {
 export interface LiveDir { id: string; name: string; owner: string | null; newest_access: number | null; live: true }
 export interface BrowseResult {
   as_of: number; depth_limit: number;
+  scope: "all" | "own";   // own: only the signed-in person's data (paths.view_own)
   dir: { id: string; path: string; depth: number; totals: DirTotals | null };
   ancestors: { id: string; name: string; depth: number }[];
   subdirs: (DirTotals | LiveDir)[];

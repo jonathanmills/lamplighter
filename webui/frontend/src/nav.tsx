@@ -8,7 +8,7 @@ export interface NavItem {
   path: string;
   title: string;
   group: string;
-  perm: string;
+  perm: string | string[];   // any of these
   icon: ReactElement;
   phase?: string;        // set while the page is not built yet
   blurb?: string;
@@ -34,7 +34,7 @@ export const NAV: NavItem[] = [
     icon: I("M20.6 13.4l-7.2 7.2a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8zM7.5 7.5h.01") },
   { path: "/search", title: "Search", group: "Data", perm: "paths.view_all",
     icon: I("M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16zM21 21l-4.35-4.35") },
-  { path: "/browse", title: "Browse", group: "Data", perm: "paths.view_all",
+  { path: "/browse", title: "Browse", group: "Data", perm: ["paths.view_all", "paths.view_own"],
     icon: I("M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z") },
   { path: "/admin/access", title: "Access control", group: "Administration", perm: "admin.acl",
     icon: I("M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z") },

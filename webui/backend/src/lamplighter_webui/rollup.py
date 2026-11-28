@@ -106,6 +106,19 @@ def _parallel_file_pass(source: Engine, workers: int, setup, file_pass: str, par
     return [row for part in map_ranges(source, workers, scan, start, finish) for row in part]
 
 
+def _add_owner(mix: dict, uid: str, st: list) -> None:
+    cur = mix.get(uid)
+    if cur is None:
+        mix[uid] = list(st)
+        return
+    cur[0] += st[0]
+    cur[1] += st[1]
+    cur[2] = max(filter(None, [cur[2], st[2]]), default=None)
+    cur[3] = min(filter(None, [cur[3], st[3]]), default=None)
+    cur[4] += st[4]
+    cur[5] += st[5]
+
+
 def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2 * 1024**3,
             scratch: str | None = None, source: Engine | None = None, workers: int = 1,
             setup: Callable[[Connection], None] | None = None) -> list[dict]:
@@ -188,7 +201,7 @@ def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2
         node[i] = {"dir_id": i, "parent_dir": par if d > 0 else None, "depth": d, "name": _s(name),
                    "owner": _s(uid) if uid is not None else None, "children": [],
                    "files": 0, "bytes": 0, "newest": None, "oldest": None, "cold1": 0, "cold3": 0,
-                   "mix": defaultdict(int)}
+                   "mix": {}}       # owner -> [files, bytes, newest, oldest, cold1, cold3]
     for n in node.values():
         if n["parent_dir"] in node:
             node[n["parent_dir"]]["children"].append(n["dir_id"])
@@ -202,7 +215,7 @@ def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2
         n["cold3"] += int(c3)
         n["newest"] = max(filter(None, [n["newest"], newest]), default=None)
         n["oldest"] = min(filter(None, [n["oldest"], oldest]), default=None)
-        n["mix"][_s(uid)] += int(size)
+        _add_owner(n["mix"], _s(uid), [int(files), int(size), newest, oldest, int(c1), int(c3)])
 
     # bottom-up: deepest first, add each node into its parent
     for n in sorted(node.values(), key=lambda x: -x["depth"]):
@@ -215,8 +228,8 @@ def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2
         par["cold3"] += n["cold3"]
         par["newest"] = max(filter(None, [par["newest"], n["newest"]]), default=None)
         par["oldest"] = min(filter(None, [par["oldest"], n["oldest"]]), default=None)
-        for uid, b in n["mix"].items():
-            par["mix"][uid] += b
+        for uid, st in n["mix"].items():
+            _add_owner(par["mix"], uid, st)
 
     def path_of(n: dict) -> str:
         parts = []
@@ -227,10 +240,14 @@ def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2
 
     out = []
     for n in node.values():
-        top = max(n["mix"].items(), key=lambda kv: kv[1], default=(None, 0))
+        top = max(((u, st[1]) for u, st in n["mix"].items()), key=lambda kv: kv[1], default=(None, 0))
         out.append({"dir_id": n["dir_id"], "parent_dir": n["parent_dir"], "depth": n["depth"],
                     "path": path_of(n)[:4096], "owner": n["owner"], "top_owner": top[0],
                     "top_owner_bytes": top[1], "subdirs": len(n["children"]), "files": n["files"],
                     "bytes": n["bytes"], "newest_access": n["newest"], "oldest_access": n["oldest"],
-                    "cold_1y_bytes": n["cold1"], "cold_3y_bytes": n["cold3"]})
+                    "cold_1y_bytes": n["cold1"], "cold_3y_bytes": n["cold3"],
+                    # each owner's share of this subtree (own-files browsing)
+                    "owners": [{"owner": u, "files": st[0], "bytes": st[1], "newest_access": st[2],
+                                "oldest_access": st[3], "cold_1y_bytes": st[4], "cold_3y_bytes": st[5]}
+                               for u, st in sorted(n["mix"].items())]})
     return out

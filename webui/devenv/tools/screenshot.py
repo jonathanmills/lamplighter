@@ -50,6 +50,7 @@ SHOTS = [
     ("carol", "/browse", "dark", 1440, "browse-root-dark"),
     ("carol", "/browse?dir={projects}", "light", 1440, "browse-projects-light"),
     ("carol", "/browse", "dark", 400, "browse-phone"),
+    ("erin", "/browse", "dark", 1440, "browse-own-dark"),     # paths.view_own: her data only
     ("dave", "/admin/audit", "dark", 1440, "audit-dark"),
     ("dave", "/admin/audit?outcome=denied", "light", 1440, "audit-light-denied"),
     ("alice", "/", "dark", 1440, "alice-viewer"),

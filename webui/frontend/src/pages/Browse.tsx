@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Copyright (C) 2026 Jonathan Mills
-// Browse (paths.view_all): walk the tree with subtree size, files, last
-// read and cold share per directory (from the collector's rollups), then
-// live listings below the rollup depth. Every directory has its own URL.
+// Browse: walk the tree with subtree size, files, last read and cold
+// share per directory (from the collector's rollups), then live listings
+// below the rollup depth. Every directory has its own URL. With
+// paths.view_all: everything. With only paths.view_own: the person's own
+// data (the API filters it): directories that hold some of it, their own
+// totals and files, and no other person's name.
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { api, ApiError, type BrowseResult, type DirTotals, type LiveDir } from "../api";
 import { ago, bytes, int } from "../format";
 import SortTable, { type Column } from "../components/SortTable";
 import { ShareBar, sharePct } from "./Users";
+import { can, useMe } from "../App";
 
 const now = () => Math.floor(Date.now() / 1000);
 const lastRead = (t: number | null | undefined) => (t ? ago(now() - t) : "—");
@@ -16,6 +20,7 @@ const isLive = (d: DirTotals | LiveDir): d is LiveDir => "live" in d;
 const dirLink = (id: string) => `/browse?dir=${encodeURIComponent(id)}`;
 
 export default function Browse() {
+  const me = useMe();
   const [params] = useSearchParams();
   const dir = params.get("dir") ?? undefined;
   const [r, setR] = useState<BrowseResult | null>(null);
@@ -32,7 +37,8 @@ export default function Browse() {
 
   if (err) {
     return <section className="panel"><div className="empty">
-      <h2>{err.status === 404 ? "Nothing to browse yet" : "This directory could not load"}</h2>
+      <h2>{err.status !== 404 ? "This directory could not load"
+        : dir ? "No such directory" : "Nothing to browse yet"}</h2>
       <p className="muted">{err.msg}</p>
       {dir && <Link to="/browse">Back to the top</Link>}
     </div></section>;
@@ -40,10 +46,11 @@ export default function Browse() {
   if (!r) return <div className="page-head"><div><h1>Browse</h1><p>Loading…</p></div></div>;
 
   const t = r.dir.totals;
+  const own = r.scope === "own";
   const dirCols: Column<DirTotals>[] = [
     { key: "name", title: "Directory", align: "left", value: (d) => d.name, render: (d) => <Link to={dirLink(d.id)}>{d.name}/</Link> },
-    { key: "owner", title: "Mostly owned by", align: "left", value: (d) => d.top_owner,
-      render: (d) => d.top_owner ? <Link to={`/usage/user/${encodeURIComponent(d.top_owner)}`}><code>{d.top_owner}</code></Link> : <span className="muted">—</span> },
+    ...(own ? [] : [{ key: "owner", title: "Mostly owned by", align: "left" as const, value: (d: DirTotals) => d.top_owner,
+      render: (d: DirTotals) => d.top_owner ? <Link to={`/usage/user/${encodeURIComponent(d.top_owner)}`}><code>{d.top_owner}</code></Link> : <span className="muted">—</span> }]),
     { key: "files", title: "Files", value: (d) => d.files, render: (d) => int(d.files) },
     { key: "bytes", title: "Volume", value: (d) => d.bytes, render: (d) => bytes(d.bytes) },
     { key: "share", title: "Share of this directory", value: (d) => d.bytes, render: (d) => <ShareBar part={d.bytes} whole={t?.bytes ?? 0} /> },
@@ -66,15 +73,19 @@ export default function Browse() {
             <b>{r.dir.depth === 0 ? "top" : r.dir.path.split("/").pop()}</b>
           </nav>
         </div>
-        <div className="actions">
+        {can(me, "paths.view_all") && <div className="actions">
           <Link className="btn btn-ghost" to={`/search?dir=${encodeURIComponent(r.dir.id)}&path=${encodeURIComponent(r.dir.path)}`}>Search here</Link>
-        </div>
+        </div>}
       </div>
 
+      {own && (
+        <p className="note">Your files only: directories that hold some of your data, with your share of each.
+          {r.dir.depth >= r.depth_limit && " Below the summary depth, a sub-directory is listed if you own it or have files directly in it."}</p>
+      )}
       {t ? (
         <section className="stats stats-4" aria-label="This directory">
           <div className="stat"><span className="stat-label">Volume</span><span className="stat-value">{bytes(t.bytes)}</span><span className="stat-sub">{int(t.subdirs)} sub-directories</span></div>
-          <div className="stat"><span className="stat-label">Files</span><span className="stat-value">{int(t.files)}</span><span className="stat-sub">in the whole subtree</span></div>
+          <div className="stat"><span className="stat-label">Files</span><span className="stat-value">{int(t.files)}</span><span className="stat-sub">{own ? "of yours in the whole subtree" : "in the whole subtree"}</span></div>
           <div className="stat"><span className="stat-label">Last read</span><span className="stat-value">{lastRead(t.newest_access)}</span><span className="stat-sub">most recent access in the subtree</span></div>
           <div className="stat"><span className="stat-label">Not read in 1 year</span><span className="stat-value">{sharePct(t.cold_1y_bytes, t.bytes)}</span><span className="stat-sub">{bytes(t.cold_1y_bytes)} · {bytes(t.cold_3y_bytes)} over 3 years</span></div>
         </section>

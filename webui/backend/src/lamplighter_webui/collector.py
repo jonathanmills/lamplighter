@@ -27,7 +27,7 @@ from sqlalchemy import text
 from sqlalchemy.engine import Connection, Engine
 
 from .config import Settings, load_settings
-from .db import make_engine
+from .db import bulk_insert, make_engine
 from .policies import collect_counts_parallel
 from .rollup import compute as compute_rollups
 from .store import migrate
@@ -181,6 +181,14 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
                 c.execute(text(
                     "INSERT INTO acct_history (run_id, uid, gid, type, entries, bytes, blocks) "
                     f"VALUES ({run_id}, :uid, :gid, :type, :n, :b, :bl)"), acct)
+            # own-files browsing reads the latest run only: drop older runs' rows
+            c.execute(text("DELETE FROM dir_rollup_owner WHERE run_id < :r"), {"r": run_id})
+            bulk_insert(c, "dir_rollup_owner", (
+                "run_id", "owner", "dir_id", "parent_dir", "files", "bytes", "newest_access", "oldest_access",
+                "cold_1y_bytes", "cold_3y_bytes"), [
+                (run_id, o["owner"], d["dir_id"], d["parent_dir"], o["files"], o["bytes"], o["newest_access"],
+                 o["oldest_access"], o["cold_1y_bytes"], o["cold_3y_bytes"])
+                for d in dirs for o in d.pop("owners", [])])
             if dirs:
                 c.execute(text(
                     "INSERT INTO dir_rollup (run_id, dir_id, parent_dir, depth, path, owner, top_owner, "

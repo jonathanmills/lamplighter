@@ -20,7 +20,9 @@ import { ComingSoon, Forbidden, NotFound } from "./pages/States";
 
 const MeContext = createContext<Me | null>(null);
 export const useMe = () => useContext(MeContext)!;
-export const can = (me: Me, perm: string) => me.permissions.includes(perm);
+// any of the permissions (one, or a list)
+export const can = (me: Me, perm: string | string[]) =>
+  (Array.isArray(perm) ? perm : [perm]).some((x) => me.permissions.includes(x));
 
 function readCollapsed(): boolean {
   try { return localStorage.getItem("lamplighter-sidebar") === "collapsed"; } catch { return false; }
@@ -92,7 +94,7 @@ function Shell() {
 function Page({ item }: { item: NavItem }) {
   const me = useMe();
   useEffect(() => { document.title = `${item.title} · Lamplighter`; }, [item]);
-  if (!can(me, item.perm)) return <Forbidden perm={item.perm} />;
+  if (!can(me, item.perm)) return <Forbidden perm={[item.perm].flat().join(" or ")} />;
   if (item.path === "/") return <Overview />;
   if (item.path === "/cold") return <ColdData />;
   if (item.path === "/usage") return <Users />;
