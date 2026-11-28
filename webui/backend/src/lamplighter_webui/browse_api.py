@@ -18,6 +18,7 @@ from sqlalchemy import bindparam, text
 from .acl import Perm
 from .audit import audit
 from .auth import Principal, require
+from .export import Format, export, require_export
 
 router = APIRouter(prefix="/api/v1")
 
@@ -70,6 +71,8 @@ def _own_row(r, uid: str, subdirs: int) -> dict:
 
 @router.get("/browse")
 def browse(request: Request, dir: str | None = Query(None, max_length=255),
+           format: Format | None = Query(None, description="csv or json: download the table"),
+           table: Literal["subdirs", "files"] = "subdirs",
            p: Principal = Depends(require(Perm.PATHS_VIEW_ALL, Perm.PATHS_VIEW_OWN))) -> dict:
     """A directory: subtree totals, sub-directories and the largest files.
 
@@ -177,14 +180,23 @@ def browse(request: Request, dir: str | None = Query(None, max_length=255),
                      f"JOIN ENTRIES e ON e.id = n.id WHERE n.parent_id = :d AND e.type = 'file'{mine} "
                      "ORDER BY e.size DESC LIMIT :l"), {"d": dir_id, "l": FILE_LIMIT, "u": uid})]
 
-    audit("browse", user=p.user.uid, client=request.client.host if request.client else None, path=path,
-          scope="own" if own else "all")
+    if format and not own:
+        require_export(p, "lists of paths")              # one's own files need nothing more
+    if not format:
+        audit("browse", user=p.user.uid, client=request.client.host if request.client else None, path=path,
+              scope="own" if own else "all")
     if own:
         totals = _own_row(cur, uid, counts.get(cur.dir_id, 0)) if cur is not None else None
         subdirs = [_own_row(x, uid, counts.get(x.dir_id, 0)) for x in children] + live_dirs
     else:
         totals = _rollup_row(cur) if cur is not None else None
         subdirs = [_rollup_row(r) for r in children] + live_dirs
+    if format:
+        if table == "files":
+            rows = [{"path": path.rstrip("/") + "/" + f["name"], **f} for f in files]
+        else:
+            rows = [{k: v for k, v in d.items() if k not in ("id", "live")} for d in subdirs]
+        return export(request, p, f"browse-{table}", rows, format, path=path, scope="own" if own else "all")
     return {
         "as_of": as_of, "depth_limit": depth_limit, "scope": "own" if own else "all",
         "dir": {"id": _s(dir_id), "path": path, "depth": depth, "totals": totals},
@@ -197,6 +209,7 @@ def browse(request: Request, dir: str | None = Query(None, max_length=255),
 @router.get("/cold/directories")
 def coldest_directories(request: Request, older_than: Literal["1y", "3y"] = "1y",
                         limit: int = Query(25, ge=1, le=200),
+                        format: Format | None = Query(None, description="csv or json: download the table"),
                         p: Principal = Depends(require(Perm.COLD_VIEW))) -> dict:
     """The coldest *datasets*: rolled-up directories with no tracked sub-directories
     (leaves of the rollup tree), ranked by data not read for ``older_than``."""
@@ -208,6 +221,11 @@ def coldest_directories(request: Request, older_than: Literal["1y", "3y"] = "1y"
             f"SELECT {_ROLLUP_COLS} FROM dir_rollup d WHERE run_id = :r AND {col} > 0 AND NOT EXISTS "
             f"(SELECT 1 FROM dir_rollup k WHERE k.run_id = d.run_id AND k.parent_dir = d.dir_id) "
             f"ORDER BY {col} DESC LIMIT :n"), {"r": run_id, "n": limit}).all()
+    if format:
+        require_export(p, "lists of paths")
+        return export(request, p, f"cold-directories-{older_than}",
+                      [{k: v for k, v in _rollup_row(r).items() if k != "id"} for r in rows], format,
+                      older_than=older_than)
     audit("cold.directories", user=p.user.uid, client=request.client.host if request.client else None,
           older_than=older_than, count=len(rows))
     return {"as_of": as_of, "older_than": older_than, "directories": [_rollup_row(r) for r in rows]}

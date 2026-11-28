@@ -14,11 +14,12 @@ from __future__ import annotations
 
 import logging
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from .acl import Perm
 from .auth import Principal, require
 from .db import usage_by, usage_summary, user_usage
+from .export import Format, export
 from .ldapdir import DirectoryError
 from .store import snapshot_bytes, user_age_bands, user_history
 
@@ -43,7 +44,8 @@ def _filesystem_bytes(request: Request) -> int:
 
 
 @router.get("/users")
-def users(request: Request, p: Principal = Depends(require(Perm.USAGE_VIEW_AGGREGATES))) -> dict:
+def users(request: Request, format: Format | None = Query(None, description="csv or json: download the table"),
+          p: Principal = Depends(require(Perm.USAGE_VIEW_AGGREGATES))) -> dict:
     rows = usage_by(request.app.state.engine, "uid")
     everyone = sees_all_users(p)
     if not everyone:
@@ -58,12 +60,17 @@ def users(request: Request, p: Principal = Depends(require(Perm.USAGE_VIEW_AGGRE
                     "mail": person.mail if person else None, **r,
                     # live ACCT_STAT minus the newest collector snapshot
                     "change_bytes": (r["bytes"] - snap[user]) if user in snap else None})
+    if format:
+        # other people's e-mail addresses go out only with cold.export
+        drop = {"mail"} if everyone and not p.grants.allows(Perm.COLD_EXPORT) else set()
+        return export(request, p, "users", [{k: v for k, v in r.items() if k not in drop} for r in out], format)
     return {"scope": "all" if everyone else "self", "snapshot_as_of": as_of,
             "filesystem_bytes": _filesystem_bytes(request), "users": out}
 
 
 @router.get("/groups")
-def groups(request: Request, p: Principal = Depends(require(Perm.USAGE_VIEW_AGGREGATES))) -> dict:
+def groups(request: Request, format: Format | None = Query(None, description="csv or json: download the table"),
+           p: Principal = Depends(require(Perm.USAGE_VIEW_AGGREGATES))) -> dict:
     rows = usage_by(request.app.state.engine, "gid")
     as_of, snap = snapshot_bytes(request.app.state.store_engine, "gid")
     try:
@@ -78,6 +85,8 @@ def groups(request: Request, p: Principal = Depends(require(Perm.USAGE_VIEW_AGGR
         out.append({"group": name, "description": g.description if g else None,
                     "members": g.members if g else None, **r,
                     "change_bytes": (r["bytes"] - snap[name]) if name in snap else None})
+    if format:
+        return export(request, p, "groups", out, format)
     return {"snapshot_as_of": as_of, "filesystem_bytes": _filesystem_bytes(request), "groups": out}
 
 

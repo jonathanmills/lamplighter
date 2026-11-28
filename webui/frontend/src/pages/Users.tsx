@@ -8,6 +8,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { api, type GroupsList, type UsersList } from "../api";
 import { ago, bytes, int } from "../format";
 import SortTable, { type Column } from "../components/SortTable";
+import Download from "../components/Download";
 import type { GroupRow, UserRow } from "../api";
 
 export const signedBytes = (n: number | null) =>
@@ -117,7 +118,8 @@ export default function Users() {
 
       <section className="panel" aria-label={view === "users" ? "Users" : "Groups"}>
         <div className="panel-head"><h2>{view === "users" ? "Users" : "Groups"}</h2>
-          <span className="meta">{view === "users" ? `${userRows.length} of ${users.users.length}` : `${groupRows.length} of ${groups.groups.length}`}</span></div>
+          <span className="meta">{view === "users" ? `${userRows.length} of ${users.users.length}` : `${groupRows.length} of ${groups.groups.length}`}</span>
+          <Download path={`/usage/${view}`} label={view} /></div>
         <div className="panel-body">
           {view === "users"
             ? <SortTable rows={userRows} columns={userCols} initialSort="bytes" rowKey={(r) => r.user} empty="No users match." />

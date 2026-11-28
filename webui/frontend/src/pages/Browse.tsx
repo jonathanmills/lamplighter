@@ -12,6 +12,7 @@ import { api, ApiError, type BrowseResult, type DirTotals, type LiveDir } from "
 import { ago, bytes, int } from "../format";
 import SortTable, { type Column } from "../components/SortTable";
 import { ShareBar, sharePct } from "./Users";
+import Download from "../components/Download";
 import { can, useMe } from "../App";
 
 const now = () => Math.floor(Date.now() / 1000);
@@ -47,6 +48,7 @@ export default function Browse() {
 
   const t = r.dir.totals;
   const own = r.scope === "own";
+  const mayExport = own || can(me, "cold.export");     // lists of paths: one's own, or with cold.export
   const dirCols: Column<DirTotals>[] = [
     { key: "name", title: "Directory", align: "left", value: (d) => d.name, render: (d) => <Link to={dirLink(d.id)}>{d.name}/</Link> },
     ...(own ? [] : [{ key: "owner", title: "Mostly owned by", align: "left" as const, value: (d: DirTotals) => d.top_owner,
@@ -95,7 +97,8 @@ export default function Browse() {
 
       {rolled.length > 0 && (
         <section className="panel" aria-label="Sub-directories">
-          <div className="panel-head"><h2>Sub-directories</h2><span className="meta">as of {ago(now() - r.as_of)}</span></div>
+          <div className="panel-head"><h2>Sub-directories</h2><span className="meta">as of {ago(now() - r.as_of)}</span>
+            {mayExport && <Download path="/browse" params={{ dir, table: "subdirs" }} label="sub-directories" />}</div>
           <div className="panel-body">
             <SortTable rows={rolled} columns={dirCols} initialSort="bytes" rowKey={(d) => d.id} empty="No sub-directories." />
           </div>
@@ -120,7 +123,8 @@ export default function Browse() {
       {r.files.count > 0 && (
         <section className="panel" aria-label="Files">
           <div className="panel-head"><h2>Files in this directory</h2>
-            <span className="meta">{r.files.shown < r.files.count ? `largest ${r.files.shown} of ${int(r.files.count)}` : `${int(r.files.count)} files`}</span></div>
+            <span className="meta">{r.files.shown < r.files.count ? `largest ${r.files.shown} of ${int(r.files.count)}` : `${int(r.files.count)} files`}</span>
+            {mayExport && <Download path="/browse" params={{ dir, table: "files" }} label="files" />}</div>
           <div className="panel-body" style={{ overflowX: "auto" }}>
             <table className="data-table">
               <thead><tr><th style={{ textAlign: "left" }}>Name</th><th style={{ textAlign: "left" }}>Owner</th><th>Size</th><th>Last read</th><th>Last modified</th></tr></thead>

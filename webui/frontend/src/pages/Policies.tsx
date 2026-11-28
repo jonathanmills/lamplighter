@@ -7,6 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { api, ApiError, type PolicyCounts } from "../api";
 import { ago, bytes, int } from "../format";
 import BarChart from "../components/BarChart";
+import Download from "../components/Download";
 import Panel from "../components/Panel";
 
 const NONE = "(no fileclass)";
@@ -67,7 +68,8 @@ export default function Policies() {
           )}
 
           <section className="panel span-5" aria-label="Policy status">
-            <div className="panel-head"><h2>Policy status</h2><span className="meta">entries per status</span></div>
+            <div className="panel-head"><h2>Policy status</h2><span className="meta">entries per status</span>
+              <Download path="/policies" params={{ table: "policies" }} label="policy status counts" /></div>
             <div className="panel-body">
               {!policies.length ? <p className="muted">No policy with a status manager is configured.</p> : policies.map(([name, p]) => (
                 <div key={name} className="dl-section">
@@ -86,7 +88,8 @@ export default function Policies() {
 
           <section className="panel span-12" aria-label="Fileclasses">
             <div className="panel-head"><h2>Fileclasses</h2>
-              <span className="meta">an entry can match several fileclasses, so the rows can add up to more than the filesystem</span></div>
+              <span className="meta">an entry can match several fileclasses, so the rows can add up to more than the filesystem</span>
+              <Download path="/policies" params={{ table: "fileclasses" }} label="fileclasses" /></div>
             <div className="panel-body" style={{ overflowX: "auto" }}>
               <table className="data-table">
                 <thead><tr>

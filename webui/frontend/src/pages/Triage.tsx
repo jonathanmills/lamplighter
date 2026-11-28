@@ -10,6 +10,7 @@ import { api, type Triage as TriageData, type TriageSort, type TriageWindow } fr
 import { can, useMe } from "../App";
 import { ago, bytes, bytesRate, int, rate } from "../format";
 import LineChart from "../components/LineChart";
+import Download from "../components/Download";
 import Panel from "../components/Panel";
 
 const WINDOWS: { key: TriageWindow; label: string; seconds: number }[] = [
@@ -102,10 +103,11 @@ export default function Triage() {
                 ) : <p className="muted">No jobstats in this window.</p>}
               </Panel>
 
-              <JobsTable jobs={js.jobs} seconds={seconds} sort={sort} linkUsers={can(me, "usage.view_aggregates")} />
+              <JobsTable jobs={js.jobs} seconds={seconds} sort={sort} window={window} linkUsers={can(me, "usage.view_aggregates")} />
 
               <section className="panel span-7" aria-label="Lustre targets">
-                <div className="panel-head"><h2>Lustre targets</h2><span className="meta">busiest first</span></div>
+                <div className="panel-head"><h2>Lustre targets</h2><span className="meta">busiest first</span>
+                  <Download path="/triage" params={{ table: "targets", window, sort }} label="Lustre targets" /></div>
                 <div className="panel-body" style={{ overflowX: "auto" }}>
                   <TargetsTable targets={js.targets} seconds={seconds} sort={sort} />
                 </div>
@@ -148,13 +150,14 @@ function Stat({ label, value, sub }: { label: string; value: ReactNode; sub: str
   );
 }
 
-function JobsTable({ jobs, seconds, sort, linkUsers }: {
-  jobs: Extract<TriageData["jobstats"], { configured: true }>["jobs"]; seconds: number; sort: TriageSort; linkUsers: boolean;
+function JobsTable({ jobs, seconds, sort, window, linkUsers }: {
+  jobs: Extract<TriageData["jobstats"], { configured: true }>["jobs"]; seconds: number; sort: TriageSort; window: TriageWindow; linkUsers: boolean;
 }) {
   return (
     <section className="panel span-12" aria-label="Busiest jobs">
       <div className="panel-head"><h2>Busiest jobs</h2>
-        <span className="meta">by {sort === "md" ? "metadata requests" : "data read and written"} · job IDs as Lustre labels them</span></div>
+        <span className="meta">by {sort === "md" ? "metadata requests" : "data read and written"} · job IDs as Lustre labels them</span>
+        <Download path="/triage" params={{ table: "jobs", window, sort }} label="busiest jobs" /></div>
       <div className="panel-body" style={{ overflowX: "auto" }}>
         {!jobs.length ? <p className="muted">No job did any I/O in this window.</p> : (
           <table className="data-table">

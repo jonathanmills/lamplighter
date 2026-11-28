@@ -8,6 +8,7 @@ import { api, ApiError, toDisplayBands, type AgeBands, type ColdAge, type ColdOw
 import { can, useMe } from "../App";
 import { ago, bytes, int } from "../format";
 import BarChart from "../components/BarChart";
+import Download from "../components/Download";
 import Panel from "../components/Panel";
 
 const AGES: { key: ColdAge; label: string; phrase: string }[] = [
@@ -95,7 +96,8 @@ export default function ColdData() {
           </Panel>
           <section className="panel span-12" aria-label="Coldest directories">
             <div className="panel-head"><h2>Coldest directories</h2>
-              <span className="meta">datasets not read in over {dirAge === "3y" ? "3 years" : "1 year"}{olderThan === "90d" ? " (directory figures start at 1 year)" : ""}</span></div>
+              <span className="meta">datasets not read in over {dirAge === "3y" ? "3 years" : "1 year"}{olderThan === "90d" ? " (directory figures start at 1 year)" : ""}</span>
+              {can(me, "cold.export") && <Download path="/cold/directories" params={{ older_than: dirAge }} label="coldest directories" />}</div>
             <div className="panel-body" style={{ overflowX: "auto" }}>
               {!dirs ? <p className="muted">Loading…</p> : !dirs.length ? <p className="muted">No directory is that cold.</p> : (
                 <table className="data-table">

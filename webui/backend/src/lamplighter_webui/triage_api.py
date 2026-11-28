@@ -19,12 +19,14 @@ from __future__ import annotations
 import logging
 import re
 import time
+from typing import Literal
 
-from fastapi import APIRouter, Depends, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
 from .acl import Perm
 from .auth import Principal, require
 from .db import robinhood_status
+from .export import Format, export
 from .jobstats import job_details_provider, source_status, triage_jobs
 from .ldapdir import DirectoryError
 from .store import recent_changes
@@ -48,6 +50,8 @@ def _people_by_number(request: Request) -> dict[int, object]:
 def triage(request: Request,
            window: str = Query("1h", pattern="^(15m|1h|6h|24h)$"),
            sort: str = Query("md", pattern="^(md|io)$"),
+           format: Format | None = Query(None, description="csv or json: download the table"),
+           table: Literal["jobs", "targets"] = "jobs",
            p: Principal = Depends(require(Perm.TRIAGE_VIEW))) -> dict:
     settings = request.app.state.settings
     now = int(time.time())
@@ -72,6 +76,18 @@ def triage(request: Request,
         out["jobstats"] = {"configured": True, "source": cfg.source, "job_details": cfg.job_details,
                            "sources": source_status(request.app.state.store_engine,
                                                     cfg.stale_after_seconds, now), **js}
+
+    if format:
+        js = out["jobstats"]
+        if not js["configured"]:
+            raise HTTPException(404, "Jobstats are not configured.")
+        figs = ["md_ops", "read_bytes", "write_bytes", "read_ops", "write_ops", "other_ops"]
+        if table == "jobs":
+            cols = ["job_id", "user", "name", *figs, "targets", "top_ops", "details"]
+        else:
+            cols = ["target", *figs, "jobs"]
+        return export(request, p, f"triage-{table}-{window}", js[table], format, columns=cols,
+                      window=window, sort=sort)
 
     status = robinhood_status(request.app.state.engine)
     recent = recent_changes(request.app.state.store_engine)

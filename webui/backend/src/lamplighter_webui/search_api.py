@@ -22,20 +22,18 @@ apply.
 
 from __future__ import annotations
 
-import csv
-import io
 import re
 import time
 from dataclasses import dataclass
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.responses import StreamingResponse
 from sqlalchemy import bindparam, text
 
 from .acl import Perm
 from .audit import audit
 from .auth import Principal, require
+from .export import Format, export, require_export
 
 router = APIRouter(prefix="/api/v1")
 
@@ -277,9 +275,16 @@ def _params(type: Literal["file", "dir", "any"] = "file",
 
 @router.get("/search")
 def search_api(request: Request, dir: str | None = Query(None, max_length=255), crit: Criteria = Depends(_params),
-               p: Principal = Depends(require(Perm.PATHS_VIEW_ALL))) -> dict:
+               format: Format | None = Query(None, description="csv or json: download the matches"),
+               p: Principal = Depends(require(Perm.PATHS_VIEW_ALL))):
+    if format:
+        require_export(p, "lists of paths")
     out = search(request.app.state.engine, request.app.state.store_engine,
                  dir.encode() if dir else None, crit)
+    if format:
+        return export(request, p, "search", out["results"], format,
+                      columns=["path", "type", "owner", "group", "size", "last_access", "last_mod"],
+                      path=out["dir"]["path"], criteria=out["criteria"], complete=out["complete"])
     audit("search", user=p.user.uid, client=request.client.host if request.client else None,
           path=out["dir"]["path"], criteria=out["criteria"], matches=len(out["results"]), complete=out["complete"])
     return out
@@ -287,19 +292,6 @@ def search_api(request: Request, dir: str | None = Query(None, max_length=255), 
 
 @router.get("/search.csv")
 def search_csv(request: Request, dir: str | None = Query(None, max_length=255), crit: Criteria = Depends(_params),
-               p: Principal = Depends(require(Perm.PATHS_VIEW_ALL))) -> StreamingResponse:
-    if not p.grants.allows(Perm.COLD_EXPORT):
-        raise HTTPException(403, "Exporting needs the cold.export permission.")
-    out = search(request.app.state.engine, request.app.state.store_engine,
-                 dir.encode() if dir else None, crit)
-    audit("search.export", user=p.user.uid, client=request.client.host if request.client else None,
-          path=out["dir"]["path"], criteria=out["criteria"], matches=len(out["results"]), complete=out["complete"])
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(["path", "type", "owner", "group", "size_bytes", "last_access", "last_mod"])
-    for r in out["results"]:
-        # a leading = + - @ would start a formula in a spreadsheet
-        w.writerow([("'" + v) if isinstance(v, str) and v[:1] in "=+-@" else v for v in
-                    (r["path"], r["type"], r["owner"], r["group"], r["size"], r["last_access"], r["last_mod"])])
-    return StreamingResponse(iter([buf.getvalue()]), media_type="text/csv",
-                             headers={"Content-Disposition": 'attachment; filename="lamplighter-search.csv"'})
+               p: Principal = Depends(require(Perm.PATHS_VIEW_ALL))):
+    """Kept for existing links: the same as /search?format=csv."""
+    return search_api(request, dir, crit, "csv", p)

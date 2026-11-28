@@ -14,6 +14,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from .acl import Perm
 from .audit import audit
 from .auth import Principal, current_principal, require
+from .export import Format, export, require_export
 from .db import robinhood_status, usage_summary
 from .ldapdir import DirectoryError
 from .machine import MachineClient, monitoring_client
@@ -60,9 +61,12 @@ def usage_age(request: Request, basis: Literal["access", "modify"] = "access",
 @router.get("/cold/owners")
 def cold(request: Request, older_than: Literal["90d", "1y", "3y"] = "1y",
          limit: int = Query(25, ge=1, le=200),
+         format: Format | None = Query(None, description="csv or json: download the table"),
          p: Principal = Depends(require(Perm.COLD_VIEW))) -> dict:
     """Owners holding the most data not accessed for ``older_than``, with
     their directory name and e-mail so data managers can contact them."""
+    if format:
+        require_export(p, "owner contact details")
     min_band = {"90d": 3, "1y": 4, "3y": 5}[older_than]
     body = cold_owners(request.app.state.store_engine, min_band, limit)
     if body is None:
@@ -75,6 +79,13 @@ def cold(request: Request, older_than: Literal["90d", "1y", "3y"] = "1y",
             u = None
         o["name"] = u.name if u else None
         o["mail"] = u.mail if u else None
+    if format:
+        # the columns the cold-owner CSV has always had
+        rows = [{"user": o["user"], "name": o["name"], "mail": o["mail"],
+                 f"bytes_not_accessed_{older_than}": o["cold_bytes"],
+                 f"files_not_accessed_{older_than}": o["cold_files"], "total_bytes": o["total_bytes"]}
+                for o in body["owners"]]
+        return export(request, p, f"cold-owners-{older_than}", rows, format, older_than=older_than)
     audit("cold.owners", user=p.user.uid, client=request.client.host if request.client else None, older_than=older_than, count=len(body["owners"]))
     return body
 
@@ -82,21 +93,8 @@ def cold(request: Request, older_than: Literal["90d", "1y", "3y"] = "1y",
 @router.get("/cold/owners.csv")
 def cold_csv(request: Request, older_than: Literal["90d", "1y", "3y"] = "1y",
              p: Principal = Depends(require(Perm.COLD_EXPORT))):
-    """The cold-owner list as CSV, for owner contact or offload tooling."""
-    import csv
-    import io
-    from fastapi.responses import Response
-    body = cold(request, older_than, 200, p)
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(["user", "name", "mail", f"bytes_not_accessed_{older_than}",
-                f"files_not_accessed_{older_than}", "total_bytes"])
-    for o in body["owners"]:
-        w.writerow([o["user"], o["name"] or "", o["mail"] or "", o["cold_bytes"],
-                    o["cold_files"], o["total_bytes"]])
-    audit("cold.export", user=p.user.uid, client=request.client.host if request.client else None, older_than=older_than, rows=len(body["owners"]))
-    return Response(buf.getvalue(), media_type="text/csv; charset=utf-8", headers={
-        "Content-Disposition": f'attachment; filename="cold-owners-{older_than}.csv"'})
+    """Kept for existing links: the same as /cold/owners?format=csv&limit=200."""
+    return cold(request, older_than, 200, "csv", p)
 
 
 @router.get("/collector/runs")
