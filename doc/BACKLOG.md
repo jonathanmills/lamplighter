@@ -159,3 +159,30 @@ the same view) saves time and gives better tickets.
 
 **Fit:** opt-in and configured in `config.yaml`. No dependency on any
 particular ticket system.
+
+---
+
+## 6. Testing on production-class hardware
+
+**Idea:** run the scale harness on a real Lustre filesystem and a
+server-class MariaDB replica:
+- `lamplighter-scale gen` and `bench`, from 100 million to billions of
+  entries
+- `lamplighter-scale jobstats` at the site's real job and target counts
+- a collector run against a replica of a production Robinhood database
+
+**Why:** every scale figure so far was measured in a development
+environment on a laptop, up to 10 million entries. The design targets 5
+to 20 billion entries per filesystem, and the projections (index sizes,
+build and collector times) need confirming, or correcting, on real
+hardware.
+
+**Questions:**
+- Permission to run the software at a site, at scale.
+- A replica to test against.
+- Which figures to publish without identifying the site.
+
+**Fit:** nothing to build. The harness exists (`webui/backend`,
+`lamplighter-scale`) and writes JSON results (`--json`) for comparison.
+Until these runs happen, the docs and release notes must say that scale
+was measured only in a development environment.
