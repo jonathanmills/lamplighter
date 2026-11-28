@@ -44,17 +44,58 @@ come from redesign that Rust makes less risky.
 
 ## Stages
 
-| Stage | Branch | What | Risk |
-|---|---|---|---|
-| 0 | `rust/0-foundations` | Cargo workspace, build and RPM integration (vendored crates), crate licence check, the side-by-side test harness (C reference from `v1.0.0`) | none: no shipped behaviour changes |
-| 1 | `rust/1-config` | The configuration parser (Robinhood syntax), proven against every test configuration and template, then fuzzed | reads text only |
-| 2 | `rust/2-lux-du` | `lux-du` in Rust, replacing the C binary | reads the database only |
-| 3 | `rust/3-lux-find` | `lux-find` (filters, output formats) | reads the database only |
-| 4 | | `lamplighter-report` | reads the database only |
-| 5+ | | The changelog reader, then the scanner and the pipeline | writes the database |
-| last | | Policy runs and their actions | deletes data |
+| Stage | Branch | What | Risk | Status |
+|---|---|---|---|---|
+| 0 | `rust/0-foundations` | Cargo workspace, build and RPM integration (vendored crates), crate licence check, the side-by-side test harness (C reference from `v1.0.0`) | none: no shipped behaviour changes | done (merged) |
+| 1 | `rust/1-config` | The configuration parser (Robinhood syntax), proven against every test configuration and template, then fuzzed | reads text only | done: see below |
+| 2 | `rust/2-lux-du` | `lux-du` in Rust, replacing the C binary | reads the database only | |
+| 3 | `rust/3-lux-find` | `lux-find` (filters, output formats) | reads the database only | |
+| 4 | | `lamplighter-report` | reads the database only | |
+| 5+ | | The changelog reader, then the scanner and the pipeline | writes the database | |
+| last | | Policy runs and their actions | deletes data | |
 
 **Target for 1.1:** stages 0 to 2. Stage 3 is a stretch goal.
 
 Stages 5 and later need a real Lustre test system (not a production
 site), and a review by the maintainer of anything that deletes data.
+
+## Stage 1: how the parser was made identical
+
+The configuration parser (`rust/crates/lamplighter-config`) translates
+Robinhood's flex/Bison parser rather than reinterpreting the grammar.
+That matters, because the C parser has behaviour a rewrite would miss:
+- **`and` and `or` have no precedence**, and group to the right:
+  `a and b or c` means `a and (b or c)`.
+- **The scanner is case-insensitive** (`flex -i`): `NOT` and `%INCLUDE`
+  are keywords too.
+- **A comment on the last line of a file without a final newline is a
+  syntax error.**
+- **`$VAR/x` stays literal**, while `$VAR` alone is expanded.
+- **Values are cut at 1023 bytes and at NUL bytes.**
+
+The design:
+- **The scanner** emulates flex's rule selection: longest match, ties to
+  the earliest rule, and trailing context counted. It runs on the rules
+  of `conf_lex.l`, in order.
+- **The parser** runs Bison's algorithm on Bison's own tables, copied
+  from the committed `src/cfg_parsing/conf_yacc.c` (Bison 3.0.4) by
+  `rust/tools/gen_parser_tables.py`. A check keeps the copy current.
+  Because it reads lookahead tokens exactly when Bison does, it gives
+  each item the same line number and each error the same message.
+
+The evidence (`devenv.sh rust-test`):
+- A C `cfgdump`, linked with the v1.0.0 parser, and the Rust one print
+  every name, ID, value, argument, expression and line number,
+  `rh_config_Print`'s output, the error message, warnings and exit code.
+- They are identical on all 151 test-suite configurations, the 17
+  template files, 39 hand-written edge cases and their 17 include
+  files, plus the two development configurations, a missing file and a
+  directory: 228 comparisons.
+- Differential fuzzing compared them on 200,000 mutated configurations:
+  byte edits, grammar tokens, splices, and nesting at the parser's
+  10,000-entry stack limit. There were no differences. `rust-test` runs
+  10,000 mutants each time; `FUZZ_ITERATIONS` raises that.
+
+Stage 1 replaces no binary: the parser is a library, used from stage 2
+by the Rust tools.
+

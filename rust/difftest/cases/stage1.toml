@@ -1,0 +1,48 @@
+# SPDX-License-Identifier: CECILL-C
+# Copyright (C) 2026 Jonathan Mills
+#
+# Stage 1 (doc/RUST-PLAN.md): the configuration parser. The C cfgdump
+# (c/cfgdump.c, linked with the v1.0.0 parser) and the Rust one
+# (crates/lamplighter-config) must print the same tree, line numbers,
+# rh_config_Print output, error message, warnings and exit code.
+# The randomly mutated configurations come from fuzz_config.py.
+
+[[case]]
+name = "config: test suite"
+reference = ["{cdump}", "{file}"]
+candidate = ["{rust}/examples/cfgdump", "{file}"]
+stderr = true
+files = ["{src}/tests/**/*.conf"]
+
+[[case]]
+name = "config: templates"
+reference = ["{cdump}", "{file}"]
+candidate = ["{rust}/examples/cfgdump", "{file}"]
+stderr = true
+files = ["{src}/doc/templates/**/*.conf", "{src}/doc/templates/**/*.inc"]
+
+[[case]]
+name = "config: edge cases"
+reference = ["{cdump}", "{file}"]
+candidate = ["{rust}/examples/cfgdump", "{file}"]
+stderr = true
+files = ["{here}/config-cases/*.conf", "{here}/config-cases/inc/*.inc"]
+
+[[case]]
+name = "config: development configurations"
+reference = ["{cdump}", "{file}"]
+candidate = ["{rust}/examples/cfgdump", "{file}"]
+stderr = true
+files = ["{src}/webui/devenv/engine/lamplighter.conf", "{here}/difftest.conf"]
+
+[[case]]
+name = "config: a missing file"
+reference = ["{cdump}", "/nonexistent/lamplighter.conf"]
+candidate = ["{rust}/examples/cfgdump", "/nonexistent/lamplighter.conf"]
+stderr = true
+
+[[case]]
+name = "config: a directory (flex's fatal input error)"
+reference = ["{cdump}", "{here}/config-cases/inc"]
+candidate = ["{rust}/examples/cfgdump", "{here}/config-cases/inc"]
+stderr = true
