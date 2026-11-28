@@ -13,6 +13,7 @@ Cases are TOML files (cases/*.toml), one [[case]] table each:
     candidate = ["{rust}/examples/version_banner", "'du' command"]
     sort = false        # optional: compare sorted lines (no defined order)
     stderr = true       # optional: also compare standard error
+    env = { NAME = "value" }   # optional: environment for both commands
     files = ["{src}/doc/templates/**/*.conf"]   # optional: one comparison per
                         # matching file, with {file} in the commands
 
@@ -23,7 +24,10 @@ Placeholders: {ref} the C reference build, {cur} the current C build,
 {src} the repository, {here} this directory.
 Log line prefixes (date, time, [pid/thread]) are normalized, since they
 differ between any two runs. Each side gets LD_LIBRARY_PATH for the
-engine modules of the build its command comes from.
+engine modules of the build its command comes from: the current build's
+for its own tools, the reference's for everything else (the C harnesses,
+which load the reference's modules, and the Rust candidates, which look
+for the same module files).
 
 Usage: difftest.py --ref DIR --cur DIR --rust DIR [--only NAME] cases/*.toml
 """
@@ -39,9 +43,10 @@ from pathlib import Path
 LOG_PREFIX = re.compile(r"^\d{4}/\d\d/\d\d \d\d:\d\d:\d\d [^ \[\n]*\[\d+/\d+\] ", re.M)
 
 
-def run(cmd: list[str], env_lib: str | None) -> tuple[int, str, str]:
+def run(cmd: list[str], env_lib: str | None, extra_env: dict[str, str]) -> tuple[int, str, str]:
     import os
     env = dict(os.environ)
+    env.update(extra_env)
     if env_lib:
         env["LD_LIBRARY_PATH"] = env_lib
     p = subprocess.run(cmd, capture_output=True, text=True, errors="replace", env=env, timeout=300)
@@ -73,10 +78,9 @@ def main() -> int:
         return [part.format(**subst, file=file or "") for part in cmd]
 
     def libs(cmd):
-        for build in (a.ref, a.cur):
-            if cmd[0].startswith(build + "/"):
-                return f"{build}/src/modules/.libs"
-        return None
+        if cmd[0].startswith(a.cur + "/"):
+            return f"{a.cur}/src/modules/.libs"
+        return f"{a.ref}/src/modules/.libs"
 
     import glob
 
@@ -98,7 +102,8 @@ def main() -> int:
                 continue
             total += 1
             ref, cand = expand(case["reference"], file), expand(case["candidate"], file)
-            r, c = run(ref, libs(ref)), run(cand, libs(cand))
+            env = {k: v.format(**subst, file=file or "") for k, v in case.get("env", {}).items()}
+            r, c = run(ref, libs(ref), env), run(cand, libs(cand), env)
             sort, with_err = case.get("sort", False), case.get("stderr", False)
             parts = [("exit code", [str(r[0])], [str(c[0])]),
                      ("stdout", normalize(r[1], sort), normalize(c[1], sort))]

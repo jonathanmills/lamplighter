@@ -31,7 +31,12 @@ TOKENS = [b"{", b"}", b"(", b")", b";", b",", b"=", b"==", b"!=", b"<>", b">", b
           b" and ", b" or ", b" not ", b" union ", b" inter ", b" AND ", b"Not", b"\"", b"'", b"\\",
           b"#", b"//", b"%include ", b"%include \"", b"\n", b"\\\n", b"$", b"$LL_TEST_VAR",
           b"$LL_TEST_UNDEFINED", b"x", b"10GB", b"/a/b", b"name", b" ", b"\t", b"\r", b"\f",
-          b"\x00", b"\xff", b"\xe9", b"block id { ", b"a == 1", b"k = v;", b"f(x)", b"(a, b)"]
+          b"\x00", b"\xff", b"\xe9", b"block id { ", b"a == 1", b"k = v;", b"f(x)", b"(a, b)",
+          # policies (stage 2a.3)
+          b"define_policy p { scope = all; status_manager = none; default_action = none; default_lru_sort_attr = none; }\n",
+          b"scope { size > 1 }", b" status == ok", b" p.status != failed", b" last_check > 1d", b" output == x",
+          b" xattr.user.a == b", b" tree == \"/a/**/b\"", b" owner == root", b" rm_time > 1", b" type == file",
+          b"status_manager = basic;", b"status_manager = checker;", b"status_manager = alerter;", b"**", b"?"]
 
 
 VALUES = [b"0", b"1", b"-1", b"+5", b" 7", b"12abc", b"99999999999", b"-99999999999", b"4294967296",
@@ -41,7 +46,15 @@ VALUES = [b"0", b"1", b"-1", b"+5", b" 7", b"12abc", b"99999999999", b"-99999999
           b"/wild*", b"a@b", b"@b", b"a@", b"stderr", b"syslog", b"local3.warn", b"user.none", b"mark",
           b"fsname", b"devid", b"fsid", b"uuid", b"autocommit", b"transaction", b"periodic", b"periodic(10)",
           b"periodic(0)", b"periodic(1,2)", b"on_event_periodic(1s, 5min)", b"never", b"on_event", b"CRIT",
-          b"full", b"loud", b"x" * 300, b"y" * 1100, b"$LL_TEST_VAR", b"$LL_TEST_UNDEFINED", b"a (1, 2)"]
+          b"full", b"loud", b"x" * 300, b"y" * 1100, b"$LL_TEST_VAR", b"$LL_TEST_UNDEFINED", b"a (1, 2)",
+          # policies (stage 2a.3)
+          b"none", b"basic", b"checker", b"alerter", b"modeguard", b"common", b"test", b"lhsm", b"backup",
+          b"BASIC", b"foo", b"basic(removed)", b"basic(archive)", b"lhsm(archive)", b"common.unlink",
+          b"common.log", b"COMMON.unlink", b"common.nothing", b"alerter.alert", b"modeguard.enforce_mode",
+          b"nomod", b'cmd("/bin/true {path}")', b'cmd("rbh-find {fullpath} {name}")', b'cmd("a \\"b")', b'cmd("")',
+          b"cmd", b'cmd("{}")', b"last_access", b"last_mod", b"size", b"size(desc)", b"size(up)", b"rm_time",
+          b"creation", b"last_check", b"last_alert", b"output", b"p.last_check", b"ok", b"failed", b"all",
+          b"all(1)"]
 
 
 def mutate_value(rng: random.Random, data: bytes) -> bytes:
@@ -107,6 +120,14 @@ def run(cmd: list[str]) -> tuple[int, bytes, bytes]:
         return -999, b"TIMEOUT", b""
 
 
+def known_divergence(c: tuple[int, bytes, bytes], r: tuple[int, bytes, bytes]) -> bool:
+    """A documented difference (doc/RUST-PLAN.md, "undefined behaviour"):
+    an unknown user or group name with uid_gid_as_numbers, which C turns
+    into an uninitialised id while Rust fails as C intends."""
+    msgs = (b"couldn't resolve uid for user '", b"couldn't resolve gid for group '")
+    return c[0] == 0 and r[0] == 1 and any(m in r[2] for m in msgs) and not any(m in c[2] for m in msgs)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cdump", required=True)
@@ -122,6 +143,7 @@ def main() -> int:
     corpus = [Path(f).read_bytes() for f in files]
     rng = random.Random(a.seed)
     failures = 0
+    known = 0
     outcomes = {"ok": 0, "error": 0, "other": 0}
     others: dict = {}
     # mutants live next to the corpus' include files, so relative %include
@@ -138,7 +160,9 @@ def main() -> int:
             if kind == "other":
                 others.setdefault((c[0], c[2][:60]), 0)
                 others[(c[0], c[2][:60])] += 1
-            if c != r:
+            if c != r and known_divergence(c, r):
+                known += 1
+            elif c != r:
                 failures += 1
                 os.makedirs(a.save, exist_ok=True)
                 base = os.path.join(a.save, f"seed{a.seed}-{i}")
@@ -150,6 +174,8 @@ def main() -> int:
                     break
     print(f"fuzz: {a.iterations if failures < a.max_failures else i + 1} mutants, {failures} different "
           f"(C outcomes: {outcomes['ok']} parsed, {outcomes['error']} errors, {outcomes['other']} other)")
+    if known:
+        print(f"      known divergence x{known}: unknown user or group with uid_gid_as_numbers (doc/RUST-PLAN.md)")
     for (rc, err), n in sorted(others.items(), key=lambda kv: -kv[1]):
         print(f"      other outcome x{n}: exit {rc}, stderr {err!r}")
     if any(rc == -999 for rc, _ in others):

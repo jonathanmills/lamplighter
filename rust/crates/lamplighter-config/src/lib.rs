@@ -23,6 +23,8 @@
 //! randomly mutated ones.
 
 pub mod access;
+pub mod attrs;
+pub mod boolexpr;
 pub mod cvt;
 pub mod helpers;
 mod lexer;
@@ -30,6 +32,8 @@ pub mod load;
 pub mod logs;
 pub mod modules;
 mod parser;
+pub mod policies;
+pub mod smi;
 mod tables;
 pub mod tree;
 

@@ -13,6 +13,8 @@ use crate::cat;
 use crate::helpers::CfgError;
 use crate::logs::LogState;
 use crate::modules::{self, GlobalConfig, LmgrConfig, LogConfig, UpdtParams};
+use crate::policies::{self, Policies};
+use crate::smi::Registry;
 
 /// The settings the modules produced (the C code's globals).
 #[derive(Default)]
@@ -21,12 +23,17 @@ pub struct Loaded {
     pub log: Option<LogConfig>,
     pub updt: Option<UpdtParams>,
     pub lmgr: Option<LmgrConfig>,
+    /// the policy definitions so far (stage 2a.3: "defs")
+    pub defs: Option<Policies>,
+    /// loaded modules and status manager instances (process-wide in C)
+    pub registry: Registry,
     /// log_config as the C code would hold it (initial value, then Log's)
     pub log_state: LogState,
 }
 
 /// The modules, in rbh_cfg.c's order, with the C module names.
-pub const MODULES: &[(&str, &str)] = &[("global", "global"), ("log", "logs"), ("updt", "updt params"), ("lmgr", "list manager")];
+pub const MODULES: &[(&str, &str)] = &[("global", "global"), ("log", "logs"), ("updt", "updt params"), ("lmgr", "list manager"),
+                                       ("defs", "policies")];
 
 /// Why loading failed: rbh_cfg_load's message.
 pub struct LoadError(pub Vec<u8>);
@@ -62,6 +69,12 @@ pub fn load(path: &[u8], wanted: &[&str]) -> Result<Loaded, LoadError> {
             }),
             "updt" => modules::read_updt(&cfg, &state).map(|c| out.updt = Some(c)),
             "lmgr" => modules::read_lmgr(&cfg, &state).map(|c| out.lmgr = Some(c)),
+            "defs" => {
+                // global_config as the General module set it (its default otherwise)
+                let numbers = out.global.as_ref().map_or(false, |g| g.uid_gid_as_numbers);
+                let env = policies::Env { log: &state, uid_gid_as_numbers: numbers };
+                policies::read_definitions(&cfg, &mut out.registry, &env).map(|p| out.defs = Some(p))
+            }
             _ => unreachable!(),
         };
         if let Err(e) = r {

@@ -511,6 +511,11 @@ for crate in lamplighter-common lamplighter-config; do
     test "x$have_llapi_changelog_start" = "xyes" && RUST_FEATURES="$RUST_FEATURES $crate/changelogs"
 done
 echo "$CFLAGS $CPPFLAGS" | grep -q -- -D_MDS_STAT_SUPPORT && RUST_FEATURES="$RUST_FEATURES lamplighter-config/mds_stat"
+# the engine modules built (librbh_mod_lhsm, librbh_mod_shook): the Rust
+# tools know the same status managers and actions
+test "x$have_lustre_hsm" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-config/lhsm"
+test "x$have_shook" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-config/shook"
+test "x$have_shook_lhsmify" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-config/shook_lhsmify"
 RUST_FEATURES=`echo $RUST_FEATURES`
 AC_SUBST(RUST_FEATURES)
 

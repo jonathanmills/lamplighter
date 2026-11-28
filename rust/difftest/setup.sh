@@ -30,3 +30,24 @@ LD_LIBRARY_PATH=$ref/src/modules/.libs \
     "$ref/src/robinhood/lamplighter" --run=alert --target=all --once -f "$here/difftest.conf" >/dev/null 2>&1 || true
 n=$(mysql -h mariadb -u root -pdevroot -N "$db" -e "SELECT COUNT(*) FROM ENTRIES" 2>/dev/null)
 echo "$db: $n entries"
+
+# The policy includes the test suite builds for each PURPOSE
+# (tests/test_suite/2-run-tests.sh), for loading its configurations with
+# their policies (stage 2a.3 on)
+env=/build/difftest-env
+tpl=$here/../../doc/templates/includes
+mkdir -p "$env"
+sed -e "s/cleanup/purge/" "$tpl/tmpfs.inc" > "$env/policies-tmpfs.inc"
+sed -e "s/lhsm_archive/migration/" -e "s/lhsm_release/purge/" -e "s/lhsm_remove/hsm_remove/" \
+    "$tpl/lhsm.inc" > "$env/policies-lhsm.inc"
+sed -e "s/backup_archive/migration/" -e "s/backup_remove/hsm_remove/" "$tpl/backup.inc" > "$env/policies-backup.inc"
+cat >> "$env/policies-backup.inc" <<'INC'
+define_policy purge {
+    scope { type != directory }
+    status_manager = none;
+    default_action = common.unlink;
+    default_lru_sort_attr = none;
+}
+INC
+sed -e "s/shook_archive/migration/" -e "s/shook_release/purge/" -e "s/shook_remove/hsm_remove/" \
+    "$tpl/shook.inc" > "$env/policies-shook.inc"

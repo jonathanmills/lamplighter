@@ -69,6 +69,22 @@ site), and a review by the maintainer of anything that deletes data.
   the C code but **are tested only on POSIX until a Lustre system is
   available**. Release notes must say so.
 
+**Decided 2026-11-28 for stage 2a (status managers):**
+- **The Rust tools know the engine modules from built-in tables.** Each C
+  module's status manager (name, flags, statuses, attributes, implemented
+  actions) and action names are translated into Rust; the Rust tools never
+  dlopen `librbh_mod_*.so` or run C code. They still look for each module
+  file where the dynamic loader would, so a module that is not installed
+  fails with C's messages. A third-party module that the C daemon could
+  load is reported as unsupported by the Rust tools.
+- Stage 2a is done in four steps: 2a.1 the configuration access layer,
+  2a.2 the General, Log, update and ListManager modules, 2a.3 the module
+  tables, boolean expressions and policy definitions, 2a.4 fileclasses,
+  policy rules and the status managers' own configuration blocks. The
+  order is forced by the C code: fileclass expressions can name status
+  manager attributes (`lhsm.status`), and status managers are created by
+  the policy definitions.
+
 ## Stage 1: how the parser was made identical
 
 The configuration parser (`rust/crates/lamplighter-config`) translates
@@ -108,4 +124,24 @@ The evidence (`devenv.sh rust-test`):
 
 Stage 1 replaces no binary: the parser is a library, used from stage 2
 by the Rust tools.
+
+## Stage 2a: undefined behaviour in the C code
+
+Making the Rust loader identical means pinning down what the C code does
+where its behaviour is undefined. Where the reference build shows one
+stable result, the Rust code reproduces it; where it cannot be
+reproduced, the Rust code does what the C code intends, and the case is
+listed here:
+- **Status manager attributes in conditions** (`last_check > 1d`): C reads
+  the condition's flags past the end of `criteria_descr[]`. The reference
+  build reads 0, and the Rust code uses 0.
+- **Unknown user or group names with `uid_gid_as_numbers`**: C does not
+  check getpwnam_r's "not found" result and uses an uninitialised uid or
+  gid (whatever was on the stack). The Rust code fails, as C intends:
+  `couldn't resolve uid for user '...'`. There is no comparison case for it,
+  and the fuzzer counts such mutants as this known divergence.
+- **Buffer overflows on hostile input** (a module name prefix of 128 bytes
+  or more in `<module>.<action>`; a `tree`/`path` condition whose `?`
+  wildcards grow it past 1023 or 4095 bytes): C overwrites its stack. The
+  Rust code handles them as ordinary values.
 

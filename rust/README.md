@@ -10,7 +10,7 @@ stage, from the outside in. The plan, rules and stages are in
 |---|---|
 | `Cargo.toml`, `Cargo.lock` | The workspace. The lock file is committed, and builds use `--locked`. |
 | `crates/lamplighter-common` | Shared pieces: build information and the `--version` banner (identical to the C tools'), and user and group names through NSS |
-| `crates/lamplighter-config` | The configuration parser: Robinhood's syntax, with the C parser's trees, line numbers and error messages (a flex emulation and Bison's tables; see doc/RUST-PLAN.md, Stage 1) |
+| `crates/lamplighter-config` | The configuration parser: Robinhood's syntax, with the C parser's trees, line numbers and error messages (a flex emulation and Bison's tables; see doc/RUST-PLAN.md, Stage 1). Then the configuration modules every tool loads (`modules.rs`, `load.rs`), the engine modules' status managers and actions as built-in tables (`smi.rs`), boolean expressions (`boolexpr.rs`) and policy definitions (`policies.rs`) |
 | `Makefile.am` | Builds the workspace from the engine's `make`, with what `configure` decided. `make dist` bundles the crates (`cargo vendor`), so builds from a tarball or SRPM work offline. |
 | `tools/check_licences.py` | Fails on any crate whose licence is not on the allowlist (run by `make check`) |
 | `tools/gen_parser_tables.py` | Copies Bison's parse tables from the committed `src/cfg_parsing/conf_yacc.c` into `lamplighter-config/src/tables.rs`; `--check` verifies the copy |
@@ -54,6 +54,14 @@ For the configuration parser, `c/cfgdump.c` prints what the C parser
 built, and `fuzz_config.py` compares the two parsers on randomly
 mutated configurations (`FUZZ_ITERATIONS`, `FUZZ_SEED`). A mismatch is
 saved in `/build/fuzz-failures`.
+
+For the configuration modules, `c/cfgload.c` runs the reference's C
+modules as `rbh_cfg_load()` does and prints the settings they produced.
+It includes the reference's `policy_loader.c` to reach its static
+readers, and links jemalloc, as the tools do, so it can dlopen the
+reference's engine modules. A case can set environment variables
+(`env`): the test suite's configurations load with the policy includes
+the test suite builds (`/build/difftest-env`, written by `setup.sh`).
 
 A Rust tool replaces its C counterpart only when its cases are
 identical.

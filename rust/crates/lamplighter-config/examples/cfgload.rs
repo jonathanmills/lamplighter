@@ -47,6 +47,10 @@ fn main() {
                     "log" => l.log.as_ref().map(|c| c.dump()),
                     "updt" => l.updt.as_ref().map(|c| c.dump()),
                     "lmgr" => l.lmgr.as_ref().map(|c| c.dump()),
+                    "defs" => l.defs.as_ref().map(|p| {
+                        let numbers = l.global.as_ref().map_or(false, |g| g.uid_gid_as_numbers);
+                        lamplighter_config::policies::dump(p, &l.registry, numbers)
+                    }),
                     _ => None,
                 };
                 if let Some(line) = line {

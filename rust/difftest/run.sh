@@ -26,14 +26,16 @@ gcc -O1 -Wall -I"$ref/src/include" -I"$ref/src/cfg_parsing" $(pkg-config --cflag
     -o /build/difftest-c/cfgdump "$here/c/cfgdump.c" \
     "$ref/src/cfg_parsing/.libs/libconfigparsing.a" $(pkg-config --libs glib-2.0)
 # The C cfgload: the reference configuration modules, linked as the tools are
+# (jemalloc too: the engine modules it dlopens need it loaded at start)
 r=$ref/src
 gcc -O1 -Wall -DHAVE_CONFIG_H -D_MYSQL -D_MYSQL5 -I/usr/include/mysql -I"$r/include" -I"$r/list_mgr" \
-    -I"$r/cfg_parsing" $(pkg-config --cflags glib-2.0) -o /build/difftest-c/cfgload "$here/c/cfgload.c" \
+    -I"$r/cfg_parsing" -DPOLICY_LOADER_C="\"$r/policies/policy_loader.c\"" $(pkg-config --cflags glib-2.0) \
+    -o /build/difftest-c/cfgload "$here/c/cfgload.c" \
     -Wl,--start-group "$r/cfg_parsing/.libs/librbhcfg.a" "$r/fs_scan/.libs/libfsscan.a" \
     "$r/entry_processor/.libs/libentryproc.a" "$r/policies/.libs/libpolicies.a" \
     "$r/robinhood/.libs/librbhhelpers.a" "$r/list_mgr/.libs/liblistmgr.a" "$r/common/.libs/libcommontools.a" \
     "$r/cfg_parsing/.libs/libconfigparsing.a" -Wl,--end-group \
-    $(pkg-config --libs glib-2.0 gmodule-2.0 gthread-2.0) -lmariadb -lz -lpthread -ldl -lm
+    $(pkg-config --libs glib-2.0 gmodule-2.0 gthread-2.0) -lmariadb -lz -lpthread -ldl -lm -ljemalloc
 
 # Environment variables some configuration cases refer to ($VAR values and
 # %include "$VAR"); both sides see the same environment.
@@ -71,3 +73,13 @@ python3.12 "$here/difftest.py" --ref "$ref" --cur "$cur" --rust "$target/release
     --cdump /build/difftest-c/cfgload --rdump "$target/release/examples/cfgload" --args global,log,updt,lmgr \
     --iterations "${FUZZ_ITERATIONS:-10000}" --seed "${FUZZ_SEED:-1}" \
     "$here/config-cases/modules/*.conf" "$src/doc/templates/**/*.conf" "$src/tests/**/*.conf")
+
+# Stage 2a.3: the policy definitions, on the test suite's configurations
+# too (with the test suite's tmpfs policies included)
+(cd "$here/config-cases/inc" && \
+ RBH_TEST_POLICIES=/build/difftest-env/policies-tmpfs.inc RH_ROOT=/tmp/mnt.rbh FS_TYPE=ext4 RH_DB=robinhood_test \
+ RBH_TEST_LAST_ACCESS_ONLY_ATIME=no RBH_NUM_UIDGID=no LD_LIBRARY_PATH="$ref/src/modules/.libs" \
+ python3.12 "$here/fuzz_config.py" \
+    --cdump /build/difftest-c/cfgload --rdump "$target/release/examples/cfgload" --args global,log,updt,lmgr,defs \
+    --iterations "${FUZZ_ITERATIONS:-10000}" --seed "${FUZZ_SEED:-1}" \
+    "$here/config-cases/defs/*.conf" "$src/doc/templates/**/*.conf" "$src/tests/**/*.conf")

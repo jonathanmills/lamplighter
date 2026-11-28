@@ -15,6 +15,11 @@ lustre = []
 fid = []
 changelogs = []
 mds_stat = []
+# The engine modules configure builds besides the POSIX ones (lhsm, shook);
+# backup is built whenever lustre and fid are.
+lhsm = []
+shook = []
+shook_lhsmify = []
 
 [dependencies]
 libc.workspace = true

@@ -25,3 +25,85 @@ reference = ["{cload}", "global,log,updt,lmgr", "{file}"]
 candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr", "{file}"]
 stderr = true
 files = ["{src}/doc/templates/**/*.conf", "{here}/config-cases/*.conf", "{src}/webui/devenv/engine/lamplighter.conf", "{here}/difftest.conf"]
+
+# Stage 2a.3: the policy definitions (define_policy blocks), with the
+# status managers they load and their scopes' boolean expressions.
+
+[[case]]
+name = "defs: edge cases"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{here}/config-cases/defs/*.conf"]
+
+[[case]]
+name = "defs: templates, parser and module cases"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/doc/templates/**/*.conf", "{here}/config-cases/*.conf", "{here}/config-cases/modules/*.conf",
+         "{src}/webui/devenv/engine/lamplighter.conf", "{here}/difftest.conf"]
+
+[[case]]
+name = "defs: test suite, tmpfs policies, numeric uid/gid no"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/tests/test_suite/cfg/*.conf"]
+env = { RBH_TEST_POLICIES = "/build/difftest-env/policies-tmpfs.inc", RH_ROOT = "/tmp/mnt.rbh", FS_TYPE = "ext4", RH_DB = "robinhood_test", RBH_TEST_LAST_ACCESS_ONLY_ATIME = "no", RBH_NUM_UIDGID = "no" }
+
+[[case]]
+name = "defs: test suite, tmpfs policies, numeric uid/gid yes"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/tests/test_suite/cfg/*.conf"]
+env = { RBH_TEST_POLICIES = "/build/difftest-env/policies-tmpfs.inc", RH_ROOT = "/tmp/mnt.rbh", FS_TYPE = "ext4", RH_DB = "robinhood_test", RBH_TEST_LAST_ACCESS_ONLY_ATIME = "no", RBH_NUM_UIDGID = "yes" }
+
+[[case]]
+name = "defs: test suite, lhsm policies, numeric uid/gid no"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/tests/test_suite/cfg/*.conf"]
+env = { RBH_TEST_POLICIES = "/build/difftest-env/policies-lhsm.inc", RH_ROOT = "/tmp/mnt.rbh", FS_TYPE = "ext4", RH_DB = "robinhood_test", RBH_TEST_LAST_ACCESS_ONLY_ATIME = "no", RBH_NUM_UIDGID = "no" }
+
+[[case]]
+name = "defs: test suite, lhsm policies, numeric uid/gid yes"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/tests/test_suite/cfg/*.conf"]
+env = { RBH_TEST_POLICIES = "/build/difftest-env/policies-lhsm.inc", RH_ROOT = "/tmp/mnt.rbh", FS_TYPE = "ext4", RH_DB = "robinhood_test", RBH_TEST_LAST_ACCESS_ONLY_ATIME = "no", RBH_NUM_UIDGID = "yes" }
+
+[[case]]
+name = "defs: test suite, backup policies, numeric uid/gid no"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/tests/test_suite/cfg/*.conf"]
+env = { RBH_TEST_POLICIES = "/build/difftest-env/policies-backup.inc", RH_ROOT = "/tmp/mnt.rbh", FS_TYPE = "ext4", RH_DB = "robinhood_test", RBH_TEST_LAST_ACCESS_ONLY_ATIME = "no", RBH_NUM_UIDGID = "no" }
+
+[[case]]
+name = "defs: test suite, backup policies, numeric uid/gid yes"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/tests/test_suite/cfg/*.conf"]
+env = { RBH_TEST_POLICIES = "/build/difftest-env/policies-backup.inc", RH_ROOT = "/tmp/mnt.rbh", FS_TYPE = "ext4", RH_DB = "robinhood_test", RBH_TEST_LAST_ACCESS_ONLY_ATIME = "no", RBH_NUM_UIDGID = "yes" }
+
+[[case]]
+name = "defs: test suite, shook policies, numeric uid/gid no"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/tests/test_suite/cfg/*.conf"]
+env = { RBH_TEST_POLICIES = "/build/difftest-env/policies-shook.inc", RH_ROOT = "/tmp/mnt.rbh", FS_TYPE = "ext4", RH_DB = "robinhood_test", RBH_TEST_LAST_ACCESS_ONLY_ATIME = "no", RBH_NUM_UIDGID = "no" }
+
+[[case]]
+name = "defs: test suite, shook policies, numeric uid/gid yes"
+reference = ["{cload}", "global,log,updt,lmgr,defs", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr,defs", "{file}"]
+stderr = true
+files = ["{src}/tests/test_suite/cfg/*.conf"]
+env = { RBH_TEST_POLICIES = "/build/difftest-env/policies-shook.inc", RH_ROOT = "/tmp/mnt.rbh", FS_TYPE = "ext4", RH_DB = "robinhood_test", RBH_TEST_LAST_ACCESS_ONLY_ATIME = "no", RBH_NUM_UIDGID = "yes" }

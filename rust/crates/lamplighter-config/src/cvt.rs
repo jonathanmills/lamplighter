@@ -146,6 +146,90 @@ pub fn str2size(s: &[u8]) -> u64 {
     }
 }
 
+/// str2int: an int, or -1 when invalid (sscanf "%d%s": a suffix makes it
+/// invalid).
+pub fn str2int(s: &[u8]) -> i32 {
+    let v = c(s);
+    let mut d: c_int = 0;
+    let mut suffix = sbuf(s);
+    // SAFETY: as above.
+    let nb = unsafe { libc::sscanf(v.as_ptr(), b"%d%s\0".as_ptr() as *const c_char, &mut d, suffix.as_mut_ptr()) };
+    if nb <= 0 {
+        return -1;
+    }
+    if nb == 1 || suffix[0] == 0 {
+        d
+    } else {
+        -1
+    }
+}
+
+#[cfg(target_os = "linux")]
+fn errno_ptr() -> *mut c_int {
+    // SAFETY: always valid for the calling thread.
+    unsafe { libc::__errno_location() }
+}
+#[cfg(not(target_os = "linux"))]
+fn errno_ptr() -> *mut c_int {
+    // SAFETY: always valid for the calling thread.
+    unsafe { libc::__error() }
+}
+
+/// strtol(s, &end, 0): (value, errno, whether any digit was read)
+pub fn strtol0(s: &[u8]) -> (i64, c_int, bool) {
+    let v = c(s);
+    let mut end: *mut c_char = std::ptr::null_mut();
+    // SAFETY: a valid C string; errno is this thread's.
+    unsafe {
+        *errno_ptr() = 0;
+        let n = libc::strtol(v.as_ptr(), &mut end, 0);
+        let e = *errno_ptr();
+        (n as i64, e, end as *const c_char != v.as_ptr())
+    }
+}
+
+/// snprintf with one double argument, via the C library.
+fn fmt_f64(format: &[u8], v: f64) -> Vec<u8> {
+    let mut buf = vec![0u8; 512];
+    // SAFETY: format is NUL-terminated and takes one double.
+    let n = unsafe { libc::snprintf(buf.as_mut_ptr() as *mut c_char, buf.len(), format.as_ptr() as *const c_char, v) };
+    buf.truncate((n.max(0) as usize).min(buf.len() - 1));
+    buf
+}
+
+/// FormatFileSize
+pub fn format_file_size(size: u64) -> Vec<u8> {
+    const K: u64 = 1024;
+    let units: [(u64, &[u8]); 6] = [(K, b"%.2f KB\0"), (K * K, b"%.2f MB\0"), (K * K * K, b"%.2f GB\0"),
+        (K * K * K * K, b"%.2f TB\0"), (K * K * K * K * K, b"%.2f PB\0"), (K * K * K * K * K * K, b"%.2f EB\0")];
+    if size < K {
+        return size.to_string().into_bytes();
+    }
+    for (i, (unit, format)) in units.iter().enumerate() {
+        if i + 1 == units.len() || size < unit.wrapping_mul(K) {
+            return fmt_f64(format, (0.0 + size as f64) / (0.0 + *unit as f64));
+        }
+    }
+    unreachable!()
+}
+
+/// FormatDurationFloat (computed in float, as the C code does)
+pub fn format_duration_float(duration: i64) -> Vec<u8> {
+    let d = if duration < 0 { duration.wrapping_neg() } else { duration };
+    let days = d as f32 / 86400.0;
+    let hours = d as f32 / 3600.0;
+    let minutes = d as f32 / 60.0;
+    if days >= 1.0 {
+        fmt_f64(b"%.1fd\0", days as f64)
+    } else if hours >= 1.0 {
+        fmt_f64(b"%.1fh\0", hours as f64)
+    } else if minutes >= 1.0 {
+        fmt_f64(b"%.1fmin\0", minutes as f64)
+    } else {
+        format!("{:02}s", d as u32).into_bytes()
+    }
+}
+
 /// printf("%.2f") of a double, via the C library.
 pub fn fmt_2f(v: f64) -> Vec<u8> {
     let mut buf = vec![0u8; 512];
