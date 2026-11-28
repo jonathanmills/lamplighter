@@ -1,0 +1,12 @@
+[package]
+name = "lamplighter-config"
+description = "Lamplighter's configuration parser: Robinhood's syntax, with the C parser's trees, line numbers and error messages"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[dependencies]
+libc.workspace = true

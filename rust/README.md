@@ -10,8 +10,10 @@ stage, from the outside in. The plan, rules and stages are in
 |---|---|
 | `Cargo.toml`, `Cargo.lock` | The workspace. The lock file is committed, and builds use `--locked`. |
 | `crates/lamplighter-common` | Shared pieces: build information and the `--version` banner (identical to the C tools'), and user and group names through NSS |
+| `crates/lamplighter-config` | The configuration parser: Robinhood's syntax, with the C parser's trees, line numbers and error messages (a flex emulation and Bison's tables; see doc/RUST-PLAN.md, Stage 1) |
 | `Makefile.am` | Builds the workspace from the engine's `make`, with what `configure` decided. `make dist` bundles the crates (`cargo vendor`), so builds from a tarball or SRPM work offline. |
 | `tools/check_licences.py` | Fails on any crate whose licence is not on the allowlist (run by `make check`) |
+| `tools/gen_parser_tables.py` | Copies Bison's parse tables from the committed `src/cfg_parsing/conf_yacc.c` into `lamplighter-config/src/tables.rs`; `--check` verifies the copy |
 | `difftest/` | The side-by-side tests: the C reference built from `v1.0.0` against the candidates, on the same data |
 
 ## Building and testing
@@ -42,10 +44,16 @@ webui/devenv/devenv.sh rust-test
 3. Builds the Rust candidates with the reference's version and build date.
 4. Runs every case in `difftest/cases/*.toml`.
 
-A case gives a reference command and a candidate command. The harness
+A case gives a reference command and a candidate command, or one per
+file (`files = [...]`). The harness
 compares their exit code and output, and optionally their standard
 error. Log timestamps and process IDs are normalized; output with no
 defined order can be compared sorted.
+
+For the configuration parser, `c/cfgdump.c` prints what the C parser
+built, and `fuzz_config.py` compares the two parsers on randomly
+mutated configurations (`FUZZ_ITERATIONS`, `FUZZ_SEED`). A mismatch is
+saved in `/build/fuzz-failures`.
 
 A Rust tool replaces its C counterpart only when its cases are
 identical.
