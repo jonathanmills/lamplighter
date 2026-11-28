@@ -7,6 +7,12 @@ questions to settle first, and how it fits the project's standing rules
 (`CLAUDE.md`, `doc/COMPATIBILITY.md`). The order is the order the ideas
 were proposed, not a priority.
 
+**Release plan (decided 2026-11-28):**
+- **1.1:** the Blue theme (item 1, done) and the first steps of the Rust
+  work (item 2).
+- **Not in 1.1:** the policy editor (item 3), quota emails (item 4) and
+  support tickets (item 5).
+
 ---
 
 ## 1. Blue theme (done after 1.0.0)
