@@ -121,17 +121,15 @@ An early warning saves compute time and support tickets.
 - **Thresholds and frequency:** for example 90% and 100%, at most once a
   day, and a "back under quota" message.
 - **Email addresses:** from LDAP (the `mail` attribute).
-- **The conflict with the alerting rule:** the current rule is that
-  Checkmk Pro is the only alerting tool, and that Robinhood and the web
-  UI never send alert mail. Emails to users would need either:
-  - an explicit exception for user notifications, as opposed to
-    operations alerting; or
-  - routing them through Checkmk. That is unusual: Checkmk notifies
-    administrators, not end users.
+- **Content and opt-out:** what the message says (usage, the largest and
+  oldest files, a link to the user's own page), and whether users can
+  opt out.
 
-  This decision comes before any design.
-
-**Fit:** opt-in, off by default, and holding up at large user counts.
+**Fit:** these are informational messages to users about their own
+data, not system alerts, so they don't conflict with the rule that
+Checkmk Pro is the only tool for fault detection and operational
+alerting. Opt-in for the site, off by default, and holding up at large
+user counts.
 
 ---
 
@@ -154,9 +152,10 @@ the same view) saves time and gives better tickets.
   plug-ins work.
 - **Who may send:** an ACL permission, recorded in the audit log.
 - **Privacy:** what may be included about another user's activity.
-- **The alerting rule again:** a ticket a person opens deliberately is
-  not an automatic alert, so it probably fits the rule. Automatic
-  tickets would not; those belong to Checkmk.
+- **The line with Checkmk:** a ticket that a person opens on purpose is a
+  report, not fault detection, so it fits the rules. Automatic tickets
+  raised when something looks wrong would be fault detection, and those
+  belong to Checkmk.
 
 **Fit:** opt-in and configured in `config.yaml`. No dependency on any
 particular ticket system.
