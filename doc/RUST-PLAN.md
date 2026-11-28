@@ -47,8 +47,9 @@ come from redesign that Rust makes less risky.
 | Stage | Branch | What | Risk | Status |
 |---|---|---|---|---|
 | 0 | `rust/0-foundations` | Cargo workspace, build and RPM integration (vendored crates), crate licence check, the side-by-side test harness (C reference from `v1.0.0`) | none: no shipped behaviour changes | done (merged) |
-| 1 | `rust/1-config` | The configuration parser (Robinhood syntax), proven against every test configuration and template, then fuzzed | reads text only | done: see below |
-| 2 | `rust/2-lux-du` | `lux-du` in Rust, replacing the C binary | reads the database only | |
+| 1 | `rust/1-config` | The configuration parser (Robinhood syntax), proven against every test configuration and template, then fuzzed | reads text only | done (merged); see below |
+| 2a | `rust/2-lux-du` | The configuration-loading layer every tool loads (General, Log, ListManager, update parameters, fileclasses and policy definitions, status managers), proven identical to C | reads text only | in progress |
+| 2b | `rust/2-lux-du` | `lux-du` in Rust on that layer, replacing the C binary in both packages | reads the database only | |
 | 3 | `rust/3-lux-find` | `lux-find` (filters, output formats) | reads the database only | |
 | 4 | | `lamplighter-report` | reads the database only | |
 | 5+ | | The changelog reader, then the scanner and the pipeline | writes the database | |
@@ -58,6 +59,15 @@ come from redesign that Rust makes less risky.
 
 Stages 5 and later need a real Lustre test system (not a production
 site), and a review by the maintainer of anything that deletes data.
+
+**Decided 2026-11-28 for stage 2:**
+- `lux-du` turned out to load and validate the whole common
+  configuration layer, as every C tool does. That layer is ported first
+  (2a), once, for every later tool.
+- **The Rust `lux-du` ships in both packages.** Its Lustre-specific parts
+  (FID arguments through liblustreapi, Lustre filesystem keys) mirror
+  the C code but **are tested only on POSIX until a Lustre system is
+  available**. Release notes must say so.
 
 ## Stage 1: how the parser was made identical
 
