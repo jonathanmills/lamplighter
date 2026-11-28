@@ -1,0 +1,27 @@
+# SPDX-License-Identifier: CECILL-C
+# Copyright (C) 2026 Jonathan Mills
+#
+# Stage 2a (doc/RUST-PLAN.md): the configuration modules every tool loads.
+# The C cfgload (c/cfgload.c, the v1.0.0 modules) and the Rust one must
+# print the same settings, error, warnings (stderr) and exit code.
+
+[[case]]
+name = "modules: edge cases"
+reference = ["{cload}", "global,log,updt,lmgr", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr", "{file}"]
+stderr = true
+files = ["{here}/config-cases/modules/*.conf"]
+
+[[case]]
+name = "modules: test suite"
+reference = ["{cload}", "global,log,updt,lmgr", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr", "{file}"]
+stderr = true
+files = ["{src}/tests/**/*.conf"]
+
+[[case]]
+name = "modules: templates and parser edge cases"
+reference = ["{cload}", "global,log,updt,lmgr", "{file}"]
+candidate = ["{rust}/examples/cfgload", "global,log,updt,lmgr", "{file}"]
+stderr = true
+files = ["{src}/doc/templates/**/*.conf", "{here}/config-cases/*.conf", "{src}/webui/devenv/engine/lamplighter.conf", "{here}/difftest.conf"]

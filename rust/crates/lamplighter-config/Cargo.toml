@@ -8,5 +8,13 @@ rust-version.workspace = true
 repository.workspace = true
 publish = false
 
+[features]
+# Mirror configure's choices (Lustre, FIDs, changelogs, MDS stat), passed
+# by ../../Makefile.am through configure's RUST_FEATURES.
+lustre = []
+fid = []
+changelogs = []
+mds_stat = []
+
 [dependencies]
 libc.workspace = true

@@ -19,6 +19,7 @@ Cases are TOML files (cases/*.toml), one [[case]] table each:
 Placeholders: {ref} the C reference build, {cur} the current C build,
 {rust} cargo's release directory, {conf} the harness's engine config,
 {cdump} the C cfgdump (c/cfgdump.c, linked with the reference parser),
+{cload} the C cfgload (c/cfgload.c, the reference configuration modules),
 {src} the repository, {here} this directory.
 Log line prefixes (date, time, [pid/thread]) are normalized, since they
 differ between any two runs. Each side gets LD_LIBRARY_PATH for the
@@ -35,7 +36,7 @@ import sys
 import tomllib
 from pathlib import Path
 
-LOG_PREFIX = re.compile(r"^\d{4}/\d\d/\d\d \d\d:\d\d:\d\d \[\d+/\d+\] ", re.M)
+LOG_PREFIX = re.compile(r"^\d{4}/\d\d/\d\d \d\d:\d\d:\d\d [^ \[\n]*\[\d+/\d+\] ", re.M)
 
 
 def run(cmd: list[str], env_lib: str | None) -> tuple[int, str, str]:
@@ -59,12 +60,13 @@ def main() -> int:
     ap.add_argument("--rust", required=True)
     ap.add_argument("--conf", default=str(Path(__file__).parent / "difftest.conf"))
     ap.add_argument("--cdump", default="/build/difftest-c/cfgdump")
+    ap.add_argument("--cload", default="/build/difftest-c/cfgload")
     ap.add_argument("--src", default=str(Path(__file__).resolve().parents[2]))
     ap.add_argument("--only")
     ap.add_argument("--quiet", action="store_true", help="print failures and the summary only")
     ap.add_argument("files", nargs="+")
     a = ap.parse_args()
-    subst = {"ref": a.ref, "cur": a.cur, "rust": a.rust, "conf": a.conf, "cdump": a.cdump,
+    subst = {"ref": a.ref, "cur": a.cur, "rust": a.rust, "conf": a.conf, "cdump": a.cdump, "cload": a.cload,
              "src": a.src, "here": str(Path(__file__).resolve().parent)}
 
     def expand(cmd, file=None):

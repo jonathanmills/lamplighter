@@ -505,9 +505,12 @@ AC_SUBST(ac_configure_args)
 AC_SUBST(LVERSION)
 # the Rust tools' cargo features: the same choices as the C build
 RUST_FEATURES=""
-test "x$have_liblustre_api" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-common/lustre"
-test "x$have_fid" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-common/fid"
-test "x$have_llapi_changelog_start" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-common/changelogs"
+for crate in lamplighter-common lamplighter-config; do
+    test "x$have_liblustre_api" = "xyes" && RUST_FEATURES="$RUST_FEATURES $crate/lustre"
+    test "x$have_fid" = "xyes" && RUST_FEATURES="$RUST_FEATURES $crate/fid"
+    test "x$have_llapi_changelog_start" = "xyes" && RUST_FEATURES="$RUST_FEATURES $crate/changelogs"
+done
+echo "$CFLAGS $CPPFLAGS" | grep -q -- -D_MDS_STAT_SUPPORT && RUST_FEATURES="$RUST_FEATURES lamplighter-config/mds_stat"
 RUST_FEATURES=`echo $RUST_FEATURES`
 AC_SUBST(RUST_FEATURES)
 

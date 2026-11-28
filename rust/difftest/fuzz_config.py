@@ -18,6 +18,7 @@ Usage: fuzz_config.py --cdump C --rdump RUST [--iterations N] [--seed S] CORPUS.
 """
 
 import argparse
+import re
 import glob
 import os
 import random
@@ -33,7 +34,30 @@ TOKENS = [b"{", b"}", b"(", b")", b";", b",", b"=", b"==", b"!=", b"<>", b">", b
           b"\x00", b"\xff", b"\xe9", b"block id { ", b"a == 1", b"k = v;", b"f(x)", b"(a, b)"]
 
 
+VALUES = [b"0", b"1", b"-1", b"+5", b" 7", b"12abc", b"99999999999", b"-99999999999", b"4294967296",
+          b"18446744073709551615", b"18446744073709551616", b"1.5", b"1e3", b"0x10", b"10%", b"50 %",
+          b"yes", b"No", b"TRUE", b"off", b"maybe", b"", b"''", b'""', b"10s", b"5min", b"2h", b"3d", b"1w",
+          b"1y", b"-2s", b"10 parsecs", b"10GB", b"3k", b"1Q", b"7EB", b"/abs/path", b"/abs/path/", b"rel/path",
+          b"/wild*", b"a@b", b"@b", b"a@", b"stderr", b"syslog", b"local3.warn", b"user.none", b"mark",
+          b"fsname", b"devid", b"fsid", b"uuid", b"autocommit", b"transaction", b"periodic", b"periodic(10)",
+          b"periodic(0)", b"periodic(1,2)", b"on_event_periodic(1s, 5min)", b"never", b"on_event", b"CRIT",
+          b"full", b"loud", b"x" * 300, b"y" * 1100, b"$LL_TEST_VAR", b"$LL_TEST_UNDEFINED", b"a (1, 2)"]
+
+
+def mutate_value(rng: random.Random, data: bytes) -> bytes:
+    """Replace one parameter value: syntax stays valid, semantics change."""
+    spots = [m for m in re.finditer(rb"=\s*([^;{}\n]*);", data)]
+    if not spots:
+        return data
+    m = rng.choice(spots)
+    return data[:m.start(1)] + rng.choice(VALUES) + data[m.end(1):]
+
+
 def mutate(rng: random.Random, data: bytes, corpus: list[bytes]) -> bytes:
+    if rng.random() < 0.5:
+        for _ in range(rng.choice([1, 1, 2, 3])):
+            data = mutate_value(rng, data)
+        return data
     b = bytearray(data)
     for _ in range(rng.choice([1, 1, 1, 1, 2, 3, 6])):   # mostly light: more mutants still parse
         op = rng.random()
@@ -71,10 +95,14 @@ def deep(rng: random.Random) -> bytes:
     return b"a " + b"b { " * n + b"x = 1;" + b"}" * n + b"\n"
 
 
+# log lines carry the time and process ID, different in any two runs
+LOG_PREFIX = re.compile(rb"^\d{4}/\d\d/\d\d \d\d:\d\d:\d\d [^ \[\n]*\[\d+/\d+\] ", re.M)
+
+
 def run(cmd: list[str]) -> tuple[int, bytes, bytes]:
     try:
         p = subprocess.run(cmd, capture_output=True, timeout=20)
-        return p.returncode, p.stdout, p.stderr
+        return p.returncode, p.stdout, LOG_PREFIX.sub(b"<log> ", p.stderr)
     except subprocess.TimeoutExpired:
         return -999, b"TIMEOUT", b""
 
@@ -83,6 +111,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--cdump", required=True)
     ap.add_argument("--rdump", required=True)
+    ap.add_argument("--args", default="", help="arguments before the file (e.g. a module list)")
     ap.add_argument("--iterations", type=int, default=5000)
     ap.add_argument("--seed", type=int, default=1)
     ap.add_argument("--save", default="/build/fuzz-failures")
@@ -102,7 +131,8 @@ def main() -> int:
         for i in range(a.iterations):
             data = deep(rng) if i % 200 == 199 else mutate(rng, rng.choice(corpus), corpus)
             Path(path).write_bytes(data)
-            c, r = run([a.cdump, path]), run([a.rdump, path])
+            pre = a.args.split() if a.args else []
+            c, r = run([a.cdump, *pre, path]), run([a.rdump, *pre, path])
             kind = "ok" if c[0] == 0 else "error" if c[0] == 1 else "other"
             outcomes[kind] += 1
             if kind == "other":
