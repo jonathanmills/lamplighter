@@ -9,27 +9,19 @@ were proposed, not a priority.
 
 ---
 
-## 1. Blue theme
+## 1. Blue theme (done after 1.0.0)
 
-**Idea:** a third colour theme next to Dark and Light, of medium
-intensity between the two. It replaces the purple gradients and greys
-with a range of blue gradients.
+**Built 2026-11-28** (commit `e9fff3bd`): a third theme, a cool middle
+ground between Dark and Light.
+- The lightest blues are the surfaces, and Carolina Blue fills buttons
+  and selections.
+- The sidebar runs from medium blue to deep navy, with the lamp lit in
+  amber.
+- Purple and orange take over the charts from blue.
+- Choose it in the user menu (Dark · Light · Blue).
 
-**Why:** some people find the dark theme too heavy and the light theme
-too bright. A blue theme also suits sites whose own branding is blue.
-
-**Questions:**
-- Which blues? A ramp built around the existing Carolina Blue accent is
-  the obvious starting point (`webui/design/palette-draft.html`).
-- The aubergine accents (sidebar wash, login screen, top-bar line, code
-  panels) are part of the identity. Do they stay, turn blue, or become
-  a navy?
-- Charts and status colours must stay distinguishable against a blue
-  surface, including for colour-blind readers. Validate the palette;
-  don't judge it by eye.
-
-**Fit:** front end only (CSS tokens plus the theme switcher). No back-end
-or database change.
+Still open: the server-rendered sign-in page uses the dark styling in
+every theme.
 
 ---
 
