@@ -63,6 +63,7 @@ usage: ./devenv.sh COMMAND
   checkmk-test  test the Checkmk plugin (Python 3.13, Checkmk 2.5's real APIs, live dev data)
   mkp       build the Checkmk extension package into ../checkmk/dist/
   shots     render pages in headless Chromium; screenshots go to .shots/
+  rust-test cargo tests, crate licences and the Rust-vs-C side-by-side tests
   all       up + build + data + scan + test + webui-test
   sql       open a MariaDB shell on the Robinhood database
   shell     open a shell in the Rocky 9.7 workbench
@@ -130,6 +131,13 @@ with engine.begin() as c:
 PY
         compose exec -T webui python /devenv/tools/gen_jobstats.py /var/spool/lamplighter-jobstats
         compose exec -T webui python -m lamplighter_webui.jobstats
+        ;;
+    rust-test)
+        # Rust: cargo tests, crate licences, then the side-by-side tests
+        # against the C reference built from v1.0.0 (doc/RUST-PLAN.md).
+        wb /devenv/engine/build.sh >/dev/null || exit 1
+        wb make -s -C /build/lamplighter/rust check || exit 1
+        wb bash /src/rust/difftest/run.sh "$@"
         ;;
     test)
         python3 tools/check_names.py || exit 1   # the naming rule (bin: lux-, else lamplighter)

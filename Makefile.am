@@ -3,7 +3,7 @@ ACLOCAL_AMFLAGS = -I autotools/m4
 check-valgrind:
 	make -C src/tests check-valgrind
 
-SUBDIRS=src scripts tests man doc
+SUBDIRS=src rust scripts tests man doc
 
 rpm_dir=`pwd`/rpms
 

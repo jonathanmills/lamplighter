@@ -1,0 +1,18 @@
+[package]
+name = "lamplighter-common"
+description = "Shared pieces of Lamplighter's Rust tools: build information, user and group names"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+publish = false
+
+[features]
+# Mirror configure's choices (see ../../Makefile.am); default: POSIX build.
+lustre = []
+fid = []
+changelogs = []
+
+[dependencies]
+libc.workspace = true
