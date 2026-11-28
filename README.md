@@ -230,3 +230,7 @@ See [webui/devenv/README.md](webui/devenv/README.md).
 - **The logo** is derived from a photograph by Jonathan Mills, stylized with Google Gemini. See [webui/design/logo/README.md](webui/design/logo/README.md).
 
 Lamplighter is an independent project. It is not affiliated with or endorsed by CEA, by the Robinhood project, or by Checkmk GmbH. *Lustre* is a trademark of its owner, and *Checkmk* is a trademark of Checkmk GmbH.
+
+## Supporting Lamplighter
+
+Lamplighter is free software, and it always will be. Building it isn't free, though: it takes time, test systems and development tools. If Lamplighter has earned a place in your work and you're feeling appreciative, a contribution through [PayPal](https://paypal.me/JonathanMills1979) is gratefully received, and helps keep the lamp lit. Thank you.
