@@ -186,3 +186,25 @@ hardware.
 `lamplighter-scale`) and writes JSON results (`--json`) for comparison.
 Until these runs happen, the docs and release notes must say that scale
 was measured only in a development environment.
+
+---
+
+## 7. Scheduled reports and custom graphs
+
+**Idea:** two features of Robinhood's old PHP GUI (`gui_v3`) that the
+new web UI does not have: **report tasks** that run on a schedule and
+deliver results (for example a weekly usage summary), and **custom or
+stacked graphs** that a user assembles.
+
+**Why:** feature parity with `gui_v3`. They were listed for parity, not
+requested, so they wait until someone needs them.
+
+**Questions:**
+- **Delivery:** by email (informational, like the quota notices in item
+  4) or saved files.
+- **What a report contains:** probably the existing exports on a
+  schedule.
+- **Custom graphs:** do they add enough beyond the fixed charts?
+
+**Fit:** reports are informational messages, not system alerts.
+Scheduling would use a systemd timer, like the collector's.
