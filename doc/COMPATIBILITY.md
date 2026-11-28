@@ -9,6 +9,7 @@ Lamplighter is a fork of the [Robinhood Policy Engine](https://github.com/cea-hp
 - **No changes to Robinhood's database schema or its data structures.** Lamplighter uses Robinhood 3.2's tables, columns, triggers, stored functions and `VARS` entries exactly as they are.
 - Robinhood adapts its schema to the configuration: enabling a policy, for example, adds that policy's status columns. Lamplighter keeps that behavior exactly, so **the same configuration produces the same schema**, in either program.
 - The web UI keeps its own data (collector results and the audit copy) in a **separate schema** (`lamplighter_webui`). It never writes Robinhood's tables, and Robinhood is unaffected by its presence.
+- **Optional indexes, on a read replica.** `lamplighter-config replica_indexes create <db>` adds secondary indexes to `ENTRIES` (owner, group and size) and `NAMES` (id, parent_id) for the web UI's whole-filesystem search and its collector. They add no tables, columns or data, Robinhood ignores them, and `replica_indexes drop` removes them. The command refuses a server that is not a replica: there, add `--force-primary` deliberately (a single-server installation), knowing that each index costs disk space and slows Robinhood's database writes.
 - Database names belong to the site (for example `robinhood_lustre`) and are never renamed.
 
 ## 2. Configuration files: same contents, Lamplighter's directory

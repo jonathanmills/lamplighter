@@ -11,12 +11,20 @@ lux-find with a path argument.
 
 Every search is bounded (directories visited, matches, time) and says
 whether it was complete; narrow the directory to search further.
+
+Whole-filesystem searches by owner, group or minimum size can instead
+read an optional index on a read replica (lamplighter-config
+replica_indexes; any index on ENTRIES starting with (uid, size),
+(gid, size) or (size) qualifies). The index is read biggest first, in
+bounded batches, so the largest matches come first and the same limits
+apply.
 """
 
 from __future__ import annotations
 
 import csv
 import io
+import re
 import time
 from dataclasses import dataclass
 from typing import Literal
@@ -35,6 +43,7 @@ MAX_DIRS = 20_000        # directories visited per search
 MAX_RESULTS = 1_000      # matches returned
 TIME_BUDGET = 20.0       # seconds per search
 BATCH = 500              # parent ids per query
+INDEX_BATCH = 5_000      # index entries per query (indexed search)
 DAY = 86400
 
 
@@ -123,6 +132,84 @@ def path_of(c, dir_id: bytes) -> str:
     raise HTTPException(500, "Directory tree too deep.")
 
 
+def entry_indexes(c) -> dict[tuple[str, ...], str]:
+    """Indexes on ENTRIES by their leading columns: {("uid", "size"): name, ...}."""
+    cols: dict[str, list[str]] = {}
+    for name, col in c.execute(text(
+            "SELECT INDEX_NAME, COLUMN_NAME FROM information_schema.STATISTICS "
+            "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ENTRIES' AND INDEX_NAME <> 'PRIMARY' "
+            "ORDER BY INDEX_NAME, SEQ_IN_INDEX")):
+        cols.setdefault(_s(name), []).append(_s(col).lower())
+    out: dict[tuple[str, ...], str] = {}
+    for name, cs in sorted(cols.items()):
+        for n in (1, 2):
+            out.setdefault(tuple(cs[:n]), name)
+    return out
+
+
+def _index_plan(c, crit: Criteria) -> tuple[str, str, dict] | None:
+    """(index, leading condition, params) for a whole-filesystem search, or None."""
+    have = entry_indexes(c)
+    if crit.owner and ("uid", "size") in have:
+        return have[("uid", "size")], "e.uid = :lead", {"lead": crit.owner}
+    if crit.group and ("gid", "size") in have:
+        return have[("gid", "size")], "e.gid = :lead", {"lead": crit.group}
+    if crit.min_size is not None and ("size",) in have:
+        return have[("size",)], "e.size >= :lead", {"lead": crit.min_size}
+    return None
+
+
+def _glob_re(pattern: str) -> re.Pattern:
+    """The same matching as glob_to_like + LIKE on a binary column."""
+    return re.compile("".join(".*" if ch == "*" else "." if ch == "?" else re.escape(ch) for ch in pattern),
+                      re.DOTALL)
+
+
+def _indexed(c, start, paths, crit: Criteria, plan, t0: float) -> tuple[list[dict], str | None, int]:
+    """Read the index biggest first, INDEX_BATCH entries at a time (keyset
+    on size, id), applying the other criteria; returns matches, why it
+    stopped (None: complete) and entries examined."""
+    index, lead, lead_params = plan
+    crit_no_name = Criteria(**{**crit.__dict__, "name": None})
+    where, params = crit_no_name.sql(int(time.time()))
+    name_re = _glob_re(crit.name.encode("utf-8", "surrogateescape").decode("latin-1")) if crit.name else None
+    query = text(
+        "SELECT e.id, e.type, e.uid, e.gid, e.size, e.last_access, e.last_mod, "
+        f"({where}) AS hit FROM ENTRIES e FORCE INDEX (`{index}`) WHERE {lead} "
+        "AND (:first OR e.size < :s OR (e.size = :s AND e.id < :i)) "
+        "ORDER BY e.size DESC, e.id DESC LIMIT :n")
+    names_q = text("SELECT id, parent_id, name FROM NAMES WHERE id IN :ids").bindparams(
+        bindparam("ids", expanding=True))
+    results: list[dict] = []
+    examined, cursor = 0, None
+    while True:
+        rows = c.execute(query, {**params, **lead_params, "n": INDEX_BATCH, "first": cursor is None,
+                                 "s": cursor[0] if cursor else 0, "i": cursor[1] if cursor else b""}).all()
+        examined += len(rows)
+        hits = [r for r in rows if r.hit]
+        if hits:
+            names: dict[bytes, list] = {}
+            for n in c.execute(names_q, {"ids": [r.id for r in hits]}):
+                names.setdefault(n.id, []).append(n)
+            for r in hits:
+                for n in names.get(r.id, []):             # one result per name (hard links)
+                    if name_re and not name_re.fullmatch(bytes(n.name).decode("latin-1")):
+                        continue
+                    if n.parent_id not in paths:
+                        paths[n.parent_id] = path_of(c, n.parent_id)
+                    results.append({"path": paths[n.parent_id].rstrip("/") + "/" + _s(n.name),
+                                    "type": _s(r.type), "owner": _s(r.uid), "group": _s(r.gid),
+                                    "size": int(r.size or 0), "last_access": r.last_access,
+                                    "last_mod": r.last_mod})
+        if len(results) >= MAX_RESULTS:
+            return results, "result limit", examined
+        if len(rows) < INDEX_BATCH:
+            return results, None, examined
+        if time.monotonic() - t0 > TIME_BUDGET:
+            return results, "time limit", examined
+        cursor = (rows[-1].size, rows[-1].id)
+
+
 def search(source, store, dir_id: bytes | None, crit: Criteria) -> dict:
     t0 = time.monotonic()
     now = int(time.time())
@@ -139,6 +226,13 @@ def search(source, store, dir_id: bytes | None, crit: Criteria) -> dict:
                 raise HTTPException(404, "No such directory.")
         paths = {start: path_of(c, start)}
         frontier, visited = [start], 0
+        # the filesystem root (VARS.RootId is stored as fsid/inode): indexed
+        # search applies to the whole filesystem only
+        root = _s(c.execute(text("SELECT value FROM VARS WHERE varname = 'RootId'")).scalar()).replace("/", ":")
+        plan = _index_plan(c, crit) if root and _s(start) == root else None
+        if plan is not None:
+            results, stopped, examined = _indexed(c, start, paths, crit, plan, t0)
+            frontier = []
         query = text(
             "SELECT n.id, n.parent_id, n.name, e.type, e.uid, e.gid, e.size, e.last_access, e.last_mod, "
             f"({where}) AS hit FROM NAMES n JOIN ENTRIES e ON e.id = n.id "
@@ -165,6 +259,8 @@ def search(source, store, dir_id: bytes | None, crit: Criteria) -> dict:
     results.sort(key=lambda r: -r["size"])
     return {"dir": {"id": _s(start), "path": paths[start]}, "criteria": crit.as_dict(),
             "results": results[:MAX_RESULTS], "complete": stopped is None, "stopped": stopped,
+            "method": "index" if plan else "walk", "index": plan[0] if plan else None,
+            "entries_examined": examined if plan else None,
             "directories_searched": visited, "elapsed_seconds": round(time.monotonic() - t0, 2),
             "limits": {"directories": MAX_DIRS, "results": MAX_RESULTS, "seconds": TIME_BUDGET}}
 

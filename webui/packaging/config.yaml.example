@@ -51,6 +51,10 @@ access:
 
 # Robinhood's own database: read only. Ideally a replica.
 # Grants: SELECT and CREATE TEMPORARY TABLES on the robinhood schema.
+# On a replica, optional indexes make whole-filesystem search by owner,
+# group or size, and the collector's directory rollup, much faster (run on
+# the replica as a MariaDB administrator; hours on billions of entries):
+#   lamplighter-config replica_indexes create <robinhood db>
 database:
   host: db-replica.example.org
   name: robinhood_lustre
@@ -82,8 +86,7 @@ collector:
   # rights on this schema only; it needs just SELECT on Robinhood's:
   #   CREATE DATABASE lamplighter_scratch;
   #   GRANT ALL PRIVILEGES ON lamplighter_scratch.* TO 'robinhood'@'<webui host>';
-  # Speeds up most with an index on Robinhood's NAMES (id, parent_id) on a
-  # replica (see doc/webui-design.md, Scale).
+  # Speeds up most with the replica indexes (below: `database`).
   # scratch_schema: lamplighter_scratch
 
 # Lustre jobstats for the triage view (optional; without this section,

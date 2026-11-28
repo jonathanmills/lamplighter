@@ -690,6 +690,96 @@ rbhext_tool_clnt:lamplighter-ext-tool-clnt"
 # program at the start of the command line is considered. With fix=1,
 # write <file>.lamplighter with those program names updated.
 # Prints file:line findings; returns 1 if any were found.
+# Optional secondary indexes for Lamplighter's web UI, on a read replica of
+# the Robinhood database (doc/webui-design.md, Scale). Robinhood indexes
+# ENTRIES by id only; these let whole-filesystem search by owner, group or
+# size, and the collector's directory rollup, read an index instead of
+# every row. Robinhood itself ignores them. Connects with the MariaDB
+# client's option files (e.g. root over the local socket, or ~/.my.cnf).
+REPLICA_INDEXES="ENTRIES:lamplighter_uid_size:uid,size
+ENTRIES:lamplighter_gid_size:gid,size
+ENTRIES:lamplighter_size:size
+NAMES:lamplighter_id_parent:id,parent_id"
+
+function replica_indexes
+{
+    local action=$1 db=$2 force=$3
+    if [[ -z "$action" || -z "$db" || ( -n "$force" && "$force" != "--force-primary" ) ]]; then
+        echo "Usage: replica_indexes status|create|drop <db_name> [--force-primary]"
+        exit 1
+    fi
+    if [[ ! "$db" =~ ^[A-Za-z0-9_]+$ ]]; then
+        echo "ERROR: invalid database name '$db'"
+        exit 1
+    fi
+    local sql="mysql --batch --skip-column-names $db"
+    $sql -e "SELECT 1" > /dev/null || exit 1
+
+    local line table name cols present
+    if [[ "$action" == status ]]; then
+        printf "%-8s %-24s %-14s %s\n" TABLE INDEX COLUMNS STATUS
+        while IFS=: read -r table name cols; do
+            present=$($sql -e "SELECT ROUND(stat_value * @@innodb_page_size / 1048576) FROM mysql.innodb_index_stats
+                              WHERE database_name = '$db' AND table_name = '$table' AND index_name = '$name'
+                              AND stat_name = 'size'")
+            if [[ -n "$present" ]]; then
+                printf "%-8s %-24s %-14s %s\n" "$table" "$name" "$cols" "present, ${present} MiB"
+            else
+                printf "%-8s %-24s %-14s %s\n" "$table" "$name" "$cols" "absent"
+            fi
+        done <<< "$REPLICA_INDEXES"
+        exit 0
+    fi
+    if [[ "$action" != create && "$action" != drop ]]; then
+        echo "ERROR: unknown action '$action' (status, create or drop)"
+        exit 1
+    fi
+
+    # Refuse on a server that is not a replica: the primary stays exactly
+    # as Robinhood made it (and every index slows Robinhood's ingestion).
+    local replica
+    replica=$(mysql --batch -e "SHOW SLAVE STATUS" | wc -l)
+    if (( replica == 0 )) && [[ "$force" != "--force-primary" ]]; then
+        echo "ERROR: this server is not a replica (SHOW SLAVE STATUS is empty)."
+        echo "       These indexes belong on a read replica that serves Lamplighter's web UI."
+        echo "       On a single-server installation, add --force-primary: Robinhood keeps"
+        echo "       working, but each index costs disk space and slows its database writes."
+        exit 1
+    fi
+
+    local alter_entries="" alter_names=""
+    while IFS=: read -r table name cols; do
+        present=$($sql -e "SELECT COUNT(*) FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = '$db'
+                          AND TABLE_NAME = '$table' AND INDEX_NAME = '$name'")
+        if [[ "$action" == create && "$present" == 0 ]]; then
+            line="ADD INDEX $name ($cols)"
+        elif [[ "$action" == drop && "$present" != 0 ]]; then
+            line="DROP INDEX $name"
+        else
+            continue
+        fi
+        if [[ "$table" == ENTRIES ]]; then
+            alter_entries="${alter_entries:+$alter_entries, }$line"
+        else
+            alter_names="${alter_names:+$alter_names, }$line"
+        fi
+    done <<< "$REPLICA_INDEXES"
+    if [[ -z "$alter_entries$alter_names" ]]; then
+        echo "nothing to do"
+        exit 0
+    fi
+    # Online: replication and reads continue while the indexes are built.
+    # On billions of entries this takes hours; each table is read once.
+    for line in "ENTRIES:$alter_entries" "NAMES:$alter_names"; do
+        table=${line%%:*}
+        [[ -z "${line#*:}" ]] && continue
+        echo "$table: ${line#*:}"
+        $sql -e "ALTER TABLE $table ${line#*:}, ALGORITHM=INPLACE, LOCK=NONE" || exit 1
+    done
+    echo "done"
+    exit 0
+}
+
 function check_one_config
 {
     local file="$1" fix="$2"
@@ -818,6 +908,9 @@ elif [[ "$1" = optimize_db ]]; then
 elif [[ "$1" = test_db ]]; then
     shift 1
     test_connect $*
+elif [[ "$1" = replica_indexes ]]; then
+    shift 1
+    replica_indexes "$@"
 elif [[ "$1" = check ]]; then
     shift 1
     check_config "$@"
@@ -846,6 +939,9 @@ else
     echo "    check [--fix] <config_file>...:"
     echo "        report cmd() actions that run a Robinhood command name renamed by"
     echo "        Lamplighter (with --fix: write <file>.lamplighter copies to review)"
+    echo "    replica_indexes status|create|drop <db_name> [--force-primary]:"
+    echo "        optional indexes for Lamplighter's web UI search and collector, on a"
+    echo "        read replica (refused elsewhere unless --force-primary)"
     echo "    optimize_db [<db_name> [<db_admin_passwd>]]:"
     echo "        defragments the database for better performance and using less disk space"
 fi

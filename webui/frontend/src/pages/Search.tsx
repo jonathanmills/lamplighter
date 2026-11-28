@@ -120,7 +120,10 @@ export default function Search() {
           <section className="panel span-12" aria-label="Results">
             <div className="panel-head">
               <h2>{int(data.results.length)} {data.results.length === 1 ? "match" : "matches"}</h2>
-              <span className="meta">{int(data.directories_searched)} directories searched in {data.elapsed_seconds} s
+              <span className="meta">
+                {data.method === "index"
+                  ? `${int(data.entries_examined ?? 0)} entries read from the filesystem-wide index, largest first, in ${data.elapsed_seconds} s`
+                  : `${int(data.directories_searched)} directories searched in ${data.elapsed_seconds} s`}
                 {data.complete ? " · complete" : ` · stopped at the ${data.stopped}: narrow the directory or the criteria`}</span>
             </div>
             <div className="panel-body" style={{ overflowX: "auto" }}>

@@ -237,6 +237,9 @@ def bench(url: str, db: str, store_db: str, rollup_depth: int, json_path: str | 
             {"p": root_id}).scalar()
 
     def describe(o):
+        if o.get("method") == "index":
+            return (f"{len(o['results'])} matches, index {o['index']}, {o['entries_examined']:,} entries read, "
+                    + ("complete" if o["complete"] else f"stopped at {o['stopped']}"))
         return (f"{len(o['results'])} matches, {o['directories_searched']:,} directories, "
                 + ("complete" if o["complete"] else f"stopped at {o['stopped']}"))
 

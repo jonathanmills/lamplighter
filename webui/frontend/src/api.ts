@@ -131,6 +131,7 @@ export interface SearchResult {
   results: { path: string; type: string; owner: string; group: string; size: number; last_access: number | null; last_mod: number | null }[];
   complete: boolean; stopped: "result limit" | "directory limit" | "time limit" | null;
   directories_searched: number; elapsed_seconds: number;
+  method: "walk" | "index"; index: string | null; entries_examined: number | null;
   limits: { directories: number; results: number; seconds: number };
 }
 

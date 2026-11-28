@@ -161,3 +161,49 @@ def test_parallel_rollup_with_scratch_schema_matches(db):
             c.execute(text("ALTER TABLE NAMES DROP INDEX names_by_id"))
     left = q(db, "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'lamplighter_scratch'")
     assert left[0][0] == 0
+
+
+def test_indexed_search_matches_the_tree_walk(db, monkeypatch):
+    """With replica indexes, whole-filesystem search reads an index instead
+    of walking the tree; for every kind of criteria the matches are the
+    same, and without the index it falls back to the walk."""
+    from lamplighter_webui import search_api
+    from lamplighter_webui.search_api import Criteria, search
+
+    monkeypatch.setattr(search_api, "_root", lambda c, store: b"5CA1E:1")   # no collector store here
+    [(owner, group)] = q(db, "SELECT uid, gid FROM ENTRIES WHERE type = 'file' LIMIT 1")
+    [(big,)] = q(db, "SELECT size FROM ENTRIES WHERE type = 'file' ORDER BY size DESC LIMIT 1 OFFSET 300")
+    # a size that ~400 of the group's files reach (groups are large here)
+    [(gbig,)] = q(db, f"SELECT size FROM ENTRIES WHERE gid = '{group.decode()}' ORDER BY size DESC LIMIT 1 OFFSET 400")
+    cases = [
+        Criteria(owner=owner.decode()),
+        Criteria(owner=owner.decode(), name="f1*.da?"),
+        Criteria(group=group.decode(), min_size=gbig, not_accessed_days=365),
+        Criteria(group=group.decode(), min_size=gbig, type="any"),
+        Criteria(min_size=big),
+    ]
+
+    def run(crit):
+        out = search(db, None, None, crit)
+        assert out["complete"], out["stopped"]
+        return out, sorted((r["path"], r["size"], r["owner"]) for r in out["results"])
+
+    walked = [run(c) for c in cases]
+    assert all(o["method"] == "walk" for o, _ in walked)
+    assert all(rows for _, rows in walked), [len(r) for _, r in walked]
+    with db.connect() as c:
+        c.execute(text("ALTER TABLE ENTRIES ADD INDEX lamplighter_uid_size (uid, size), "
+                       "ADD INDEX lamplighter_gid_size (gid, size), ADD INDEX lamplighter_size (size)"))
+    try:
+        for crit, (_, expected) in zip(cases, walked):
+            out, rows = run(crit)
+            assert out["method"] == "index", crit
+            assert rows == expected, crit
+        monkeypatch.setattr(search_api, "INDEX_BATCH", 7)          # many keyset batches, same answer
+        out, rows = run(cases[0])
+        assert rows == walked[0][1] and out["entries_examined"] > 7
+        assert search(db, None, None, Criteria(name="f12*.dat"))["method"] == "walk"  # no index for a name
+    finally:
+        with db.connect() as c:
+            c.execute(text("ALTER TABLE ENTRIES DROP INDEX lamplighter_uid_size, "
+                           "DROP INDEX lamplighter_gid_size, DROP INDEX lamplighter_size"))
