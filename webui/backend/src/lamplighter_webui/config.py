@@ -146,6 +146,19 @@ class CollectorConfig(BaseModel):
     # fileclass and status counts), each scanning a range of the primary
     # key. Use about as many as the database server has cores to spare.
     workers: int = 4
+    # Optional writable schema on the same server as `database` (single
+    # MariaDB instance, or a dedicated replica), for the directory rollup's
+    # shared work tables, so its file pass runs on `workers` connections.
+    # The collector's user needs ALL on it (and only SELECT on Robinhood's
+    # database). Unset: the rollup runs on one connection with TEMPORARY tables.
+    scratch_schema: str | None = None
+
+    @model_validator(mode="after")
+    def _check_scratch(self) -> "CollectorConfig":
+        import re
+        if self.scratch_schema is not None and not re.fullmatch(r"[A-Za-z0-9_]{1,64}", self.scratch_schema):
+            raise ValueError("collector.scratch_schema: letters, digits and _ only")
+        return self
     # Audit events older than this are deleted from the database copy
     # (journald keeps its own retention).
     audit_retention_days: int = 400

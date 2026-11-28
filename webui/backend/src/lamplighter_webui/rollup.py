@@ -28,10 +28,12 @@ TEMPORARY TABLES). Run it on one connection: they live on it.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
+from collections.abc import Callable
 
 from sqlalchemy import text
-from sqlalchemy.engine import Connection
+from sqlalchemy.engine import Connection, Engine
 
 YEAR = 365 * 86400
 DIRS = "lamplighter_rollup_dirs"
@@ -71,30 +73,83 @@ def covering_index(c: Connection) -> str | None:
     return None
 
 
-def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2 * 1024**3) -> list[dict]:
+def _parallel_file_pass(source: Engine, workers: int, setup, file_pass: str, params: dict) -> list:
+    """The file pass over primary-key ranges, on ``workers`` connections; each
+    folds its (directory, owner) totals into a server-side MEMORY table and
+    returns it once (see parallel.map_ranges)."""
+    from .parallel import map_ranges, where
+    tmp = "lamplighter_rollup_acc"
+
+    def start(c):
+        if setup:
+            setup(c)
+        c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {tmp}"))
+        c.execute(text(f"CREATE TEMPORARY TABLE {tmp} (anc VARBINARY(64), uid VARBINARY(127), "
+                       "files BIGINT UNSIGNED, bytes BIGINT UNSIGNED, newest INT UNSIGNED, oldest INT UNSIGNED, "
+                       "c1 BIGINT UNSIGNED, c3 BIGINT UNSIGNED, UNIQUE KEY (anc, uid)) ENGINE=MEMORY"))
+
+    def scan(c, r):
+        cond, rp = where(r, "e.id")
+        c.execute(text(
+            f"INSERT INTO {tmp} (anc, uid, files, bytes, newest, oldest, c1, c3) "
+            + file_pass.format(range=cond)
+            + " ON DUPLICATE KEY UPDATE files = files + VALUES(files), bytes = bytes + VALUES(bytes), "
+              "newest = GREATEST(COALESCE(newest, VALUES(newest)), COALESCE(VALUES(newest), newest)), "
+              "oldest = LEAST(COALESCE(oldest, VALUES(oldest)), COALESCE(VALUES(oldest), oldest)), "
+              "c1 = c1 + VALUES(c1), c3 = c3 + VALUES(c3)"), {**params, **rp})
+
+    def finish(c):
+        rows = c.execute(text(f"SELECT anc, uid, files, bytes, newest, oldest, c1, c3 FROM {tmp}")).all()
+        c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {tmp}"))
+        return rows
+
+    return [row for part in map_ranges(source, workers, scan, start, finish) for row in part]
+
+
+def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2 * 1024**3,
+            scratch: str | None = None, source: Engine | None = None, workers: int = 1,
+            setup: Callable[[Connection], None] | None = None) -> list[dict]:
+    """Per-directory subtree totals down to ``depth``.
+
+    With ``scratch`` (a writable schema on the same server as Robinhood's
+    database), ``source`` and ``workers`` > 1, the directory map (and the
+    id-ordered NAMES copy, without a covering index) are ordinary tables in
+    the scratch schema, shared by ``workers`` connections that join their
+    primary-key ranges in parallel. Otherwise everything runs on ``c`` with
+    TEMPORARY tables (works on a read-only replica).
+    """
     root = _root(c)
     if root is None:
         return []
     # Group in memory: MariaDB's 16 MB default spills these GROUP BYs to disk.
     c.execute(text(f"SET SESSION tmp_table_size = {int(work_mem)}, max_heap_table_size = {int(work_mem)}"))
+    shared = bool(scratch) and source is not None and workers > 1
+    if shared:
+        if not re.fullmatch(r"[A-Za-z0-9_]{1,64}", scratch):
+            raise ValueError(f"invalid scratch schema name {scratch!r}")
+        kind, dirs, byid = "TABLE", f"`{scratch}`.rollup_dirs", f"`{scratch}`.rollup_names"
+    else:
+        kind, dirs, byid = "TEMPORARY TABLE", DIRS, BYID
 
     # 2. the directory tree, with depth and tracked ancestor (root: depth 0)
-    c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {DIRS}"))
+    c.execute(text(f"DROP {kind} IF EXISTS {dirs}"))
     c.execute(text(
-        f"CREATE TEMPORARY TABLE {DIRS} (id VARBINARY(64) PRIMARY KEY, parent_id VARBINARY(64), "
+        f"CREATE {kind} {dirs} (id VARBINARY(64) PRIMARY KEY, parent_id VARBINARY(64), "
         "name VARBINARY(255), depth INT, anc VARBINARY(64), uid VARBINARY(127), KEY (depth)) ENGINE=InnoDB "
         "SELECT STRAIGHT_JOIN n.id, n.parent_id, n.name, NULL AS depth, NULL AS anc, e.uid "
         "FROM ENTRIES e JOIN NAMES n ON n.id = e.id WHERE e.type = 'dir'"))
-    c.execute(text(f"INSERT IGNORE INTO {DIRS} (id, parent_id, name, depth, anc) VALUES (:r, NULL, '', 0, :r)"),
+    c.execute(text(f"INSERT IGNORE INTO {dirs} (id, parent_id, name, depth, anc) VALUES (:r, NULL, '', 0, :r)"),
               {"r": root})
     level = 0
     while c.execute(text(
-            f"UPDATE {DIRS} d JOIN {DIRS} p ON p.id = d.parent_id "
+            f"UPDATE {dirs} d JOIN {dirs} p ON p.id = d.parent_id "
             "SET d.depth = p.depth + 1, d.anc = IF(p.depth < :depth, d.id, p.anc) "
             "WHERE p.depth = :lvl AND d.depth IS NULL"), {"depth": depth, "lvl": level}).rowcount:
         level += 1
+    if shared:
+        c.commit()                     # the workers' connections must see the map
 
-    tracked = c.execute(text(f"SELECT id, parent_id, name, depth, uid FROM {DIRS} WHERE depth <= :d"),
+    tracked = c.execute(text(f"SELECT id, parent_id, name, depth, uid FROM {dirs} WHERE depth <= :d"),
                         {"d": depth}).all()
 
     # 3. one ordered pass over the files
@@ -102,19 +157,29 @@ def compute(c: Connection, now: int, depth: int, fs_path: str, work_mem: int = 2
     if cover:
         names = f"NAMES n FORCE INDEX (`{cover}`)"
     else:
-        c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {BYID}"))
-        c.execute(text(f"CREATE TEMPORARY TABLE {BYID} (id VARBINARY(64) PRIMARY KEY, parent_id VARBINARY(64)) "
+        c.execute(text(f"DROP {kind} IF EXISTS {byid}"))
+        c.execute(text(f"CREATE {kind} {byid} (id VARBINARY(64) PRIMARY KEY, parent_id VARBINARY(64)) "
                        "ENGINE=InnoDB SELECT id, parent_id FROM NAMES WHERE id IS NOT NULL ORDER BY id"))
-        names = f"{BYID} n"
-    rows = c.execute(text(
-        f"SELECT STRAIGHT_JOIN d.anc, e.uid, COUNT(*), COALESCE(SUM(e.size), 0), MAX(e.last_access), "
+        if shared:
+            c.commit()
+        names = f"{byid} n"
+    params = {"c1": now - YEAR, "c3": now - 3 * YEAR}
+    file_pass = (
+        "SELECT STRAIGHT_JOIN d.anc, e.uid, COUNT(*), COALESCE(SUM(e.size), 0), MAX(e.last_access), "
         "MIN(e.last_access), COALESCE(SUM(IF(e.last_access < :c1, e.size, 0)), 0), "
         "COALESCE(SUM(IF(e.last_access < :c3, e.size, 0)), 0) "
-        f"FROM ENTRIES e JOIN {names} ON n.id = e.id JOIN {DIRS} d ON d.id = n.parent_id "
-        "WHERE e.type = 'file' GROUP BY d.anc, e.uid"),
-        {"c1": now - YEAR, "c3": now - 3 * YEAR}).all()
-    c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {DIRS}"))
-    c.execute(text(f"DROP TEMPORARY TABLE IF EXISTS {BYID}"))
+        f"FROM ENTRIES e JOIN {names} ON n.id = e.id JOIN {dirs} d ON d.id = n.parent_id "
+        "WHERE e.type = 'file' AND {range} GROUP BY d.anc, e.uid")
+    try:
+        if shared:
+            rows = _parallel_file_pass(source, workers, setup, file_pass, params)
+        else:
+            rows = c.execute(text(file_pass.format(range="TRUE")), params).all()
+    finally:
+        c.execute(text(f"DROP {kind} IF EXISTS {dirs}"))
+        c.execute(text(f"DROP {kind} IF EXISTS {byid}"))
+        if shared:
+            c.commit()
 
     # 4. assemble and roll up in Python (tracked directories only)
     node: dict[bytes, dict] = {}

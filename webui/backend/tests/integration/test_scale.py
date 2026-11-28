@@ -138,3 +138,26 @@ def test_long_fileclass_lists_fall_back_to_exact_counts(db):
         with db.connect() as c:
             c.execute(text("UPDATE ENTRIES SET fileclass = :f WHERE id = :i"), {"f": old, "i": victim})
             c.commit()
+
+
+def test_parallel_rollup_with_scratch_schema_matches(db):
+    """With a scratch schema the rollup's file pass runs on several
+    connections; the result is identical to the single-connection rollup,
+    with and without a covering index, and no scratch tables remain."""
+    from lamplighter_webui import rollup
+
+    def run(**kw):
+        with db.connect() as c:
+            return sorted(rollup.compute(c, 1_795_000_000, 4, "/scale", **kw), key=lambda r: r["dir_id"])
+
+    single = run()
+    assert run(scratch="lamplighter_scratch", source=db, workers=4) == single
+    with db.connect() as c:
+        c.execute(text("ALTER TABLE NAMES ADD INDEX names_by_id (id, parent_id)"))
+    try:
+        assert run(scratch="lamplighter_scratch", source=db, workers=4) == single
+    finally:
+        with db.connect() as c:
+            c.execute(text("ALTER TABLE NAMES DROP INDEX names_by_id"))
+    left = q(db, "SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA = 'lamplighter_scratch'")
+    assert left[0][0] == 0

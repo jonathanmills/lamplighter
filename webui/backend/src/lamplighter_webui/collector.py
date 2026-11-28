@@ -168,7 +168,8 @@ def _run_locked(settings: Settings, source: Engine, store: Engine) -> int:
             setup(src)
             acct = timed("acct", _acct_snapshot, src)
             fs_path = src.execute(text("SELECT value FROM VARS WHERE varname = 'FS_Path'")).scalar()
-            dirs = timed("rollup", compute_rollups, src, now, cfg.rollup_depth, _s(fs_path or "/"), cfg.work_mem)
+            dirs = timed("rollup", compute_rollups, src, now, cfg.rollup_depth, _s(fs_path or "/"), cfg.work_mem,
+                         cfg.scratch_schema, source, workers, setup)
         t_store = time.monotonic()
         files = sum(r["files"] for r in hist)
         with store.begin() as c:

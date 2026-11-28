@@ -75,6 +75,16 @@ collector:
   # per query for in-memory grouping (MariaDB tmp_table_size).
   workers: 4
   work_mem: 2147483648
+  # Optional: a writable schema on the same MariaDB server as `database`
+  # (a single instance, or the replica Lamplighter reads), so the directory
+  # rollup runs on `workers` connections too. Unset, the rollup uses one
+  # connection and TEMPORARY tables. Grant the database user above full
+  # rights on this schema only; it needs just SELECT on Robinhood's:
+  #   CREATE DATABASE lamplighter_scratch;
+  #   GRANT ALL PRIVILEGES ON lamplighter_scratch.* TO 'robinhood'@'<webui host>';
+  # Speeds up most with an index on Robinhood's NAMES (id, parent_id) on a
+  # replica (see doc/webui-design.md, Scale).
+  # scratch_schema: lamplighter_scratch
 
 # Lustre jobstats for the triage view (optional; without this section,
 # triage shows Robinhood's side only). No job scheduler is needed.

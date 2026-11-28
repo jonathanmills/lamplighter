@@ -12,4 +12,9 @@ CREATE DATABASE IF NOT EXISTS lamplighter_webui CHARACTER SET utf8mb4;
 CREATE USER IF NOT EXISTS 'lamplighter_webui'@'%' IDENTIFIED BY 'lamplighter_webui';
 GRANT SELECT ON robinhood_dev.* TO 'lamplighter_webui'@'%';
 GRANT ALL PRIVILEGES ON lamplighter_webui.* TO 'lamplighter_webui'@'%';
+-- Scratch schema for the collector's shared rollup tables (collector.scratch_schema),
+-- writable by the user the collector reads Robinhood's database as.
+CREATE DATABASE IF NOT EXISTS lamplighter_scratch CHARACTER SET utf8mb4;
+GRANT ALL PRIVILEGES ON lamplighter_scratch.* TO 'robinhood'@'%';
+GRANT ALL PRIVILEGES ON lamplighter_scratch.* TO 'lamplighter_webui'@'%';
 FLUSH PRIVILEGES;

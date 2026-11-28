@@ -55,6 +55,9 @@ store:
 
 collector:
   keep_runs: 90
+  workers: 4
+  # shared work tables for the parallel rollup (same server as `database`)
+  scratch_schema: lamplighter_scratch
 
 # Lustre jobstats for triage. The dev spool is filled by
 # 'devenv.sh jobstats' (tools/gen_jobstats.py) with simulated servers.
