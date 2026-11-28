@@ -24,6 +24,7 @@ AC_PREFIX_DEFAULT([/usr])
 AC_GNU_SOURCE
 
 AC_CONFIG_FILES([Makefile
+         rust/Makefile
          src/Makefile
          src/include/Makefile
          src/common/Makefile
@@ -67,6 +68,17 @@ AC_PATH_PROG(YACC_INST, $YACC)
 if test -z "$YACC_INST" -a "x$enable_dist" = xyes; then
   AC_MSG_ERROR([yacc/bison not found])
 fi
+
+# Rust (doc/RUST-PLAN.md): the Rust parts of the engine are built with
+# cargo, from RHEL's rust-toolset. --disable-rust is for development only:
+# once a Rust tool replaces a C one, the package needs it.
+AC_ARG_ENABLE([rust], AS_HELP_STRING([--disable-rust], [do not build the Rust parts (development only)]),
+              [enable_rust=$enableval], [enable_rust=yes])
+if test "x$enable_rust" = xyes; then
+    AC_PATH_PROG([CARGO], [cargo])
+    test -z "$CARGO" && AC_MSG_ERROR([cargo not found: install rust-toolset, or configure --disable-rust])
+fi
+AM_CONDITIONAL(RUST, test "x$enable_rust" = xyes)
 
 AS_IF([test "x$enable_dist" = xyes], [
 AC_OUTPUT
@@ -489,6 +501,15 @@ if test "$ac_configure_args" = "" ; then
 fi
 # for exporting to Makefile.in
 AC_SUBST(ac_configure_args)
+# the Lustre version, for the Rust tools' --version (empty without Lustre)
+AC_SUBST(LVERSION)
+# the Rust tools' cargo features: the same choices as the C build
+RUST_FEATURES=""
+test "x$have_liblustre_api" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-common/lustre"
+test "x$have_fid" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-common/fid"
+test "x$have_llapi_changelog_start" = "xyes" && RUST_FEATURES="$RUST_FEATURES lamplighter-common/changelogs"
+RUST_FEATURES=`echo $RUST_FEATURES`
+AC_SUBST(RUST_FEATURES)
 
 AC_OUTPUT
 

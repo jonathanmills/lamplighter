@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: CECILL-C
+# Copyright (C) 2026 Jonathan Mills
+#
+# Stage 0 (doc/RUST-PLAN.md): the harness itself.
+# - The Rust --version banner must equal the C one, byte for byte.
+# - The current C tools must equal the v1.0.0 C tools on real queries:
+#   this proves the harness drives the database tools, and that master's
+#   C code has not drifted from the reference.
+
+[[case]]
+name = "banner: Rust version_banner = C lux-du --version"
+reference = ["{ref}/src/robinhood/lux-du", "--version"]
+candidate = ["{rust}/examples/version_banner", "'du' command"]
+stderr = true
+
+[[case]]
+name = "self-check: lux-du /data"
+reference = ["{ref}/src/robinhood/lux-du", "-f", "{conf}", "/data"]
+candidate = ["{cur}/src/robinhood/lux-du", "-f", "{conf}", "/data"]
+
+[[case]]
+name = "self-check: lux-du -d (details) per project"
+reference = ["{ref}/src/robinhood/lux-du", "-f", "{conf}", "-d", "/data/projects/proj-genomics", "/data/projects/proj-climate", "/data/home"]
+candidate = ["{cur}/src/robinhood/lux-du", "-f", "{conf}", "-d", "/data/projects/proj-genomics", "/data/projects/proj-climate", "/data/home"]
+
+[[case]]
+name = "self-check: lux-du -c -u alice -H"
+reference = ["{ref}/src/robinhood/lux-du", "-f", "{conf}", "-c", "-u", "alice", "-H", "/data"]
+candidate = ["{cur}/src/robinhood/lux-du", "-f", "{conf}", "-c", "-u", "alice", "-H", "/data"]
+
+[[case]]
+name = "self-check: lux-find -size +10G"
+reference = ["{ref}/src/robinhood/lux-find", "-f", "{conf}", "/data", "-size", "+10G"]
+candidate = ["{cur}/src/robinhood/lux-find", "-f", "{conf}", "/data", "-size", "+10G"]
+sort = true
+
+[[case]]
+name = "self-check: lux-find -user bob -type f -ls"
+reference = ["{ref}/src/robinhood/lux-find", "-f", "{conf}", "/data/scratch", "-user", "bob", "-type", "f", "-ls"]
+candidate = ["{cur}/src/robinhood/lux-find", "-f", "{conf}", "/data/scratch", "-user", "bob", "-type", "f", "-ls"]
+sort = true
+
+[[case]]
+name = "self-check: lamplighter-report -u frank"
+reference = ["{ref}/src/robinhood/lamplighter-report", "-f", "{conf}", "-u", "frank"]
+candidate = ["{cur}/src/robinhood/lamplighter-report", "-f", "{conf}", "-u", "frank"]
+
+[[case]]
+name = "self-check: lamplighter-report --class-info (fileclasses)"
+reference = ["{ref}/src/robinhood/lamplighter-report", "-f", "{conf}", "--class-info"]
+candidate = ["{cur}/src/robinhood/lamplighter-report", "-f", "{conf}", "--class-info"]
+sort = true

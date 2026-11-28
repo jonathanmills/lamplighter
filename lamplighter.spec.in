@@ -75,6 +75,8 @@ BuildRequires: glib2-devel >= 2.16
 BuildRequires: libattr-devel
 BuildRequires: systemd
 BuildRequires: systemd-rpm-macros
+# the Rust parts (doc/RUST-PLAN.md); crates are vendored in the tarball
+BuildRequires: rust-toolset
 %systemd_requires
 %if %{with lustre}
 %if %{defined lversion}
