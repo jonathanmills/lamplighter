@@ -19,8 +19,8 @@
 %global __provides_exclude_from ^%{venv}/.*$
 
 Name:           lamplighter-webui
-Version:        0.1.0
-Release:        5%{?dist}
+Version:        1.0.0
+Release:        1%{?dist}
 Summary:        Web UI and monitoring API for Lamplighter
 License:        GPL-2.0-or-later
 URL:            https://github.com/jonathanmills/lamplighter
@@ -116,6 +116,10 @@ exit 0
 %config(noreplace) %attr(0640,root,lamplighter-webui) %{_sysconfdir}/lamplighter.d/webui/config.yaml
 
 %changelog
+* Sat Nov 28 2026 Jonathan Mills - 1.0.0-1
+- Lamplighter 1.0.0: feature-complete with Robinhood's PHP GUI (see
+  doc/RELEASE-NOTES.md).
+
 * Sat Nov 28 2026 Jonathan Mills - 0.1.0-5
 - lamplighter-reports service and timer (scheduled reports, every 15 minutes).
 

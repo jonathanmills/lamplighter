@@ -13,7 +13,7 @@ Lamplighter is a policy engine and metadata mirror for large Lustre and POSIX fi
 
 **Lamplighter is a fork of the [Robinhood Policy Engine](https://github.com/cea-hpc/robinhood)**, created by CEA in France. The engine at its heart is Robinhood's, and we intend to keep it that way.
 
-> **Status: early work in progress.** The rename is done: the daemon is `lamplighter`, its administration tools are `lamplighter-report`, `lamplighter-config` and so on, the user tools are `lux-find` and `lux-du`, and the packages are `lamplighter-*`. The new web UI and Checkmk plugin work in the development environment, but nothing here is released yet. See [Status](#status).
+> **Status: Lamplighter 1.0.0, the first release.** The web UI is feature-complete with Robinhood's PHP GUI, and the engine is Robinhood 3.2.0's, under Lamplighter's names (`lamplighter`, `lamplighter-*`, `lux-find`, `lux-du`). Scale has so far been measured only in a development environment, and the Checkmk plugin has not yet run on a live site. See [Status](#status) and the [release notes](doc/RELEASE-NOTES.md).
 
 ## Standing on the shoulders of Robinhood
 
@@ -92,6 +92,12 @@ There is a French connection too: the lamplighter (*l'allumeur de réverbères*)
     <td><img src="doc/screenshots/browse.webp" alt="Browse: a directory's totals and its subdirectories, with volume and last access"><br>
       <b>Browse.</b> Walk the tree with subtree totals: volume, files, last access and the share not read in a year.</td>
   </tr>
+  <tr>
+    <td><img src="doc/screenshots/reports.webp" alt="Reports: a weekly report of cold-data owners, stacked by user over its kept runs, with the latest results and run history"><br>
+      <b>Reports.</b> Any table on a schedule, kept as a history with stacked graphs, downloadable as CSV or JSON, and emailed only to people allowed to see it.</td>
+    <td><img src="doc/screenshots/browse-own.webp" alt="Browse for a regular user: only the directories holding her own data, with her own totals"><br>
+      <b>Your own files.</b> Regular users browse just their own data: their totals, their files, and nobody else's names.</td>
+  </tr>
 </table>
 
 <p align="center"><img src="doc/screenshots/sign-in.webp" alt="Sign-in page: single sign-on or directory password" width="60%"><br>
@@ -128,7 +134,7 @@ A tool that shows who owns every file on a shared filesystem needs proper access
 
 ### One alerting tool: yours
 
-**Lamplighter never alerts.** No alert mail, no syslog alerts, no red-amber-green states in the interface. Monitoring and alerting belong in your monitoring system, and two alerting systems are one too many.
+**Lamplighter never raises alerts.** No alert mail, no syslog alerts, no red-amber-green states in the interface. Fault detection and alerting belong in your monitoring system, and two alerting systems are one too many. (Scheduled reports can email their results to the people allowed to see them. That is information for people, not an alert.)
 
 Instead, Lamplighter exposes read-only metrics (its own health, scan and changelog status, usage, and match counts per policy and fileclass) through a monitoring API. A **Checkmk** plugin (special agent, checks and rulesets for Checkmk 2.5) polls that API from the Checkmk server, with nothing installed on the Lamplighter host. All thresholds live in Checkmk. Robinhood's alert policies are still useful as classifiers, whose counts Checkmk can watch.
 
@@ -138,22 +144,23 @@ Perl build helpers are being replaced with Python, and the kernel's `checkpatch.
 
 ## Status
 
+**Lamplighter 1.0.0** is the first release: see the [release notes](doc/RELEASE-NOTES.md).
+
 | Area | Where it stands |
 |---|---|
-| Policy engine, scanner, changelog reader, `find`/`du`/`report` tools | Robinhood 3's engine, working, now under Lamplighter's names. |
-| Rename to Lamplighter (`lamplighter`, `lamplighter-*`, `lux-find`/`lux-du`, `/etc/lamplighter.d`, packages, `lamplighter-compat`) | Done, following [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md). Upgrading over installed Robinhood RPMs and the full integration suite still need testing on a Linux host. |
-| Web UI: sign-in (OIDC and LDAP), LDAP groups and ACLs, audit log | Working in the development environment |
-| Web UI: overview, users and groups, cold data, directory browsing | Working in the development environment |
-| Web UI: slowdown triage with Lustre jobstats | In progress |
+| Policy engine, scanner, changelog reader, `find`/`du`/`report` tools | Robinhood 3.2.0's engine, unchanged, under Lamplighter's names. |
+| Rename to Lamplighter (`lamplighter`, `lamplighter-*`, `lux-find`/`lux-du`, `/etc/lamplighter.d`, packages, `lamplighter-compat`) | Done, following [doc/COMPATIBILITY.md](doc/COMPATIBILITY.md). Upgrading over installed Robinhood RPMs and the engine's full integration suite still need testing on a Linux host with Lustre. |
+| Web UI | Feature-complete with Robinhood's PHP GUI: overview, users and groups, triage with Lustre jobstats, cold data, fileclasses and policies, search, browsing, scheduled reports and graphs, CSV/JSON export, sign-in (OIDC and LDAP), roles and the audit log. |
+| Scale | Designed for 5 to 20 billion entries per filesystem; measured so far only in a development environment, up to 10 million entries (see the release notes). |
 | Checkmk 2.5 plugin | Built and tested against Checkmk's APIs, not yet run on a live site |
-| RPM packaging for Rocky Linux / RHEL 9 | Engine and web UI packages build and install in a clean Rocky 9.7 container |
+| RPM packaging for Rocky Linux / RHEL 9 | Source RPMs rebuild with `rpmbuild --rebuild`; the engine and web UI packages build and install in a clean Rocky 9.7 container (tested on ARM64; the sources are architecture-neutral) |
 | PHP web GUI | Removed. The last copy is kept at the git tag `robinhood-php-gui-final`. |
 
 The design for everything web-related is in [doc/webui-design.md](doc/webui-design.md).
 
 ## Building and installing
 
-Lamplighter has no release yet: you build RPMs from a git clone. Any Rocky Linux or RHEL 9 host can be the build host, x86-64 or ARM. You get a source RPM (SRPM), and `rpmbuild --rebuild` turns it into RPMs for the build host's architecture.
+You build RPMs from a git clone (for 1.0.0, check out the tag `v1.0.0`). Any Rocky Linux or RHEL 9 host can be the build host, x86-64 or ARM. You get a source RPM (SRPM), and `rpmbuild --rebuild` turns it into RPMs for the build host's architecture.
 
 ### The engine
 

@@ -7,7 +7,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lamplighter-webui"
-version = "0.1.0.dev0"
+version = "1.0.0"
 description = "Web UI and monitoring API for Lamplighter"
 license = "GPL-2.0-or-later"
 license-files = ["LICENSE"]

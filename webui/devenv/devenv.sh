@@ -159,6 +159,7 @@ PY
         # The README gallery: fresh sample data, then a fixed-size render of
         # a few pages into doc/screenshots (committed).
         "$0" collect >/dev/null && "$0" jobstats >/dev/null || exit 1
+        compose exec -T webui python /devenv/tools/seed_reports.py >/dev/null || exit 1
         rm -rf .shots/docs
         # one retry: headless Chromium can stall at start-up
         for attempt in 1 2; do

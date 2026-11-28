@@ -17,7 +17,7 @@ from cmk.mkp_tool._mkp import Manifest, create_mkp, extract_manifest
 
 HERE = Path(__file__).resolve().parent
 PLUGINS = HERE / "cmk_addons" / "plugins"           # = ~/local/lib/python3/cmk_addons/plugins on a site
-VERSION = "0.2.0"
+VERSION = "1.0.0"
 CHECKMK_BUILT_WITH = "2.5.0p21"
 CHECKMK_MIN = "2.5.0"
 

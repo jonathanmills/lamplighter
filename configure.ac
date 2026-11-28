@@ -4,8 +4,9 @@
 
 AC_PREREQ(2.59)
 
-AC_INIT( [lamplighter], [3.2.0], [https://github.com/jonathanmills/lamplighter/issues])
-RELEASE="3"
+# Lamplighter 1.0.0 is based on the Robinhood Policy Engine 3.2.0 (CEA).
+AC_INIT( [lamplighter], [1.0.0], [https://github.com/jonathanmills/lamplighter/issues])
+RELEASE="1"
 
 AC_DEFINE_UNQUOTED(RELEASE, "$RELEASE", [release info])
 AC_SUBST(RELEASE)

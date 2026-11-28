@@ -46,7 +46,7 @@ The tests run under Python 3.13 against **Checkmk 2.5's real plugin APIs**, copi
 
 ```sh
 ./devenv.sh checkmk-test   # 16 tests: the special agent against the live dev API, checks, rulesets, secret handling
-./devenv.sh mkp            # builds dist/lamplighter-0.1.0.mkp with Checkmk's own packaging code
+./devenv.sh mkp            # builds dist/lamplighter-1.0.0.mkp with Checkmk's own packaging code
 ```
 
 **Limitation:** Checkmk publishes its images for x86-64 only. On Apple Silicon they run under emulation, where a full Checkmk site doesn't start, so the package has **not yet been installed in a running Checkmk site**. Do that once on an x86-64 Checkmk 2.5 test site before production.

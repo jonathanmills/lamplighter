@@ -71,6 +71,8 @@ DOC_SHOTS = [
     ("carol", "/policies", "light", 1440, "policies"),
     ("carol", "/search?owner=erin&min_size=21474836480&unit=GiB&type=file&go=1", "dark", 1440, "search"),
     ("carol", "/browse?dir={projects}", "light", 1440, "browse"),
+    ("carol", "/reports/{report}", "dark", 1440, "reports"),
+    ("erin", "/browse", "light", 1440, "browse-own"),
     (None, "/auth/login", "dark", 1440, "sign-in"),
 ]
 DOCS = "--docs" in sys.argv

@@ -391,6 +391,11 @@ rm -rf $RPM_BUILD_ROOT
 %endif
 
 %changelog
+* Sat Nov 28 2026 Jonathan Mills 1.0.0-1
+- Lamplighter 1.0.0, based on Robinhood 3.2.0. Version numbering starts
+  again at 1.0.0 under the new name; the packages still replace
+  Robinhood 3 by package name. Engine unchanged since 3.2.0-3.
+
 * Fri Nov 27 2026 Jonathan Mills 3.2.0-3
 - Lamplighter: a fork of Robinhood 3.2.0 under a new name. Packages,
   commands (lamplighter and lamplighter-* in sbin, lux-find and lux-du

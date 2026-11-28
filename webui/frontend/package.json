@@ -1,7 +1,7 @@
 {
   "name": "lamplighter-webui-frontend",
   "private": true,
-  "version": "0.1.0-dev",
+  "version": "1.0.0",
   "license": "GPL-2.0-or-later",
   "description": "Lamplighter web UI front end. Dependencies must be GPLv3-compatible (doc/webui-design.md, section 10).",
   "type": "module",

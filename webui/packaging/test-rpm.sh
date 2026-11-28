@@ -28,7 +28,7 @@ id lamplighter-webui >/dev/null && ok "system user lamplighter-webui exists"
 [[ $(stat -c "%a %U:%G" /etc/lamplighter.d/webui) == "750 root:lamplighter-webui" ]] && ok "/etc/lamplighter.d/webui is 750 root:lamplighter-webui"
 [[ $(stat -c "%a" /etc/lamplighter.d/webui/config.yaml) == "640" ]] && ok "config.yaml is 640"
 /opt/lamplighter-webui/bin/python -c "import lamplighter_webui, ldap, authlib" && ok "venv imports work (python-ldap compiled)"
-for u in lamplighter-webui.service lamplighter-collector.service lamplighter-collector.timer lamplighter-jobstats.service lamplighter-jobstats.timer; do
+for u in lamplighter-webui.service lamplighter-collector.service lamplighter-collector.timer lamplighter-jobstats.service lamplighter-jobstats.timer lamplighter-reports.service lamplighter-reports.timer; do
     systemd-analyze verify /usr/lib/systemd/system/$u 2>&1 | grep -v "^$" | grep -vi "unknown lvalue\|Failed to load\|bpf" | head -3 || true
 done; ok "systemd units verified"
 
@@ -56,6 +56,7 @@ curl -s -c $J -b $J -o /dev/null -H "Origin: https://localhost" -H "X-Forwarded-
 curl -s -b $J https://localhost/api/v1/me | grep -q "\"roles\":\[\"admin\"\]" && ok "LDAP sign-in through nginx; dave is admin"
 curl -s -b $J https://localhost/ | grep -q "id=\"root\"" && ok "front end served from /usr/share/lamplighter-webui"
 su -s /bin/bash lamplighter-webui -c "LAMPLIGHTER_WEBUI_CONFIG=/etc/lamplighter.d/webui/config.yaml /opt/lamplighter-webui/bin/lamplighter-collector run" 2>&1 | grep -q "ok:" && ok "collector runs as lamplighter-webui"
+su -s /bin/bash lamplighter-webui -c "LAMPLIGHTER_WEBUI_CONFIG=/etc/lamplighter.d/webui/config.yaml /opt/lamplighter-webui/bin/lamplighter-reports" >/dev/null 2>&1 && ok "lamplighter-reports runs as lamplighter-webui"
 [[ $(stat -c "%a %U:%G" /var/spool/lamplighter-jobstats) == "2770 lamplighter-webui:lamplighter-jobstats" ]] && ok "jobstats spool is 2770 lamplighter-webui:lamplighter-jobstats"
 # A delivering account (the account a Lustre server delivers snapshots with) joins lamplighter-jobstats only.
 useradd -r -G lamplighter-jobstats -s /bin/bash jsdeliver
