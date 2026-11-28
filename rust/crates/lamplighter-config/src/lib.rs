@@ -22,6 +22,9 @@
 //! compare it with the C parser on every test configuration and on
 //! randomly mutated ones.
 
+pub mod access;
+pub mod cvt;
+pub mod helpers;
 mod lexer;
 mod parser;
 mod tables;
