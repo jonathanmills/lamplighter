@@ -4,7 +4,7 @@ import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { NavLink, Route, Routes, useLocation } from "react-router-dom";
 import { api, type Me } from "./api";
 import { NAV, navByPath, type NavItem } from "./nav";
-import { setTheme, useTheme } from "./theme";
+import { setTheme, THEMES, useTheme } from "./theme";
 import Overview from "./pages/Overview";
 import { ReportEditor, ReportsList, ReportView } from "./pages/Reports";
 import ColdData from "./pages/ColdData";
@@ -163,10 +163,14 @@ function UserMenu() {
               {me.roles.map((r) => <span className="chip" key={r}>{r}</span>)}
             </span>
           </div>
-          <button className="menu-item" role="menuitem" type="button"
-                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
-            <span>{theme === "dark" ? "Light theme" : "Dark theme"}</span>
-          </button>
+          <div className="menu-themes" role="group" aria-label="Theme">
+            <span className="muted">Theme</span>
+            <span className="segmented">
+              {THEMES.map((t) => (
+                <button key={t.key} type="button" aria-pressed={theme === t.key} onClick={() => setTheme(t.key)}>{t.label}</button>
+              ))}
+            </span>
+          </div>
           <form method="post" action="/auth/logout" style={{ margin: 0 }}>
             <button className="menu-item" role="menuitem" type="submit"><span>Sign out</span></button>
           </form>

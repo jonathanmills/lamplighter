@@ -3,6 +3,9 @@
 // Apply the saved theme before the first paint. Dark is the default.
 (function () {
   var t = "dark";
-  try { if (localStorage.getItem("lamplighter-theme") === "light") t = "light"; } catch (e) {}
+  try {
+    var saved = localStorage.getItem("lamplighter-theme");
+    if (saved === "light" || saved === "blue") t = saved;
+  } catch (e) {}
   document.documentElement.setAttribute("data-theme", t);
 })();

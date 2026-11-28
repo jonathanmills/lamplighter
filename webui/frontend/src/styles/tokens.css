@@ -87,6 +87,51 @@
   --chart-grid: #D3CFC8;
 }
 
+/* Blue: medium intensity, between dark and light. The lightest blues are
+ * surfaces, Carolina Blue fills the major elements (buttons, selection),
+ * and the sidebar runs from a medium to a deep blue. Where the other
+ * themes draw in blue (charts, bars), this one uses purple and orange.
+ * Contrast checked: text 12.7:1, secondary 7.3:1, links 5.9:1 on panels;
+ * sidebar text 5.3:1 and labels 4.5:1 at the lightest point of the
+ * gradient; chart palette validated against --panel. */
+:root[data-theme="blue"] {
+  color-scheme: light;
+  --bg: #D6E6F3;
+  --sidebar: linear-gradient(180deg, #2B70A8 0%, #22598C 45%, #1A4170 75%, #13294B 100%);
+  --sidebar-text: #FFFFFF;
+  --sidebar-label: #E3EFF9;
+  --sidebar-strong: #FFFFFF;     /* hover and current page */
+  --sidebar-rule: rgba(255, 255, 255, 0.18);  /* lines inside the sidebar */
+  --sidebar-hover: rgba(255, 255, 255, 0.12);
+  --sidebar-active: rgba(255, 255, 255, 0.22);
+  --panel: #E8F1F9;              /* the lightest color anywhere */
+  --bar: #C3DAEE;
+  --border: #A6C4DE;
+  --hover: rgba(19, 41, 75, 0.06);
+  --text: #13294B;               /* navy */
+  --text-2: #33506F;
+  --text-3: #587592;
+  --accent: #1F5F96;             /* links */
+  --accent-ink: #13294B;
+  --button: #4B9CD3;             /* Carolina Blue fills, navy ink 4.8:1 */
+  --button-ink: #13294B;
+  --accent-tint: rgba(75, 156, 211, 0.24);
+  --accent-tint-line: rgba(31, 95, 150, 0.45);
+  --focus: #2F7CB5;
+  --brand: #E95420;
+  --logo: #FFC56B;               /* the lamp, lit: amber on the blue sidebar */
+  --ok: #248A3D;
+  --warn: #8F5400;
+  --error: #C0362C;
+  /* charts: purple and orange take over from blue */
+  --chart-1: #8E3A87;
+  --cat-1: #8E3A87; --cat-2: #E95420; --cat-3: #1A9E70; --cat-4: #C98500;
+  --cat-5: #D55181; --cat-6: #0C8A0C; --cat-7: #6250D6; --cat-8: #E34948;
+  --cat-other: #7D8FA3;
+  --ramp-1: #C493BF; --ramp-2: #A9619F; --ramp-3: #8E3A87; --ramp-4: #5E2750;
+  --chart-grid: #C6D9EA;
+}
+
 :root {
   --font: Ubuntu, "Segoe UI", system-ui, -apple-system, sans-serif;
   --mono: "Ubuntu Mono", ui-monospace, "SF Mono", Menlo, monospace;

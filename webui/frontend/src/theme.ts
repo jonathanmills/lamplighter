@@ -2,10 +2,13 @@
 // Copyright (C) 2026 Jonathan Mills
 import { useEffect, useState } from "react";
 
-export type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "blue";
+export const THEMES: { key: Theme; label: string }[] = [
+  { key: "dark", label: "Dark" }, { key: "light", label: "Light" }, { key: "blue", label: "Blue" }];
 
 export function currentTheme(): Theme {
-  return document.documentElement.getAttribute("data-theme") === "light" ? "light" : "dark";
+  const t = document.documentElement.getAttribute("data-theme");
+  return t === "light" || t === "blue" ? t : "dark";
 }
 
 /** Read a CSS custom property (design token) from the root element. */
