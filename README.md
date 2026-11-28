@@ -7,7 +7,7 @@
 
 <h1 align="center">Lamplighter</h1>
 
-<p align="center"><em>Shedding light on your Lustre filesystem.</em></p>
+<p align="center"><em>Shedding light on your Lustre filesystem, beautifully.</em></p>
 
 Lamplighter is a policy engine and metadata mirror for large Lustre and POSIX filesystems. It keeps a copy of a filesystem's metadata in a MariaDB or MySQL database, runs attribute-based policies over it (purge, archive, rmdir, checksum and more), provides fast `find` and `du` tools, and shows administrators and data managers what is on their filesystem, who owns it, and how old it is.
 
