@@ -25,6 +25,7 @@ class Perm(str, Enum):
     PATHS_VIEW_ALL = "paths.view_all"
     COLD_VIEW = "cold.view"
     COLD_EXPORT = "cold.export"
+    REPORTS_MANAGE = "reports.manage"
     TRIAGE_VIEW = "triage.view"
     COLLECTOR_STATUS_VIEW = "collector.status.view"
     ADMIN_LDAP = "admin.ldap"
@@ -39,7 +40,7 @@ BUILTIN_ROLES: dict[str, frozenset[Perm]] = {
     "data-manager": frozenset({
         P.DASHBOARD_VIEW, P.USAGE_VIEW_AGGREGATES, P.USAGE_VIEW_ALL_USERS,
         P.PATHS_VIEW_OWN, P.PATHS_VIEW_ALL, P.COLD_VIEW, P.COLD_EXPORT,
-        P.COLLECTOR_STATUS_VIEW}),
+        P.COLLECTOR_STATUS_VIEW, P.REPORTS_MANAGE}),
     "admin": frozenset(Perm),
 }
 

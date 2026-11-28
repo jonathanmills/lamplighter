@@ -51,6 +51,11 @@ SHOTS = [
     ("carol", "/browse?dir={projects}", "light", 1440, "browse-projects-light"),
     ("carol", "/browse", "dark", 400, "browse-phone"),
     ("erin", "/browse", "dark", 1440, "browse-own-dark"),     # paths.view_own: her data only
+    ("carol", "/reports", "dark", 1440, "reports-dark"),
+    ("carol", "/reports/{report}", "dark", 1440, "report-dark"),
+    ("carol", "/reports/{report}", "light", 400, "report-phone-light"),
+    ("carol", "/reports/new", "light", 1440, "report-editor-light"),
+    ("dave", "/usage?view=groups", "dark", 1440, "groups-history-dark"),
     ("dave", "/admin/audit", "dark", 1440, "audit-dark"),
     ("dave", "/admin/audit?outcome=denied", "light", 1440, "audit-light-denied"),
     ("alice", "/", "dark", 1440, "alice-viewer"),
@@ -112,6 +117,10 @@ def main() -> int:
             page.click("text=Sign in with directory password")
             page.wait_for_url(BASE + "/")
             page.evaluate(f"localStorage.setItem('lamplighter-theme', '{theme}')")
+            if "{report}" in path:
+                # the seeded "Weekly cold owners" report (tools/seed_reports.py)
+                reps = page.request.get(BASE + "/api/v1/reports").json()["reports"]
+                path = path.replace("{report}", str(next(r["id"] for r in reps if r["name"] == "Weekly cold owners")))
             if "{projects}" in path:
                 # Entry ids change with every fresh scan: look up /data/projects.
                 root = page.request.get(BASE + "/api/v1/browse").json()

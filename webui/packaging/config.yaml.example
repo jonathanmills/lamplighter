@@ -122,3 +122,17 @@ monitoring:
   enabled: true
   audience: lamplighter-webui
   required_role: monitoring
+
+# Scheduled reports (the Reports page): stored in Lamplighter's own schema
+# and run by lamplighter-reports.timer. Email is optional: without smtp,
+# results are viewed and downloaded only. Recipients are directory users,
+# and only those who may see a report's table receive it.
+#reports:
+#  max_keep_runs: 400
+#  smtp:
+#    host: smtp.example.org
+#    port: 25
+#    starttls: true
+#    from_address: lamplighter@example.org
+#    username: lamplighter             # optional
+#    password_file: /etc/lamplighter.d/webui/smtp.secret

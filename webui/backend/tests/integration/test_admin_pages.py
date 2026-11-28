@@ -73,7 +73,8 @@ def test_access_shows_roles_and_resolved_members(client):
     oidc_login(client, "dave", "password")
     a = client.get("/api/v1/admin/access").json()
     roles = {r["name"]: set(r["permissions"]) for r in a["roles"]}
-    assert len(roles["admin"]) == len(a["permissions"]) == 12
+    assert len(roles["admin"]) == len(a["permissions"]) == 13
+    assert "reports.manage" in roles["data-manager"] and "reports.manage" not in roles["viewer"]
     assert "cold.export" in roles["data-manager"] and "cold.export" not in roles["viewer"]
     members = {g["group"].split(",")[0]: g["members"] for g in a["groups"]}
     assert members == {"cn=lamplighter-admins": ["dave"], "cn=lamplighter-data-managers": ["carol"],

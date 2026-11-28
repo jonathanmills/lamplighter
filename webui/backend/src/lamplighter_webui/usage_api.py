@@ -13,6 +13,7 @@ row and detail page; the Groups list is visible with usage.view_aggregates.
 from __future__ import annotations
 
 import logging
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 
@@ -21,7 +22,7 @@ from .auth import Principal, require
 from .db import usage_by, usage_summary, user_usage
 from .export import Format, export
 from .ldapdir import DirectoryError
-from .store import snapshot_bytes, user_age_bands, user_history
+from .store import snapshot_bytes, usage_history, user_age_bands, user_history
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/usage")
@@ -107,3 +108,14 @@ def user_detail(uid: str, request: Request,
         "age": user_age_bands(request.app.state.store_engine, uid),
     })
     return body
+
+
+@router.get("/history")
+def history(request: Request, by: Literal["users", "groups"] = "users", top: int = Query(8, ge=1, le=8),
+            p: Principal = Depends(require(Perm.USAGE_VIEW_AGGREGATES))) -> dict:
+    """Volume over the collector runs, the largest users or groups stacked
+    (the old GUI's stacked graphs). Users need usage.view_all_users."""
+    if by == "users" and not sees_all_users(p):
+        raise HTTPException(403, "Missing permission: usage.view_all_users")
+    return {"by": by, **usage_history(request.app.state.store_engine, "uid" if by == "users" else "gid", top)}
+

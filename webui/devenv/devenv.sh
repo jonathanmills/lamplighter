@@ -172,6 +172,8 @@ PY
         ls -la ../../doc/screenshots
         ;;
     shots)
+        # demo scheduled reports with a history (the Reports screenshots)
+        compose exec -T webui python /devenv/tools/seed_reports.py || exit 1
         # Hard time limit and one retry: headless Chromium can stall at start-up.
         for attempt in 1 2; do
             if docker run --rm --network lamplighter-dev_default --ipc=host -v "$PWD:/devenv" \

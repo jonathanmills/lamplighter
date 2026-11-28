@@ -18,6 +18,7 @@ import csv
 import io
 import json
 import time
+from contextvars import ContextVar
 from typing import Literal
 
 from fastapi import HTTPException, Request
@@ -32,6 +33,9 @@ Format = Literal["csv", "json"]
 # A cell starting with one of these would be a formula in a spreadsheet
 # (CSV injection); such cells get a leading apostrophe.
 _FORMULA = ("=", "+", "-", "@", "\t", "\r")
+
+# Set by the report runner, which audits its own "report.run" events.
+QUIET: ContextVar[bool] = ContextVar("lamplighter_export_quiet", default=False)
 
 
 def require_export(p: Principal, reason: str) -> None:
@@ -53,6 +57,16 @@ def _cell(v):
     return v
 
 
+def to_csv(columns: list[str], rows: list[dict]) -> str:
+    """Rows as formula-safe CSV text, with a header line."""
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(columns)
+    for r in rows:
+        w.writerow([_cell(r.get(c)) for c in columns])
+    return buf.getvalue()
+
+
 def export(request: Request, p: Principal, name: str, rows: list[dict], fmt: Format,
            columns: list[str] | None = None, **audit_fields) -> Response:
     """``rows`` as a CSV or JSON download named lamplighter-<name>-<time>.<fmt>.
@@ -62,18 +76,14 @@ def export(request: Request, p: Principal, name: str, rows: list[dict], fmt: For
         columns = list(dict.fromkeys(k for r in rows for k in r))
     stamp = time.strftime("%Y%m%d-%H%M%S", time.gmtime())
     filename = f"lamplighter-{name}-{stamp}.{fmt}"
-    audit("export", user=p.user.uid, client=request.client.host if request.client else None,
-          table=name, format=fmt, rows=len(rows), **audit_fields)
+    if not QUIET.get():
+        audit("export", user=p.user.uid, client=request.client.host if request.client else None,
+              table=name, format=fmt, rows=len(rows), **audit_fields)
     if fmt == "json":
         body = json.dumps({"table": name, "exported_at": int(time.time()), "columns": columns,
                            "rows": [{c: r.get(c) for c in columns} for r in rows]}, default=str)
         media = "application/json"
     else:
-        buf = io.StringIO()
-        w = csv.writer(buf)
-        w.writerow(columns)
-        for r in rows:
-            w.writerow([_cell(r.get(c)) for c in columns])
-        body, media = buf.getvalue(), "text/csv; charset=utf-8"
+        body, media = to_csv(columns, rows), "text/csv; charset=utf-8"
     return Response(body, media_type=media,
                     headers={"Content-Disposition": f'attachment; filename="{filename}"'})

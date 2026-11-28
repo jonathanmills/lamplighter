@@ -37,6 +37,7 @@ dev = [
 lamplighter-collector = "lamplighter_webui.collector:main"
 lamplighter-jobstats = "lamplighter_webui.jobstats:main"
 lamplighter-scale = "lamplighter_webui.scale:main"
+lamplighter-reports = "lamplighter_webui.reports:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -230,6 +230,23 @@ class MonitoringConfig(BaseModel):
     required_role: str = "monitoring"  # client role on the audience client
 
 
+class SmtpConfig(BaseModel):
+    """A site mail relay, for emailing scheduled reports (optional)."""
+    host: str
+    port: int = 25
+    starttls: bool = True              # upgrade the connection before sending
+    from_address: str                  # e.g. lamplighter@example.org
+    username: str | None = None
+    password_file: str | None = None
+
+
+class ReportsConfig(BaseModel):
+    # Runs per report kept at most (a report keeps 1 to this many).
+    max_keep_runs: int = Field(400, ge=1, le=10000)
+    # Without smtp, reports are stored and downloaded only (no email).
+    smtp: SmtpConfig | None = None
+
+
 class Settings(BaseModel):
     server: ServerConfig
     oidc: OIDCConfig | None = None
@@ -241,6 +258,7 @@ class Settings(BaseModel):
     collector: CollectorConfig = CollectorConfig()
     monitoring: MonitoringConfig | None = None
     jobstats: JobstatsConfig | None = None   # None: triage shows Robinhood's side only
+    reports: ReportsConfig = ReportsConfig()
 
     @model_validator(mode="after")
     def _need_a_login_method(self) -> "Settings":

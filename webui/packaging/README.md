@@ -10,6 +10,7 @@ The `lamplighter-webui` RPM installs:
 | `lamplighter-webui.service` | The web service: 127.0.0.1:8000, as user `lamplighter-webui`, sandboxed by systemd |
 | `lamplighter-collector.service` / `.timer` | The collector, nightly at 02:30 (±30 min) |
 | `lamplighter-jobstats.service` / `.timer` | Reads Lustre jobstats for the triage view, every minute (when configured) |
+| `lamplighter-reports.service` / `.timer` | Runs the scheduled reports that are due, every 15 minutes |
 | `/var/spool/lamplighter-jobstats/` | Where Lustre servers deliver jobstats snapshots (`2770 lamplighter-webui:lamplighter-jobstats`) |
 | `/usr/share/lamplighter-webui/*.example` | Templates: `nginx-lamplighter-webui.conf.example` and a pristine `config.yaml.example` |
 | `/usr/share/doc/lamplighter-webui/` | This file |

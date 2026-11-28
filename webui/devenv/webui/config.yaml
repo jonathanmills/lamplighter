@@ -71,3 +71,11 @@ monitoring:
   enabled: true
   audience: lamplighter-webui
   required_role: monitoring
+
+# Scheduled reports: email goes to the dev mail catcher (mailpit).
+reports:
+  smtp:
+    host: mailpit
+    port: 1025
+    starttls: false
+    from_address: lamplighter@lamplighter.test

@@ -38,6 +38,11 @@
   --error: #FF5F57;
   /* charts */
   --chart-1: #4B9CD3;
+  /* categorical series, fixed order (stacked charts); validated against
+     --panel: CVD and normal-vision separation pass for adjacent slots */
+  --cat-1: #4B9CD3; --cat-2: #d95926; --cat-3: #199e70; --cat-4: #c98500;
+  --cat-5: #d55181; --cat-6: #0ca30c; --cat-7: #9085e9; --cat-8: #e66767;
+  --cat-other: #8A877F;
   --ramp-1: #B7D7ED; --ramp-2: #7FB8E1; --ramp-3: #4B9CD3; --ramp-4: #3A82BC;
   --chart-grid: #3F3E3A;
   /* aubergine, reserved for the top bar accent, login and code panels */
@@ -73,6 +78,11 @@
   --warn: #8F5400;
   --error: #C0362C;
   --chart-1: #2F7CB5;        /* Carolina Deep */
+  /* same hues stepped for the light panel; slots 2-5 are under 3:1, so
+     stacked charts always carry a legend and a table view */
+  --cat-1: #2F7CB5; --cat-2: #eb6834; --cat-3: #1baf7a; --cat-4: #eda100;
+  --cat-5: #e87ba4; --cat-6: #008300; --cat-7: #6250d6; --cat-8: #e34948;
+  --cat-other: #8F8B83;
   --ramp-1: #5FA7D8; --ramp-2: #2F7CB5; --ramp-3: #2C5080; --ramp-4: #13294B;
   --chart-grid: #D3CFC8;
 }

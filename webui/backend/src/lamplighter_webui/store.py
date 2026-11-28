@@ -130,6 +130,31 @@ def user_history(engine: Engine, uid: str) -> list[dict]:
     return [{"at": int(t), "bytes": int(b), "entries": int(e)} for t, b, e in rows]
 
 
+def usage_history(engine: Engine, col: str, top: int = 8) -> dict:
+    """Volume per user (col="uid") or group ("gid") over the collector runs,
+    oldest first: the ``top`` largest in the newest run as their own series,
+    everyone else summed as "Other" (stacked charts)."""
+    assert col in ("uid", "gid")
+    with engine.connect() as c:
+        rows = c.execute(text(
+            f"SELECT r.id, UNIX_TIMESTAMP(r.finished_at), h.{col}, SUM(h.bytes) "
+            "FROM collector_runs r JOIN acct_history h ON h.run_id = r.id "
+            f"WHERE r.status = 'ok' GROUP BY r.id, h.{col} ORDER BY r.id")).all()
+    runs: dict[int, int] = {}
+    per: dict[int, dict[str, int]] = {}
+    for run_id, at, key, b in rows:
+        runs[run_id] = int(at)
+        per.setdefault(run_id, {})[key] = int(b)
+    order = sorted(runs)
+    newest = per.get(order[-1], {}) if order else {}
+    keys = [k for k, _ in sorted(newest.items(), key=lambda kv: -kv[1])[:top]]
+    series = [{"name": k, "values": [per[r].get(k, 0) for r in order]} for k in keys]
+    if any(k not in keys for r in order for k in per[r]):
+        series.append({"name": "Other", "values": [sum(v for k, v in per[r].items() if k not in keys)
+                                                   for r in order]})
+    return {"times": [runs[r] for r in order], "series": series}
+
+
 def user_age_bands(engine: Engine, uid: str) -> dict | None:
     from .collector import AGE_BANDS
     with engine.connect() as c:

@@ -9,6 +9,7 @@ A self-contained test environment that runs on a laptop with Podman or Docker. E
 | `mariadb` | MariaDB 10.5 holding the Robinhood database `robinhood_dev` | `mariadb:3306` (host: `127.0.0.1:13306`) |
 | `workbench` | Rocky Linux 9.7: builds and runs Robinhood (POSIX mode), and runs the tests | `./devenv.sh shell` |
 | `webui` | The web UI back end (FastAPI on Rocky 9.7, Python 3.12). It reloads live when you edit `webui/backend/src`, and serves the built front end. | `https://webui.test:8443` (host: `127.0.0.1:8443`) |
+| `mailpit` | Mailpit 1.21, a mail catcher (MIT licensed, development only): receives the scheduled reports' email (`reports.smtp` in `webui/config.yaml`), and the tests read it through its API | `http://mailpit:8025` (inside the stack) |
 | `frontend` | Node 22 build container: rebuilds `webui/frontend/dist` within about 3 seconds of a front-end file changing (refresh the browser to see the change). It polls for changes, because file events from a macOS host never reach containers in the Linux VM; the back end polls for the same reason. | none |
 
 ### Optional services (opt-in, not started by `devenv.sh all`)

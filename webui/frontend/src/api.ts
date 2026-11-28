@@ -117,6 +117,29 @@ async function get<T>(path: string, init?: RequestInit): Promise<T> {
   return r.json() as Promise<T>;
 }
 
+/** Send JSON (POST, PUT, DELETE); the browser adds the Origin header the
+ *  server's CSRF check needs. */
+const send = <T,>(method: string, path: string, body?: unknown) =>
+  get<T>(path, { method, headers: { Accept: "application/json", "Content-Type": "application/json" },
+    body: body === undefined ? undefined : JSON.stringify(body) });
+
+export type Schedule = "manual" | "hourly" | "daily" | "weekly";
+export interface ReportParam { name: string; label: string; kind: "choice" | "int" | "text"; default: string | number | null;
+  choices: string[]; min: number | null; max: number | null }
+export interface ReportSources { email: boolean; max_keep_runs: number; may_manage: boolean;
+  sources: { key: string; title: string; params: ReportParam[] }[] }
+export interface ReportChart { value: string; stack_by: string | null; top: number }
+export interface ReportDef { name: string; source: string; params: Record<string, string | number | null>;
+  schedule: Schedule; keep_runs: number; recipients: string[]; chart: ReportChart | null }
+export interface ReportRunSummary { id: number; started_at: number; status: "ok" | "error" | "denied"; rows: number;
+  message: string | null; seconds: number | null; trigger?: string }
+export interface ReportRow extends ReportDef { id: number; owner: string; source_title: string; last_run_at: number | null;
+  last_run: ReportRunSummary | null }
+export interface ReportTable { run_id: number; started_at: number; columns: string[]; rows: Record<string, unknown>[] }
+export interface StackedSeries { times: number[]; series: { name: string; values: number[] }[] }
+export interface ReportDetail extends ReportRow { runs: ReportRunSummary[]; latest: ReportTable | null;
+  series: (StackedSeries & { value: string; stack_by: string | null }) | null }
+
 export interface PolicyCounts {
   run_id: number; as_of: number;
   filesystem: { entries: number; bytes: number };
@@ -186,6 +209,15 @@ export const api = {
   search: (query: string) => get<SearchResult>(`/search?${query}`),
   searchCsvUrl: (query: string) => `/api/v1/search.csv?${query}`,
   triage: (window: TriageWindow, sort: TriageSort) => get<Triage>(`/triage?window=${window}&sort=${sort}`),
+  usageHistory: (by: "users" | "groups") => get<StackedSeries & { by: string }>(`/usage/history?by=${by}`),
+  reportSources: () => get<ReportSources>("/reports/sources"),
+  reports: () => get<{ may_manage: boolean; reports: ReportRow[] }>("/reports"),
+  report: (id: number) => get<ReportDetail>(`/reports/${id}`),
+  reportRun: (id: number, run: number) => get<ReportTable>(`/reports/${id}/runs/${run}`),
+  createReport: (d: ReportDef) => send<{ id: number }>("POST", "/reports", d),
+  updateReport: (id: number, d: ReportDef) => send<{ id: number }>("PUT", `/reports/${id}`, d),
+  deleteReport: (id: number) => send<{ deleted: number }>("DELETE", `/reports/${id}`),
+  runReport: (id: number) => send<ReportRunSummary>("POST", `/reports/${id}/run`),
 };
 
 /** The collector's six age bands, grouped into the four shown in charts

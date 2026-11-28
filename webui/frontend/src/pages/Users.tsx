@@ -5,10 +5,11 @@
 // last snapshot. Viewers see their own row; the API enforces it.
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
-import { api, type GroupsList, type UsersList } from "../api";
+import { api, type GroupsList, type StackedSeries, type UsersList } from "../api";
 import { ago, bytes, int } from "../format";
 import SortTable, { type Column } from "../components/SortTable";
 import Download from "../components/Download";
+import StackedChart from "../components/StackedChart";
 import type { GroupRow, UserRow } from "../api";
 
 export const signedBytes = (n: number | null) =>
@@ -37,12 +38,20 @@ export default function Users() {
   const [users, setUsers] = useState<UsersList | null>(null);
   const [groups, setGroups] = useState<GroupsList | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [hist, setHist] = useState<StackedSeries | null>(null);
 
   useEffect(() => {
     Promise.all([api.users(), api.groups()])
       .then(([u, g]) => { setUsers(u); setGroups(g); })
       .catch((e) => setError(String(e.message ?? e)));
   }, []);
+
+  // volume over the collector runs, largest stacked (users: only for those who see everyone)
+  const histBy = view === "users" && users?.scope === "all" ? "users" : view === "groups" ? "groups" : null;
+  useEffect(() => {
+    setHist(null);
+    if (histBy) api.usageHistory(histBy).then(setHist).catch(() => setHist(null));
+  }, [histBy]);
 
   const needle = q.trim().toLowerCase();
   const userRows = useMemo(() => (users?.users ?? []).filter((u) => !needle ||
@@ -115,6 +124,17 @@ export default function Users() {
           <div className="stat"><span className="stat-label">Your share</span><span className="stat-value">{sharePct(top?.bytes ?? 0, fs)}</span><span className="stat-sub">of the filesystem</span></div>
         </>}
       </section>
+
+      {hist && hist.times.length > 1 && (
+        <section className="panel" aria-label="Volume over time">
+          <div className="panel-head"><h2>Volume over time</h2>
+            <span className="meta">largest {view} stacked, at each collector run</span></div>
+          <div className="panel-body">
+            <StackedChart times={hist.times} series={hist.series} format={bytes}
+              ariaLabel={`Volume of the largest ${view} over the collector runs, stacked`} />
+          </div>
+        </section>
+      )}
 
       <section className="panel" aria-label={view === "users" ? "Users" : "Groups"}>
         <div className="panel-head"><h2>{view === "users" ? "Users" : "Groups"}</h2>

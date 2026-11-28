@@ -1,0 +1,31 @@
+# SPDX-License-Identifier: GPL-2.0-or-later
+# Copyright (C) 2026 Jonathan Mills
+[Unit]
+Description=Lamplighter scheduled reports (runs the reports that are due)
+Documentation=file:///usr/share/doc/lamplighter-webui/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=lamplighter-webui
+Group=lamplighter-webui
+Environment=LAMPLIGHTER_WEBUI_CONFIG=/etc/lamplighter.d/webui/config.yaml
+ExecStart=/opt/lamplighter-webui/bin/lamplighter-reports
+# Each report is bounded by the page it comes from (search: 20 s);
+# a run of many reports may take a while.
+TimeoutStartSec=1h
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictSUIDSGID=yes
+LockPersonality=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+CapabilityBoundingSet=
+UMask=0077

@@ -6,6 +6,7 @@ import { api, type Me } from "./api";
 import { NAV, navByPath, type NavItem } from "./nav";
 import { setTheme, useTheme } from "./theme";
 import Overview from "./pages/Overview";
+import { ReportEditor, ReportsList, ReportView } from "./pages/Reports";
 import ColdData from "./pages/ColdData";
 import Users from "./pages/Users";
 import UserDetail from "./pages/UserDetail";
@@ -83,6 +84,9 @@ function Shell() {
               <Route key={n.path} path={n.path} element={<Page item={n} />} />
             ))}
             <Route path="/usage/user/:uid" element={can(me, "usage.view_aggregates") ? <UserDetail /> : <Forbidden perm="usage.view_aggregates" />} />
+            <Route path="/reports/new" element={<ReportEditor />} />
+            <Route path="/reports/:id" element={<ReportView />} />
+            <Route path="/reports/:id/edit" element={<ReportEditor />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
@@ -102,6 +106,7 @@ function Page({ item }: { item: NavItem }) {
   if (item.path === "/admin/audit") return <AuditLog />;
   if (item.path === "/admin/access") return <Access />;
   if (item.path === "/browse") return <Browse />;
+  if (item.path === "/reports") return <ReportsList />;
   if (item.path === "/triage") return <Triage />;
   if (item.path === "/policies") return <Policies />;
   if (item.path === "/search") return <Search />;
@@ -112,11 +117,14 @@ function TopBar() {
   const { pathname } = useLocation();
   const item = navByPath(pathname);
   const userPage = pathname.match(/^\/usage\/user\/([^/]+)$/);
+  const reportPage = pathname.match(/^\/reports\/(new|\d+)(\/edit)?$/);
   return (
     <header className="topbar">
       <div className="crumbs" aria-label="Breadcrumb">
         {userPage ? <><span>Monitor</span><span className="sep">›</span><NavLink to="/usage">Users & groups</NavLink>
                       <span className="sep">›</span><b>{decodeURIComponent(userPage[1])}</b></>
+          : reportPage ? <><span>Data</span><span className="sep">›</span><NavLink to="/reports">Reports</NavLink>
+                      <span className="sep">›</span><b>{reportPage[1] === "new" ? "New report" : reportPage[2] ? "Edit" : "Report"}</b></>
           : item ? <><span>{item.group}</span><span className="sep">›</span><b>{item.title}</b></> : <b>Not found</b>}
       </div>
       <div className="topbar-right"><UserMenu /></div>

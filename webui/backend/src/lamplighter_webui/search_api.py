@@ -208,6 +208,25 @@ def _indexed(c, start, paths, crit: Criteria, plan, t0: float) -> tuple[list[dic
         cursor = (rows[-1].size, rows[-1].id)
 
 
+def dir_by_path(c, path: str) -> bytes | None:
+    """A directory's entry id from its absolute path, walking down NAMES
+    from the root (indexed by parent_id); None if there is no such
+    directory. The filesystem root itself has no NAMES row."""
+    fs = _s(c.execute(text("SELECT value FROM VARS WHERE varname = 'FS_Path'")).scalar()).rstrip("/")
+    root = _s(c.execute(text("SELECT value FROM VARS WHERE varname = 'RootId'")).scalar()).replace("/", ":")
+    path = "/" + path.strip("/")
+    if not root or not (path == (fs or "/") or path.startswith(fs + "/")):
+        return None
+    cur = root.encode()
+    for part in [x for x in path[len(fs):].split("/") if x]:
+        row = c.execute(text("SELECT n.id FROM NAMES n JOIN ENTRIES e ON e.id = n.id WHERE n.parent_id = :p "
+                             "AND n.name = :n AND e.type = 'dir' LIMIT 1"), {"p": cur, "n": part}).first()
+        if row is None:
+            return None
+        cur = row[0]
+    return cur
+
+
 def search(source, store, dir_id: bytes | None, crit: Criteria) -> dict:
     t0 = time.monotonic()
     now = int(time.time())

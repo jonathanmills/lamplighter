@@ -114,6 +114,15 @@ services:
       - .:/devenv:ro
       - lamplighter-node-modules:/app/node_modules
 
+  # Catches the scheduled reports' email (reports.smtp in webui/config.yaml);
+  # its API (port 8025) lets the tests read what was sent. MIT licensed;
+  # a development tool only, never shipped.
+  mailpit:
+    image: docker.io/axllent/mailpit:v1.21.8
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: "1"
+      MP_SMTP_AUTH_ALLOW_INSECURE: "1"
+
   # Optional: Prometheus scraping a simulated jobstats exporter, for the
   # Prometheus jobstats source. Start with: devenv.sh prometheus
   jobstats-exporter:

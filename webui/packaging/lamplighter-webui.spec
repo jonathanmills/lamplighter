@@ -20,7 +20,7 @@
 
 Name:           lamplighter-webui
 Version:        0.1.0
-Release:        4%{?dist}
+Release:        5%{?dist}
 Summary:        Web UI and monitoring API for Lamplighter
 License:        GPL-2.0-or-later
 URL:            https://github.com/jonathanmills/lamplighter
@@ -68,6 +68,8 @@ install -D -m 0644 packaging/lamplighter-collector.service %{buildroot}%{_unitdi
 install -D -m 0644 packaging/lamplighter-collector.timer   %{buildroot}%{_unitdir}/lamplighter-collector.timer
 install -D -m 0644 packaging/lamplighter-jobstats.service  %{buildroot}%{_unitdir}/lamplighter-jobstats.service
 install -D -m 0644 packaging/lamplighter-jobstats.timer    %{buildroot}%{_unitdir}/lamplighter-jobstats.timer
+install -D -m 0644 packaging/lamplighter-reports.service   %{buildroot}%{_unitdir}/lamplighter-reports.service
+install -D -m 0644 packaging/lamplighter-reports.timer     %{buildroot}%{_unitdir}/lamplighter-reports.timer
 install -d %{buildroot}%{_localstatedir}/spool/lamplighter-jobstats
 install -D -m 0644 packaging/lamplighter-webui.sysusers          %{buildroot}%{_sysusersdir}/lamplighter-webui.conf
 install -D -m 0640 packaging/config.yaml.example         %{buildroot}%{_sysconfdir}/lamplighter.d/webui/config.yaml
@@ -85,10 +87,10 @@ id -nG lamplighter-webui | grep -qw lamplighter-jobstats || usermod -a -G lampli
 exit 0
 
 %post
-%systemd_post lamplighter-webui.service lamplighter-collector.timer lamplighter-jobstats.timer
+%systemd_post lamplighter-webui.service lamplighter-collector.timer lamplighter-jobstats.timer lamplighter-reports.timer
 
 %preun
-%systemd_preun lamplighter-webui.service lamplighter-collector.service lamplighter-collector.timer lamplighter-jobstats.service lamplighter-jobstats.timer
+%systemd_preun lamplighter-webui.service lamplighter-collector.service lamplighter-collector.timer lamplighter-jobstats.service lamplighter-jobstats.timer lamplighter-reports.service lamplighter-reports.timer
 
 %postun
 %systemd_postun_with_restart lamplighter-webui.service
@@ -103,6 +105,8 @@ exit 0
 %{_unitdir}/lamplighter-collector.timer
 %{_unitdir}/lamplighter-jobstats.service
 %{_unitdir}/lamplighter-jobstats.timer
+%{_unitdir}/lamplighter-reports.service
+%{_unitdir}/lamplighter-reports.timer
 # setgid: delivered files stay group lamplighter-jobstats
 %dir %attr(2770,lamplighter-webui,lamplighter-jobstats) %{_localstatedir}/spool/lamplighter-jobstats
 %{_sysusersdir}/lamplighter-webui.conf
@@ -112,6 +116,9 @@ exit 0
 %config(noreplace) %attr(0640,root,lamplighter-webui) %{_sysconfdir}/lamplighter.d/webui/config.yaml
 
 %changelog
+* Sat Nov 28 2026 Jonathan Mills - 0.1.0-5
+- lamplighter-reports service and timer (scheduled reports, every 15 minutes).
+
 * Fri Nov 27 2026 Jonathan Mills - 0.1.0-4
 - Lamplighter naming: package, user, units, /opt/lamplighter-webui,
   configuration in /etc/lamplighter.d/webui, lamplighter_webui schema.
