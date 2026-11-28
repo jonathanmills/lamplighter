@@ -24,7 +24,8 @@ pytestmark = pytest.mark.integration
 @pytest.fixture(scope="module")
 def ingested(settings):
     with make_engine(settings.store).begin() as c:
-        c.execute(text("DELETE FROM jobstats_interval"))
+        for t in ("job_minute", "job_hour", "target_minute", "target_hour", "total_minute", "presence"):
+            c.execute(text(f"DELETE FROM jobstats_{t}"))
         c.execute(text("DELETE FROM jobstats_sources"))
     subprocess.run([sys.executable, "/devenv/tools/gen_jobstats.py", settings.jobstats.spool.directory],
                    check=True, capture_output=True)

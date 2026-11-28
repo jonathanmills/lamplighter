@@ -5,6 +5,8 @@
 
   lamplighter-scale gen    build a synthetic Robinhood database of any size
   lamplighter-scale bench  time the collector and the web UI's queries on it
+  lamplighter-scale jobstats  time jobstats ingestion and the triage view at
+                           a large site's job and target counts (synthetic)
 
 Build a synthetic Robinhood database of any size, for scale tests.
 
@@ -249,6 +251,82 @@ def bench(url: str, db: str, store_db: str, rollup_depth: int, json_path: str | 
         log(f"wrote {json_path}")
 
 
+def bench_jobstats(url: str, store_db: str, jobs: int, targets: int, per_job: int, hours: float,
+                   json_path: str | None, seed: int = 1) -> dict:
+    """Feed lamplighter-jobstats' storage one synthetic snapshot a minute
+    (``jobs`` running jobs, each active on ``per_job`` of ``targets``
+    targets, about 1% of jobs replaced every minute), then time the triage
+    view's windows. Uses (and recreates) the database ``store_db``."""
+    import json
+    import random
+    from .jobstats import Interval, store_intervals, triage_jobs
+    from .store import migrate
+
+    base = url.rstrip("/")
+    with create_engine(base + "/", isolation_level="AUTOCOMMIT").connect() as c:
+        c.execute(text(f"DROP DATABASE IF EXISTS `{store_db}`"))
+        c.execute(text(f"CREATE DATABASE `{store_db}` CHARACTER SET utf8mb4"))
+    store = create_engine(f"{base}/{store_db}", pool_pre_ping=True)
+    migrate(store)
+    rng = random.Random(seed)
+    names = [f"lustre-MDT{i:04X}" for i in range(max(1, targets // 20))]
+    names += [f"lustre-OST{i:04X}" for i in range(targets - len(names))]
+    next_id = 0
+
+    def new_job():
+        nonlocal next_id
+        next_id += 1
+        return (f"app{next_id % 50}.{10000 + next_id % 5000}.{next_id}", rng.sample(names, min(per_job, len(names))))
+
+    running = [new_job() for _ in range(jobs)]
+    minutes = int(hours * 60)
+    now = int(time.time()) // 60 * 60
+    t0 = now - minutes * 60
+    ingest: list[float] = []
+    log(f"ingesting {minutes} snapshots of {jobs:,} jobs x {per_job} targets ({jobs * per_job:,} intervals each)")
+    for m in range(minutes):
+        for _ in range(max(1, jobs // 100)):
+            running[rng.randrange(jobs)] = new_job()
+        t_end = t0 + (m + 1) * 60
+        batch = []
+        for job_id, tgts in running:
+            for tg in tgts:
+                md = "MDT" in tg
+                batch.append(Interval("mds" if md else "oss", tg, job_id, t_end - 60, t_end,
+                                      md_ops=rng.randrange(1, 5000) if md else 0,
+                                      read_bytes=0 if md else rng.randrange(1 << 28),
+                                      write_bytes=0 if md else rng.randrange(1 << 28),
+                                      read_ops=0 if md else rng.randrange(1, 300),
+                                      write_ops=0 if md else rng.randrange(1, 300),
+                                      op_counts={"getattr": 3, "open": 2} if md else {"write": 1}))
+        t = time.monotonic()
+        store_intervals(store, batch, [], retention_hours=168, now=t_end)
+        ingest.append(time.monotonic() - t)
+        if (m + 1) % 60 == 0:
+            log(f"  {m + 1} snapshots; last one stored in {ingest[-1]:.2f}s")
+    with store.connect() as c:
+        rows = {t: c.execute(text(f"SELECT COUNT(*) FROM jobstats_{t}")).scalar()
+                for t in ("job_minute", "job_hour", "target_minute", "target_hour", "total_minute", "presence")}
+    ingest.sort()
+    results: dict = {"jobs": jobs, "targets": targets, "per_job": per_job, "snapshots": minutes,
+                     "intervals_per_snapshot": jobs * per_job, "rows": rows,
+                     "ingest_median_s": round(ingest[len(ingest) // 2], 3),
+                     "ingest_max_s": round(ingest[-1], 3), "triage": {}}
+    log(f"ingest per snapshot: median {results['ingest_median_s']}s, max {results['ingest_max_s']}s; rows {rows}")
+    end = t0 + minutes * 60 + 17          # not aligned to a minute
+    for label, window in (("15m", 900), ("1h", 3600), ("6h", 6 * 3600), ("24h", 86400)):
+        if window > minutes * 60:
+            continue
+        sec = _median_time(lambda w=window: triage_jobs(store, w, "md", 25, end))[0]
+        results["triage"][label] = round(sec, 3)
+        log(f"triage {label}: {sec:.3f}s")
+    if json_path:
+        with open(json_path, "w") as f:
+            json.dump(results, f, indent=2)
+    store.dispose()
+    return results
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(prog="lamplighter-scale", description=__doc__.split("\n\n")[0])
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -270,9 +348,19 @@ def main(argv: list[str] | None = None) -> int:
     b.add_argument("--json", help="also write the results to this file")
     b.add_argument("--workers", type=int, default=4, help="parallel scan connections (collector.workers)")
     b.add_argument("--scratch", help="writable schema for the parallel rollup (collector.scratch_schema)")
+    j = sub.add_parser("jobstats", help="time jobstats ingestion and the triage view (synthetic load)")
+    j.add_argument("--url", required=True, help="SQLAlchemy URL of the MariaDB server (a user that can create databases)")
+    j.add_argument("--store-db", default="lamplighter_jobstats_scale", help="database to (re)create for the test")
+    j.add_argument("--jobs", type=int, default=2000, help="running jobs")
+    j.add_argument("--targets", type=int, default=300, help="Lustre targets (MDTs and OSTs)")
+    j.add_argument("--per-job", type=int, default=5, help="targets each job is active on")
+    j.add_argument("--hours", type=float, default=25, help="hours of one-minute snapshots to ingest")
+    j.add_argument("--json", help="also write the results to this file")
     a = ap.parse_args(argv)
     if a.cmd == "gen":
         generate(a.url, a.template, a.target, a.entries, a.files_per_dir, a.users, a.groups, a.now)
+    elif a.cmd == "jobstats":
+        bench_jobstats(a.url, a.store_db, a.jobs, a.targets, a.per_job, a.hours, a.json)
     else:
         bench(a.url, a.db, a.store_db, a.rollup_depth, a.json, a.workers, a.scratch)
     return 0

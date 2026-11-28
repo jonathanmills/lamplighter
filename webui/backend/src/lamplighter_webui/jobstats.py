@@ -15,7 +15,8 @@ Sources (doc/webui-design.md section 5.4):
   and never executed. See ``SpoolSource``.
 * **prometheus**: for sites that already scrape jobstats (prometheus.py).
 
-Both produce ``Interval`` records, stored by ``store_intervals``. Job IDs
+Both produce ``Interval`` records, which ``store_intervals`` adds to
+per-minute and per-hour summaries (migration 006). Job IDs
 are kept as Lustre labels them (``jobid_name``). No job scheduler is
 involved; scheduler details are an optional, opt-in hook (``JobDetails``).
 """
@@ -280,20 +281,94 @@ class SpoolSource:
 
 # --- storage --------------------------------------------------------------------
 
+MINUTE, HOUR = 60, 3600
+DETAIL_HOURS = 25          # minute tables and presence: the longest triage window (24 h) + 1 h
+TRIAGE_TMP = 64 * 1024**2  # bytes of in-memory grouping per triage request
+FIGURES = ("md_ops", "read_bytes", "write_bytes", "read_ops", "write_ops", "other_ops")
+
+
+def summarize(intervals: list[Interval]) -> tuple[dict, dict, dict, dict]:
+    """Fold intervals into totals keyed by (resolution, bucket, job or target),
+    presence: (hour, job, target) -> newest snapshot time, and filesystem
+    totals per minute. An interval
+    counts in the minute and hour holding its end, as before."""
+    jobs: dict[tuple, list] = {}
+    targets: dict[tuple, list] = {}
+    presence: dict[tuple, int] = {}
+    totals: dict[int, list] = {}
+    for iv in intervals:
+        figs = [getattr(iv, k) for k in FIGURES]
+        for res, size in (("minute", MINUTE), ("hour", HOUR)):
+            b = iv.t_end // size * size
+            j = jobs.setdefault((res, b, iv.job_id), [0] * 6 + [{}])
+            t = targets.setdefault((res, b, iv.target), [0] * 6 + [0])
+            for i, v in enumerate(figs):
+                j[i] += v
+                t[i] += v
+            for op, n in iv.op_counts.items():
+                j[6][op] = j[6].get(op, 0) + n
+            t[6] = max(t[6], iv.t_end)
+        tot = totals.setdefault(iv.t_end // MINUTE * MINUTE, [0] * 7)
+        for i, v in enumerate(figs):
+            tot[i] += v
+        tot[6] = max(tot[6], iv.t_end)
+        key = (iv.t_end // HOUR * HOUR, iv.job_id, iv.target)
+        presence[key] = max(presence.get(key, 0), iv.t_end)
+    return jobs, targets, presence, totals
+
+
+_ADD = ", ".join(f"{k} = {k} + VALUES({k})" for k in FIGURES)
+
+
 def store_intervals(engine: Engine, intervals: list[Interval], statuses: list[SourceStatus],
                     retention_hours: int, now: int | None = None) -> int:
+    """Add intervals to the per-job and per-target summaries (migration 006).
+    Runs under lamplighter-jobstats' lock, so merging op_counts by reading
+    and rewriting the touched rows is safe."""
     now = now or int(time.time())
+    jobs, targets, presence, totals = summarize(intervals)
+    cols = ", ".join(FIGURES)
+    vals = ", ".join(f":{k}" for k in FIGURES)
     with engine.begin() as c:
-        if intervals:
+        for res in ("minute", "hour"):
+            mine = {k[1:]: v for k, v in jobs.items() if k[0] == res}
+            if mine:
+                # merge op_counts with what this minute/hour already holds
+                old: dict[tuple, dict] = {}
+                for bkt, job, ops in c.execute(text(
+                        f"SELECT bucket, job_id, op_counts FROM jobstats_job_{res} "
+                        "WHERE bucket IN :b AND job_id IN :j").bindparams(
+                            bindparam("b", expanding=True), bindparam("j", expanding=True)),
+                        {"b": sorted({k[0] for k in mine}), "j": sorted({k[1] for k in mine})}):
+                    old[(int(bkt), job)] = json.loads(ops or "{}")
+                rows = []
+                for (bkt, job), v in mine.items():
+                    ops = old.get((bkt, job), {})
+                    for op, n in v[6].items():
+                        ops[op] = int(ops.get(op, 0)) + n
+                    rows.append({"bucket": bkt, "id": job, **dict(zip(FIGURES, v[:6])),
+                                 "ops": json.dumps(ops, sort_keys=True)})
+                c.execute(text(
+                    f"INSERT INTO jobstats_job_{res} (bucket, job_id, {cols}, op_counts) "
+                    f"VALUES (:bucket, :id, {vals}, :ops) ON DUPLICATE KEY UPDATE {_ADD}, "
+                    "op_counts = VALUES(op_counts)"), rows)
+            mine = [{"bucket": k[1], "id": k[2], **dict(zip(FIGURES, v[:6])), "last": v[6]}
+                    for k, v in targets.items() if k[0] == res]
+            if mine:
+                c.execute(text(
+                    f"INSERT INTO jobstats_target_{res} (bucket, target, {cols}, last_end) "
+                    f"VALUES (:bucket, :id, {vals}, :last) ON DUPLICATE KEY UPDATE {_ADD}, "
+                    "last_end = GREATEST(last_end, VALUES(last_end))"), mine)
+        if totals:
             c.execute(text(
-                "INSERT INTO jobstats_interval (source, target, job_id, t_start, t_end, md_ops, "
-                "read_bytes, write_bytes, read_ops, write_ops, other_ops, op_counts) VALUES "
-                "(:source, :target, :job_id, :t_start, :t_end, :md_ops, :read_bytes, :write_bytes, "
-                ":read_ops, :write_ops, :other_ops, :op_counts)"),
-                [{**{k: getattr(iv, k) for k in (
-                    "source", "target", "job_id", "t_start", "t_end", "md_ops", "read_bytes",
-                    "write_bytes", "read_ops", "write_ops", "other_ops")},
-                  "op_counts": json.dumps(iv.op_counts, sort_keys=True)} for iv in intervals])
+                f"INSERT INTO jobstats_total_minute (bucket, {cols}, last_end) VALUES (:bucket, {vals}, :last) "
+                f"ON DUPLICATE KEY UPDATE {_ADD}, last_end = GREATEST(last_end, VALUES(last_end))"),
+                [{"bucket": b, **dict(zip(FIGURES, v[:6])), "last": v[6]} for b, v in totals.items()])
+        if presence:
+            c.execute(text(
+                "INSERT INTO jobstats_presence (hour, job_id, target, last_seen) VALUES (:h, :j, :t, :l) "
+                "ON DUPLICATE KEY UPDATE last_seen = GREATEST(last_seen, VALUES(last_seen))"),
+                [{"h": h, "j": j, "t": t, "l": last} for (h, j, t), last in presence.items()])
         for s in statuses:
             c.execute(text(
                 "INSERT INTO jobstats_sources (source, last_snapshot, targets, jobs, last_error) "
@@ -303,8 +378,13 @@ def store_intervals(engine: Engine, intervals: list[Interval], statuses: list[So
                 "jobs = IF(VALUES(last_snapshot) IS NULL, jobs, VALUES(jobs)), "
                 "last_error = VALUES(last_error), checked_at = CURRENT_TIMESTAMP"),
                 {"s": s.source, "t": s.last_snapshot, "tg": ",".join(s.targets), "j": s.jobs, "e": s.error})
-        c.execute(text("DELETE FROM jobstats_interval WHERE t_end < :cut"),
-                  {"cut": now - retention_hours * 3600})
+        detail_cut = now - DETAIL_HOURS * HOUR
+        keep_cut = now - max(retention_hours, DETAIL_HOURS) * HOUR
+        for table, cut in (("jobstats_job_minute", detail_cut), ("jobstats_target_minute", detail_cut),
+                           ("jobstats_total_minute", detail_cut),
+                           ("jobstats_job_hour", keep_cut), ("jobstats_target_hour", keep_cut)):
+            c.execute(text(f"DELETE FROM {table} WHERE bucket < :cut"), {"cut": cut})
+        c.execute(text("DELETE FROM jobstats_presence WHERE hour < :cut"), {"cut": detail_cut})
     return len(intervals)
 
 
@@ -333,41 +413,76 @@ def source_status(engine: Engine, stale_after: int, now: int) -> list[dict]:
     return out
 
 
+def _window(kind: str) -> list[str]:
+    """The two parts of a window (params :m0, :hstart): the partial first
+    hour from the minute table, whole hours from the hourly one."""
+    return [f"FROM jobstats_{kind}_minute WHERE bucket >= :m0 AND bucket < :hstart",
+            f"FROM jobstats_{kind}_hour WHERE bucket >= :hstart"]
+
+
+def _window_sums(c, kind: str, key: str, w: dict) -> dict[str, list[int]]:
+    """Figures per job or target over a window. Each part is grouped on its
+    own and the parts are added here: a UNION of the raw rows would be
+    materialized at full VARCHAR width and spill to disk (3x slower at 24 h)."""
+    out: dict[str, list[int]] = {}
+    for part in _window(kind):
+        for row in c.execute(text(f"SELECT {key}, {_SUMS} {part} GROUP BY {key}"), w):
+            acc = out.setdefault(row[0], [0] * 6)
+            for i, v in enumerate(row[1:]):
+                acc[i] += int(v or 0)
+    return out
+
+
 def triage_jobs(engine: Engine, window: int, sort: str, limit: int, now: int) -> dict:
-    """Busiest jobs, targets and a time series over the last ``window`` seconds."""
+    """Busiest jobs, targets and a time series over the last ``window`` seconds
+    (at most 24 hours: the minute tables keep DETAIL_HOURS)."""
     cut = now - window
-    order = {"md": "SUM(md_ops)", "io": "SUM(read_bytes) + SUM(write_bytes)"}[sort]
+    # busiest first (row: job_id, md, read_bytes, write_bytes, ...), then by job id
+    rank = {"md": lambda r: (-r[1], r[0]), "io": lambda r: (-(r[2] + r[3]), r[0])}[sort]
     step = max(60, window // 60)
+    # The window starts at the minute holding ``cut`` (summaries are by
+    # minute): activity that ended at or after m0. Whole hours from hstart.
+    m0 = cut // MINUTE * MINUTE
+    w = {"m0": m0, "hstart": -(-m0 // HOUR) * HOUR, "h0": m0 // HOUR * HOUR}
     with engine.connect() as c:
-        jobs = c.execute(text(
-            f"SELECT job_id, {_SUMS}, COUNT(DISTINCT target) FROM jobstats_interval "
-            f"WHERE t_end > :cut GROUP BY job_id ORDER BY {order} DESC, job_id LIMIT :n"),
-            {"cut": cut, "n": limit}).all()
-        targets = c.execute(text(
-            f"SELECT target, {_SUMS}, COUNT(DISTINCT job_id) FROM jobstats_interval "
-            f"WHERE t_end > :cut GROUP BY target ORDER BY target"), {"cut": cut}).all()
+        # Grouping a day's job ids (tens of thousands) needs more than MariaDB's
+        # 16 MB in-memory default; on disk it takes twice as long.
+        c.execute(text(f"SET SESSION tmp_table_size = {TRIAGE_TMP}, max_heap_table_size = {TRIAGE_TMP}"))
+        per_job = _window_sums(c, "job", "job_id", w)
+        jobs = sorted(((k, *v) for k, v in per_job.items()), key=rank)[:limit]
+        targets = sorted((k, *v) for k, v in _window_sums(c, "target", "target", w).items())
+        jobs_per_target = dict(c.execute(text(
+            # in by_target order: distinct jobs counted while streaming (15x faster at 24 h)
+            "SELECT target, COUNT(DISTINCT job_id) FROM jobstats_presence FORCE INDEX (by_target) "
+            "WHERE hour >= :h0 AND last_seen >= :m0 GROUP BY target"), w).all())
         series = c.execute(text(
-            f"SELECT FLOOR(t_end / :step) * :step AS b, {_SUMS} FROM jobstats_interval "
-            f"WHERE t_end > :cut GROUP BY b ORDER BY b"), {"cut": cut, "step": step}).all()
-        totals = c.execute(text(f"SELECT {_SUMS}, MAX(t_end) FROM jobstats_interval WHERE t_end > :cut"),
-                           {"cut": cut}).one()
+            f"SELECT FLOOR(bucket / :step) * :step AS b, {_SUMS} FROM jobstats_total_minute "
+            "WHERE bucket >= :m0 GROUP BY b ORDER BY b"), {**w, "step": step}).all()
+        totals = c.execute(text(f"SELECT {_SUMS}, MAX(last_end) FROM jobstats_total_minute "
+                                "WHERE bucket >= :m0"), w).one()
         ops: dict[str, dict[str, int]] = {}
+        targets_per_job: dict[str, int] = {}
         if jobs:
-            for job_id, counts in c.execute(
-                    text("SELECT job_id, op_counts FROM jobstats_interval "
-                         "WHERE t_end > :cut AND job_id IN :ids").bindparams(
-                        bindparam("ids", expanding=True)),
-                    {"cut": cut, "ids": [j[0] for j in jobs]}):
-                merged = ops.setdefault(job_id, {})
-                for op, n in json.loads(counts or "{}").items():
-                    merged[op] = merged.get(op, 0) + int(n)
+            ids = {"ids": [j[0] for j in jobs]}
+            expand = bindparam("ids", expanding=True)
+            for part in _window("job"):
+                for job_id, counts in c.execute(text(
+                        f"SELECT job_id, op_counts {part} AND job_id IN :ids").bindparams(expand), {**w, **ids}):
+                    merged = ops.setdefault(job_id, {})
+                    for op, n in json.loads(counts or "{}").items():
+                        merged[op] = merged.get(op, 0) + int(n)
+            targets_per_job = dict(c.execute(text(
+                "SELECT job_id, COUNT(DISTINCT target) FROM jobstats_presence "
+                "WHERE hour >= :h0 AND last_seen >= :m0 AND job_id IN :ids GROUP BY job_id").bindparams(
+                    bindparam("ids", expanding=True)), {**w, **ids}).all())
     return {
         "window": window, "step": step, "now": now,
         "as_of": int(totals[6]) if totals[6] is not None else None,
         "totals": _figures(totals[:6]),
-        "jobs": [{"job_id": j[0], **_figures(j[1:7]), "targets": int(j[7]),
+        "jobs": [{"job_id": j[0], **_figures(j[1:7]), "targets": int(targets_per_job.get(j[0], 0)),
                   "top_ops": sorted(ops.get(j[0], {}).items(), key=lambda kv: -kv[1])[:4]} for j in jobs],
-        "targets": [{"target": t[0], **_figures(t[1:7]), "jobs": int(t[7])} for t in targets],
+        "targets": [{"target": t[0], **_figures(t[1:7]), "jobs": int(jobs_per_target.get(t[0], 0))}
+                    for t in targets],
         "series": [{"t": int(r[0]), **_figures(r[1:7])} for r in series],
     }
 

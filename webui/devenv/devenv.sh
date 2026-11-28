@@ -124,7 +124,8 @@ from lamplighter_webui.store import migrate
 engine = make_engine(load_settings().store)
 migrate(engine)
 with engine.begin() as c:
-    c.execute(text("DELETE FROM jobstats_interval"))
+    for t in ("job_minute", "job_hour", "target_minute", "target_hour", "total_minute", "presence"):
+        c.execute(text(f"DELETE FROM jobstats_{t}"))
     c.execute(text("DELETE FROM jobstats_sources"))
 PY
         compose exec -T webui python /devenv/tools/gen_jobstats.py /var/spool/lamplighter-jobstats

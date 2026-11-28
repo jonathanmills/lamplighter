@@ -103,7 +103,7 @@ collector:
 #  source: spool                 # or: prometheus (if the site already runs it)
 #  spool:
 #    directory: /var/spool/lamplighter-jobstats
-#  retention_hours: 168
+#  retention_hours: 168          # hourly summaries; minute detail is kept 25 hours
 #  stale_after_seconds: 300
 #  # Lustre's jobid_name: the default "%e.%u" gives process name and UID.
 #  jobid_pattern: '^(?P<process>.+)\.(?P<uid>\d+)$'
